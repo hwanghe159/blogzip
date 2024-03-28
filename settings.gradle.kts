@@ -1,6 +1,5 @@
 rootProject.name = "blogzip"
 
-include("api")
-include("batch")
-include("domain")
-include("web")
+include(
+    "api", "batch", "domain", "web"
+)
