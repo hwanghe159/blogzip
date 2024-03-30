@@ -1,0 +1,9 @@
+spring:
+  batch:
+    jdbc:
+      initialize-schema: always
+  application:
+    name: blogzip-batch
+  config:
+    import:
+      - application-domain.yml

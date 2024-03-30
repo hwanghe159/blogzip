@@ -19,13 +19,16 @@ repositories {
 }
 
 dependencies {
-    implementation(project(":domain"))
-    implementation(project(":crawler"))
-
-    implementation("org.springframework.boot:spring-boot-starter-batch")
+    implementation("org.springframework.boot:spring-boot-starter")
+    implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
+
+    implementation("com.rometools:rome:2.1.0")
+    implementation("org.jsoup:jsoup:1.17.2")
+    implementation("org.seleniumhq.selenium:selenium-java:4.18.1")
+    implementation("org.seleniumhq.selenium:selenium-chrome-driver:4.18.1")
+
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.springframework.batch:spring-batch-test")
 }
 
 tasks.withType<KotlinCompile> {

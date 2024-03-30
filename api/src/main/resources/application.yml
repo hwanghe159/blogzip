@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: blogzip-api
+  config:
+    import:
+      - application-domain.yml
+  profiles:
+    active: local
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod

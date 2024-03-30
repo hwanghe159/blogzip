@@ -3,24 +3,29 @@ package com.blogzip.domain
 import jakarta.persistence.*
 import org.springframework.data.annotation.CreatedDate
 import org.springframework.data.jpa.domain.support.AuditingEntityListener
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Entity
 @EntityListeners(AuditingEntityListener::class)
-class Blog(
+class Article(
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
 
-    val name: String,
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "blog_id")
+    val blog: Blog,
+
+    val title: String,
 
     val url: String,
 
-    val rss: String?,
+    val summary: String? = null,
 
-    val createdBy: Long,
+    val summarizedBy: String? = null,
 
     @CreatedDate
-    var createdAt: LocalDateTime = LocalDateTime.MIN,
+    var createdDate: LocalDate = LocalDate.MIN,
 )
