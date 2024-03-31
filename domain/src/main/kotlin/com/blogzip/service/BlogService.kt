@@ -20,12 +20,19 @@ class BlogService(private val repository: BlogRepository) {
     }
 
     @Transactional
-    fun save(name: String, url: String, rss: String?, createdBy: Long): Blog {
+    fun save(
+        name: String,
+        url: String,
+        rss: String?,
+        rssStatus: Blog.RssStatus,
+        createdBy: Long
+    ): Blog {
         return repository.save(
             Blog(
                 name = name,
                 url = url,
                 rss = rss,
+                rssStatus = rssStatus,
                 createdBy = createdBy
             )
         )

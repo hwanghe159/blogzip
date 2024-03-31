@@ -2,20 +2,20 @@ package com.blogzip.api.controller
 
 import com.blogzip.api.dto.BlogCreateRequest
 import com.blogzip.api.dto.BlogResponse
-import com.blogzip.crawler.service.ArticleCrawler
-import com.blogzip.crawler.service.ArticleFetcher
+import com.blogzip.crawler.service.WebScrapper
+import com.blogzip.crawler.service.RssFeedFetcher
+import com.blogzip.domain.Blog
 import com.blogzip.service.BlogService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import org.springframework.web.servlet.view.feed.AbstractAtomFeedView
 import java.time.LocalDate
 
 
 @RestController
 class BlogController(
     private val blogService: BlogService,
-    private val articleFetcher: ArticleFetcher,
-    private val articleCrawler: ArticleCrawler,
+    private val rssFeedFetcher: RssFeedFetcher,
+    private val webScrapper: WebScrapper,
 ) {
 
     @GetMapping("/api/v1/blog/{id}")
@@ -40,9 +40,18 @@ class BlogController(
         } else {
             request.url
         }
-        val name = articleCrawler.getTitle(url)
-        val rss = articleCrawler.convertToRss(url)
-        val blog = blogService.save(name, url, rss.first(), request.createdBy)
+        val name = webScrapper.getTitle(url)
+        val rss = webScrapper.convertToRss(url).firstOrNull()
+        val blog = blogService.save(
+            name,
+            url,
+            rss,
+            rssStatus =
+            if (rss == null) Blog.RssStatus.NO_RSS
+            else if (rssFeedFetcher.isContentContainsInRss(rss)) Blog.RssStatus.WITH_CONTENT
+            else Blog.RssStatus.WITHOUT_CONTENT,
+            request.createdBy
+        )
         return ResponseEntity.ok(BlogResponse.from(blog))
     }
 
@@ -54,9 +63,18 @@ class BlogController(
             } else {
                 it
             }
-            val name = articleCrawler.getTitle(url)
-            val rss = articleCrawler.convertToRss(url)
-            blogService.save(name, url, if(rss.isEmpty()) null else rss.first(), 1)
+            val name = webScrapper.getTitle(url)
+            val rss = webScrapper.convertToRss(url)
+            blogService.save(
+                name = name,
+                url = url,
+                rss = rss.firstOrNull(),
+                rssStatus =
+                if (rss.isEmpty()) Blog.RssStatus.NO_RSS
+                else if (rssFeedFetcher.isContentContainsInRss(rss.first())) Blog.RssStatus.WITH_CONTENT
+                else Blog.RssStatus.WITHOUT_CONTENT,
+                createdBy = 1
+            )
         }
             .map { BlogResponse.from(it) }
         return ResponseEntity.ok(map)
@@ -64,8 +82,8 @@ class BlogController(
 
 
     @PostMapping("/api/v1/contents")
-    fun get(@RequestParam rss: String): ResponseEntity<List<ArticleFetcher.ArticleData>> {
-        val fetchArticles = articleFetcher.fetchArticles(rss, LocalDate.of(2024, 3, 21))
+    fun get(@RequestParam rss: String): ResponseEntity<List<RssFeedFetcher.ArticleData>> {
+        val fetchArticles = rssFeedFetcher.fetchContents(rss, LocalDate.of(2024, 3, 21))
         return ResponseEntity.ok(fetchArticles)
     }
 }

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Articles List</title>
+</head>
+<body>
+<h1>Articles</h1>
+<div th:if="${articles.isEmpty()}">
+  <p>No articles available.</p>
+</div>
+<div th:unless="${articles.isEmpty()}">
+  <ul>
+    <li th:each="article : ${articles}">
+      <h2 th:text="${article.title}">Article Title</h2>
+      <a th:href="${article.url}" th:text="${article.url}">Article URL</a>
+      <p th:text="${article.summary}">Article Summary</p>
+    </li>
+  </ul>
+</div>
+</body>
+</html>

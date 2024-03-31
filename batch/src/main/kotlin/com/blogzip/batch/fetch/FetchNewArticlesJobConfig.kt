@@ -1,7 +1,10 @@
 package com.blogzip.batch.fetch
 
-import com.blogzip.crawler.service.ArticleFetcher
+import com.blogzip.crawler.service.RssFeedFetcher
+import com.blogzip.crawler.service.WebScrapper
 import com.blogzip.domain.Article
+import com.blogzip.domain.Blog
+import com.blogzip.domain.Blog.RssStatus.*
 import com.blogzip.service.ArticleService
 import com.blogzip.service.BlogService
 import org.springframework.batch.core.Job
@@ -20,7 +23,8 @@ import java.time.LocalDate
 class FetchNewArticlesJobConfig(
     private val blogService: BlogService,
     private val articleService: ArticleService,
-    private val articleFetcher: ArticleFetcher,
+    private val rssFeedFetcher: RssFeedFetcher,
+    private val webScrapper: WebScrapper,
 ) {
 
     @Bean
@@ -34,7 +38,6 @@ class FetchNewArticlesJobConfig(
             .build()
     }
 
-    // todo 아예 작동을 안한다!! 확인해보기
     @Bean
     fun fetchNewArticlesStep(
         jobRepository: JobRepository,
@@ -42,16 +45,49 @@ class FetchNewArticlesJobConfig(
     ): Step {
         return StepBuilder("fetch-new-articles", jobRepository)
             .tasklet({ _, _ ->
-                val today = LocalDate.of(2024, 3, 15)
+                val yesterday = LocalDate.of(2024, 3, 15).minusDays(1)
                 val blogs = blogService.findAll()
                 val articles = blogs.filter { it.rss != null }
-                    .flatMap { blog ->
-                        articleFetcher.fetchArticles(blog.rss!!, today.minusDays(1))
-                            .map { Article(blog = blog, title = it.title, url = it.url) }
-                    }
+                    .flatMap { blog -> fetchArticles(blog, from = yesterday) }
                 articleService.saveIfNotExists(articles)
                 RepeatStatus.FINISHED
             }, platformTransactionManager)
             .build()
+    }
+
+    private fun fetchArticles(blog: Blog, from: LocalDate): List<Article> {
+        when (blog.rssStatus) {
+            WITH_CONTENT -> {
+                return rssFeedFetcher.fetchContents(blog.rss!!, from)
+                    .map {
+                        Article(
+                            blog = blog,
+                            title = it.title,
+                            content = it.content!!,
+                            url = it.url,
+                            createdDate = it.createdDate
+                        )
+                    }
+            }
+
+            WITHOUT_CONTENT -> {
+                return rssFeedFetcher.fetchLinks(blog.rss!!, from)
+                    .map {
+                        Article(
+                            blog = blog,
+                            title = it.title,
+                            content = webScrapper.getContent(it.url),
+                            url = it.url,
+                            createdDate = it.createdDate
+                        )
+                    }
+            }
+
+            NO_RSS -> {
+                // todo 블로그 크롤링 -> 링크 추출
+                // todo 블로그 글 링크 -> 글 내용 크롤링
+                return emptyList()
+            }
+        }
     }
 }

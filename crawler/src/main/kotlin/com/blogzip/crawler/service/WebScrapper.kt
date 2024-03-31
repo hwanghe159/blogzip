@@ -1,6 +1,7 @@
 package com.blogzip.crawler.service
 
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import org.openqa.selenium.By
 import org.openqa.selenium.WebDriver
 import org.openqa.selenium.WebElement
@@ -15,7 +16,7 @@ import java.net.URL
 import java.time.Duration
 
 @Component
-class ArticleCrawler() {
+class WebScrapper {
 
     companion object {
         private val TIMEOUT = Duration.ofSeconds(10)
@@ -70,6 +71,22 @@ class ArticleCrawler() {
         } else {
             emptyList()
         }
+    }
+
+    fun getContent(url: String): String {
+        val webDriver = createWebDriver()
+        webDriver.get(url)
+        val wait = WebDriverWait(webDriver, TIMEOUT)
+        wait.until(ExpectedConditions.jsReturnsValue("return document.readyState == 'complete';"))
+        val content: String = webDriver.pageSource
+        webDriver.quit()
+
+        // todo 어떻게 압축되는지 테스트해보기
+        val doc: Document = Jsoup.parse(content)
+        doc.select("*").forEach {
+            it.removeClass("class")
+        }
+        return doc.html()
     }
 
     private fun createWebDriver(): WebDriver {

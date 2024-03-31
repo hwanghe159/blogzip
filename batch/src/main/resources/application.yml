@@ -1,9 +1,20 @@
 spring:
-  batch:
-    jdbc:
-      initialize-schema: always
   application:
     name: blogzip-batch
   config:
     import:
       - application-domain.yml
+open-ai:
+  api-key: "${OPEN_AI_API_KEY}"
+  assistant-id: "${OPEN_AI_ASSISTANT_ID}"
+  thread-id: "${OPEN_AI_THREAD_ID}"
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  sql:
+    init:
+      mode: always
+      schema-locations:
+        - classpath:schema.sql

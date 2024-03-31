@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.transaction.PlatformTransactionManager
 
 @Configuration
-class SummarizeJobConfig {
+class SummarizeJobConfig(private val articleContentSummarizer: ArticleContentSummarizer) {
 
     @Bean
     fun summarizeJob(
@@ -30,9 +30,8 @@ class SummarizeJobConfig {
     ): Step {
         return StepBuilder("summarize", jobRepository)
             .tasklet({ _, _ ->
-
                 println("ㅋㅋㅋ 요약한다!!")
-
+//                articleContentSummarizer.summarize()
                 RepeatStatus.FINISHED
             }, platformTransactionManager)
             .build()

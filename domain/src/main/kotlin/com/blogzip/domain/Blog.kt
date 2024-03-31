@@ -13,9 +13,15 @@ class Blog(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
 
+    @OneToMany(mappedBy = "blog")
+    val subscriptions: List<Subscription> = emptyList(),
+
     val name: String,
 
     val url: String,
+
+    @Enumerated(EnumType.STRING)
+    val rssStatus: RssStatus,
 
     val rss: String?,
 
@@ -23,4 +29,10 @@ class Blog(
 
     @CreatedDate
     var createdAt: LocalDateTime = LocalDateTime.MIN,
-)
+) {
+    enum class RssStatus {
+        WITH_CONTENT,
+        WITHOUT_CONTENT,
+        NO_RSS
+    }
+}

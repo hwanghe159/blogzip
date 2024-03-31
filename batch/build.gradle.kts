@@ -23,9 +23,15 @@ dependencies {
     implementation(project(":crawler"))
 
     implementation("org.springframework.boot:spring-boot-starter-batch")
+    implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
+    implementation("software.amazon.awssdk:ses:2.17.100")
+    implementation("com.aallam.openai:openai-client:3.7.0")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.batch:spring-batch-test")
+    testImplementation("io.mockk:mockk:1.13.10")
+
+    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 }
 
 tasks.withType<KotlinCompile> {

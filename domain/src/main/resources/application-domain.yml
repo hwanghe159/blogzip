@@ -1,3 +1,9 @@
+spring:
+  jpa:
+    database: mysql
+    database-platform: org.hibernate.dialect.MySQLDialect
+    open-in-view: false
+
 ---
 spring:
   config:
@@ -8,13 +14,10 @@ spring:
     username: blogzip
     password: blogzip
   jpa:
-    database: mysql
-    database-platform: org.hibernate.dialect.MySQLDialect
     show-sql: true
     properties:
       hibernate:
         format_sql: true
-    open-in-view: false
   sql:
     init:
       mode: always
@@ -24,3 +27,10 @@ spring:
   config:
     activate:
       on-profile: prod
+  datasource:
+    url: jdbc:mysql://localhost:3306/blogzip # todo 수정
+    username: blogzip
+    password: blogzip
+  sql:
+    init:
+      mode: never
