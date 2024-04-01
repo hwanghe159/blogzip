@@ -8,13 +8,17 @@ interface ArticleRepository : JpaRepository<Article, Long> {
 
     fun existsByUrl(url: String): Boolean
 
-    @Query("""
-        select a 
-        from Article a 
-        join a.blog b 
-        join b.subscriptions s 
-        where s.user = :user 
-        and a.createdDate = :createdDate
-    """)
+    @Query(
+        """
+        select article 
+        from Article article 
+        join article.blog blog 
+        join blog.subscriptions subscriptions 
+        where subscriptions.user = :user 
+        and article.createdDate = :createdDate
+    """
+    )
     fun findAllByUserAndCreatedDate(user: User, createdDate: LocalDate): List<Article>
+
+    fun findAllBySummaryIsNull(): List<Article>
 }

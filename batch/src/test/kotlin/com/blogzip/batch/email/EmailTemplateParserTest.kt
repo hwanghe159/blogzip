@@ -30,11 +30,13 @@ class EmailTemplateParserTest {
             Article(
                 blog = blog,
                 title = "title1",
+                content = "content1",
                 url = "url1",
                 summary = "summary1",
             ), Article(
                 blog = blog,
                 title = "title2",
+                content = "content2",
                 url = "url2",
                 summary = "summary2",
             )

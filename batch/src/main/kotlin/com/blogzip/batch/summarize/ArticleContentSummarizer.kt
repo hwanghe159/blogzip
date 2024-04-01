@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component
 class ArticleContentSummarizer(private val openAiProperties: OpenAiProperties) {
 
     @OptIn(BetaOpenAI::class)
-    suspend fun summarize(content: String) {
+    suspend fun summarize(content: String): String {
         val openAI = OpenAI(openAiProperties.apiKey)
         val threadId = ThreadId(openAiProperties.threadId)
         val assistantId = AssistantId(openAiProperties.assistantId)
@@ -34,15 +34,11 @@ class ArticleContentSummarizer(private val openAiProperties: OpenAiProperties) {
             )
         )
         do {
-            delay(1500)
+            delay(3000)
             val retrievedRun = openAI.getRun(threadId = threadId, runId = run.id)
         } while (retrievedRun.status != Status.Completed)
         val messages = openAI.messages(threadId)
-        println("\nThe assistant's response:")
-        for (message in messages) {
-            val textContent = message.content.first() as? MessageContent.Text ?: error("Expected MessageContent.Text")
-            println(textContent.text.value)
-        }
-        return
+        val textContent = messages.first().content.first() as MessageContent.Text
+        return textContent.text.value
     }
 }

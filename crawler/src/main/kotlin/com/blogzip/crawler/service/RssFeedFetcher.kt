@@ -88,7 +88,6 @@ class RssFeedFetcher(private val webClient: WebClient) {
             )
             return input.build(BufferedReader(StringReader(validXmlString))).entries
         } catch (e: Exception) {
-            System.err.println("$rss 실패")
             e.printStackTrace()
         }
         return emptyList()

@@ -24,9 +24,9 @@ class Article(
 
     val url: String,
 
-    val summary: String? = null,
+    var summary: String? = null,
 
-    val summarizedBy: String? = null,
+    var summarizedBy: String? = null,
 
     @CreatedDate
     var createdDate: LocalDate = LocalDate.MIN,

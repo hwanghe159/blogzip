@@ -16,7 +16,7 @@ import java.net.URL
 import java.time.Duration
 
 @Component
-class WebScrapper {
+class WebScrapper(private val htmlCompressor: HtmlCompressor) {
 
     companion object {
         private val TIMEOUT = Duration.ofSeconds(10)
@@ -80,13 +80,7 @@ class WebScrapper {
         wait.until(ExpectedConditions.jsReturnsValue("return document.readyState == 'complete';"))
         val content: String = webDriver.pageSource
         webDriver.quit()
-
-        // todo 어떻게 압축되는지 테스트해보기
-        val doc: Document = Jsoup.parse(content)
-        doc.select("*").forEach {
-            it.removeClass("class")
-        }
-        return doc.html()
+        return htmlCompressor.compress(content)
     }
 
     private fun createWebDriver(): WebDriver {

@@ -1,5 +1,7 @@
 package com.blogzip.batch.summarize
 
+import com.blogzip.service.ArticleService
+import kotlinx.coroutines.runBlocking
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
 import org.springframework.batch.core.job.builder.JobBuilder
@@ -11,7 +13,10 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.transaction.PlatformTransactionManager
 
 @Configuration
-class SummarizeJobConfig(private val articleContentSummarizer: ArticleContentSummarizer) {
+class SummarizeJobConfig(
+    private val articleService: ArticleService,
+    private val articleContentSummarizer: ArticleContentSummarizer
+) {
 
     @Bean
     fun summarizeJob(
@@ -30,8 +35,14 @@ class SummarizeJobConfig(private val articleContentSummarizer: ArticleContentSum
     ): Step {
         return StepBuilder("summarize", jobRepository)
             .tasklet({ _, _ ->
-                println("ㅋㅋㅋ 요약한다!!")
-//                articleContentSummarizer.summarize()
+                val articles = articleService.findAllBySummaryIsNull()
+                for (article in articles) {
+                    val summary =
+                        runBlocking { articleContentSummarizer.summarize(article.content) }
+                    article.summary = summary
+                    article.summarizedBy = "gpt-3.5-turbo-0125"
+                    articleService.save(article)
+                }
                 RepeatStatus.FINISHED
             }, platformTransactionManager)
             .build()

@@ -47,9 +47,10 @@ class FetchNewArticlesJobConfig(
             .tasklet({ _, _ ->
                 val yesterday = LocalDate.of(2024, 3, 15).minusDays(1)
                 val blogs = blogService.findAll()
-                val articles = blogs.filter { it.rss != null }
-                    .flatMap { blog -> fetchArticles(blog, from = yesterday) }
-                articleService.saveIfNotExists(articles)
+                blogs.flatMap { blog ->
+                        val articles = fetchArticles(blog, from = yesterday)
+                        articleService.saveIfNotExists(articles)
+                    }
                 RepeatStatus.FINISHED
             }, platformTransactionManager)
             .build()
