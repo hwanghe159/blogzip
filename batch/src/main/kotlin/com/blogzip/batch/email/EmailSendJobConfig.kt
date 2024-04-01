@@ -1,5 +1,7 @@
 package com.blogzip.batch.email
 
+import com.blogzip.notification.email.Article
+import com.blogzip.notification.email.EmailSender
 import com.blogzip.service.ArticleService
 import com.blogzip.service.UserService
 import org.springframework.batch.core.Job
@@ -44,7 +46,15 @@ class EmailSendJobConfig(
                 for (user in users) {
                     val newArticles =
                         articleService.findAllByUserAndCreatedDate(user, yesterday)
-                    emailSender.send(user.email, newArticles)
+                    emailSender.sendNewArticles(
+                        user.email,
+                        newArticles.map {
+                            Article(
+                                title = it.title,
+                                url = it.url,
+                                summary = it.summary ?: "",
+                            )
+                        })
                 }
                 RepeatStatus.FINISHED
             }, platformTransactionManager)

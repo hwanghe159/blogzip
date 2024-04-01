@@ -1,6 +1,5 @@
-package com.blogzip.batch.email
+package com.blogzip.notification.email
 
-import com.blogzip.domain.Article
 import org.springframework.stereotype.Component
 import software.amazon.awssdk.regions.Region.AP_NORTHEAST_2
 import software.amazon.awssdk.services.ses.SesClient
@@ -15,11 +14,18 @@ class EmailSender(
         private const val SENDER_EMAIL_ADDRESS = "no-replay@blogzip.com"
     }
 
-    fun send(to: String, articles: List<Article>) {
+    fun sendNewArticles(to: String, articles: List<Article>) {
         if (articles.isEmpty()) {
             return
         }
         val content = emailTemplateParser.parseArticles(articles)
+//        sendEmailUsingSES(to, "제목", content)
+        println("${to} 한테 이메일보냈다!!!")
+        println(content)
+    }
+
+    fun sendVerification(to: String, code: String) {
+        val content = emailTemplateParser.parseVerification(to, code)
 //        sendEmailUsingSES(to, "제목", content)
         println("${to} 한테 이메일보냈다!!!")
         println(content)

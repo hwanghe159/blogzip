@@ -74,7 +74,7 @@ class RssFeedFetcher(private val webClient: WebClient) {
                         if (newUrl != null) {
                             webClient.get().uri(newUrl).retrieve().bodyToMono(String::class.java)
                         } else {
-                            Mono.error(RuntimeException())
+                            Mono.error(RuntimeException("rss url로부터 리다이렉트 응답이 왔으나 Location 헤더값이 없음"))
                         }
                     } else {
                         response.bodyToMono(String::class.java)

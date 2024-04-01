@@ -1,6 +1,5 @@
-package com.blogzip.batch.email
+package com.blogzip.notification.email
 
-import com.blogzip.domain.Article
 import org.springframework.stereotype.Component
 import org.thymeleaf.TemplateEngine
 import org.thymeleaf.context.Context
@@ -11,5 +10,12 @@ class EmailTemplateParser(private val templateEngine: TemplateEngine) {
         val context = Context()
         context.setVariable("articles", articles)
         return templateEngine.process("email/new-articles", context)
+    }
+
+    fun parseVerification(address: String, code: String): String {
+        val context = Context()
+        context.setVariable("address", address)
+        context.setVariable("code", code)
+        return templateEngine.process("email/email-address-verification", context)
     }
 }

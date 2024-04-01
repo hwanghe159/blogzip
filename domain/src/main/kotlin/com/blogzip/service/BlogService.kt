@@ -11,7 +11,7 @@ class BlogService(private val repository: BlogRepository) {
     @Transactional(readOnly = true)
     fun findById(id: Long): Blog {
         return repository.findById(id)
-            .orElseThrow { RuntimeException() }
+            .orElseThrow { RuntimeException("id로 블로그를 찾을 수 없음") }
     }
 
     @Transactional(readOnly = true)

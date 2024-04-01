@@ -1,11 +1,7 @@
-package com.blogzip.batch.email
+package com.blogzip.notification.email
 
-import com.blogzip.domain.Article
-import com.blogzip.domain.Blog
-import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Test
-import org.mockito.Mock
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Bean
@@ -21,22 +17,15 @@ class EmailTemplateParserTest {
     @Autowired
     private lateinit var emailTemplateParser: EmailTemplateParser
 
-    @Mock
-    private val blog = mockk<Blog>()
-
     @Test
     fun `타임리프 동작 학습테스트`() {
         val articles = listOf(
             Article(
-                blog = blog,
                 title = "title1",
-                content = "content1",
                 url = "url1",
                 summary = "summary1",
             ), Article(
-                blog = blog,
                 title = "title2",
-                content = "content2",
                 url = "url2",
                 summary = "summary2",
             )

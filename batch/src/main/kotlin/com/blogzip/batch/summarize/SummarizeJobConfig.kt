@@ -37,11 +37,12 @@ class SummarizeJobConfig(
             .tasklet({ _, _ ->
                 val articles = articleService.findAllBySummaryIsNull()
                 for (article in articles) {
-                    val summary =
-                        runBlocking { articleContentSummarizer.summarize(article.content) }
-                    article.summary = summary
-                    article.summarizedBy = "gpt-3.5-turbo-0125"
-                    articleService.save(article)
+                    runBlocking {
+                        val summary = articleContentSummarizer.summarize(article.content)
+                        article.summary = summary
+                        article.summarizedBy = "gpt-3.5-turbo-0125"
+                        articleService.save(article)
+                    }
                 }
                 RepeatStatus.FINISHED
             }, platformTransactionManager)

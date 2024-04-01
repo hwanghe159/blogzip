@@ -5,11 +5,15 @@ drop table if exists article;
 
 create table user
 (
-    id           bigint auto_increment primary key,
-    email        varchar(200) not null comment '이메일 주소',
-    password     varchar(200) null comment '암호화된 비밀번호',
-    receive_days varchar(100) not null comment '수신 희망 요일',
-    created_at   datetime     not null default current_timestamp comment '생성 시각',
+    id                           bigint auto_increment primary key,
+    email                        varchar(200) not null comment '이메일 주소',
+    password                     varchar(200) null comment '암호화된 비밀번호',
+    verification_code            varchar(100) not null comment '이메일 인증코드',
+    is_verified                  tinyint(1)   not null default 0 comment '이메일 인증 여부',
+    receive_days                 varchar(100) not null comment '수신 희망 요일',
+    verification_code_expired_at datetime     not null default current_timestamp comment '이메일 인증코드 만료시각',
+    created_at                   datetime     not null default current_timestamp comment '생성 시각',
+    updated_at                   datetime     not null default current_timestamp comment '수정 시각',
     unique index udx_email (email)
 ) comment '사용자';
 
@@ -40,7 +44,7 @@ create table article
     id            bigint auto_increment primary key,
     blog_id       bigint        not null comment 'blog.id',
     title         varchar(200)  not null comment '제목',
-    content       longtext          not null comment '내용',
+    content       longtext      not null comment '내용',
     summary       varchar(1000) null comment '요약된 내용',
     summarized_by varchar(100)  null comment '요약된 내용 제공자',
     url           varchar(700)  not null comment 'URL',
@@ -48,8 +52,9 @@ create table article
     unique index udx_url (url)
 ) comment '블로그 글';
 
-insert into user(email, password, receive_days)
-values ('hwanghe159@gmail.com', null, '[]');
+insert into user(email, password, verification_code, is_verified, receive_days)
+values ('hwanghe159@gmail.com', null, '', true,
+        'MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY,SATURDAY,SUNDAY');
 insert into blogzip.blog (name, url, rss, rss_status, created_by)
 values ('우아한형제들 기술블로그', 'https://techblog.woowahan.com', 'https://techblog.woowahan.com/feed/',
         'WITH_CONTENT', 1),

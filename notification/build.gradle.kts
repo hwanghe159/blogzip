@@ -19,22 +19,12 @@ repositories {
 }
 
 dependencies {
-    implementation(project(":domain"))
-    implementation(project(":crawler"))
-    implementation(project(":notification"))
-
-    implementation("org.springframework.boot:spring-boot-starter-batch")
+    implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
-
-    implementation(platform("com.aallam.openai:openai-client-bom:3.7.0"))
-    implementation("com.aallam.openai:openai-client")
-    runtimeOnly("io.ktor:ktor-client-okhttp")
+    implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
+    implementation("software.amazon.awssdk:ses:2.17.100")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.springframework.batch:spring-batch-test")
-    testImplementation("io.mockk:mockk:1.13.10")
-
-    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 }
 
 tasks.withType<KotlinCompile> {
