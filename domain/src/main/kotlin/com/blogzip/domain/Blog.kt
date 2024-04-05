@@ -25,6 +25,8 @@ class Blog(
 
     val rss: String?,
 
+    val urlCssSelector: String? = null,
+
     val createdBy: Long,
 
     @CreatedDate

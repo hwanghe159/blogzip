@@ -7,7 +7,6 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Entity
-@EntityListeners(AuditingEntityListener::class)
 class Article(
 
     @Id
@@ -28,6 +27,12 @@ class Article(
 
     var summarizedBy: String? = null,
 
-    @CreatedDate
-    var createdDate: LocalDate = LocalDate.MIN,
-)
+    var createdDate: LocalDate? = null,
+) {
+    @PrePersist
+    fun prePersist() {
+        if (createdDate == null) {
+            createdDate = LocalDate.now()
+        }
+    }
+}

@@ -27,6 +27,7 @@ class BlogController(
                 name = blog.name,
                 url = blog.url,
                 rss = blog.rss,
+                rssStatus = blog.rssStatus,
                 createdBy = blog.createdBy,
                 createdAt = blog.createdAt,
             )
@@ -53,31 +54,6 @@ class BlogController(
             request.createdBy
         )
         return ResponseEntity.ok(BlogResponse.from(blog))
-    }
-
-    @PostMapping("/api/v1/blogs")
-    fun saves(@RequestBody request: List<String>): ResponseEntity<List<BlogResponse>> {
-        val map = request.map {
-            val url: String = if (it.endsWith('/')) {
-                it.dropLast(1)
-            } else {
-                it
-            }
-            val name = webScrapper.getTitle(url)
-            val rss = webScrapper.convertToRss(url)
-            blogService.save(
-                name = name,
-                url = url,
-                rss = rss.firstOrNull(),
-                rssStatus =
-                if (rss.isEmpty()) Blog.RssStatus.NO_RSS
-                else if (rssFeedFetcher.isContentContainsInRss(rss.first())) Blog.RssStatus.WITH_CONTENT
-                else Blog.RssStatus.WITHOUT_CONTENT,
-                createdBy = 1
-            )
-        }
-            .map { BlogResponse.from(it) }
-        return ResponseEntity.ok(map)
     }
 
 

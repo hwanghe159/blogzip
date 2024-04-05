@@ -11,58 +11,41 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.util.*
 
-
-@Component
-class RssFeedFetcher(private val webClient: WebClient) {
-
-    fun fetchContents(rss: String, from: LocalDate): List<ArticleData> {
-        return fetchFeeds(rss)
-            .filter {
-                val publishedDate: Date = it.publishedDate ?: it.updatedDate
-                from <= publishedDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
-            }
-            .map {
-                ArticleData(
-                    title = it.title,
-                    content = it.contents[0].value,
-                    url = it.link,
-                    createdDate = it.publishedDate.toInstant()
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate()
-                )
-            }
+private val SyndEntry.content: String?
+    get() {
+        if (this.contents.isNotEmpty()) {
+            return this.contents[0].value
+        }
+        // description 에 전체 내용이 아닌 요약만 있는 경우도 있음. 500자 이하인 경우엔 전체 내용이 아니고 요약본이라고 판단한다.
+        if (this.description.value.length <= 500) {
+            return null
+        }
+        return this.description.value
     }
 
-    fun fetchLinks(rss: String, from: LocalDate): List<ArticleData> {
-        return fetchFeeds(rss)
-            .filter {
-                val publishedDate: Date = it.publishedDate ?: it.updatedDate
-                from <= publishedDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
-            }
-            .map {
-                ArticleData(
-                    title = it.title,
-                    content = null,
-                    url = it.link,
-                    createdDate = it.publishedDate.toInstant()
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate()
-                )
-            }
+@Component
+class RssFeedFetcher(
+    private val webClient: WebClient,
+    private val htmlCompressor: HtmlCompressor,
+) {
+
+    fun fetchContents(rss: String, from: LocalDate): List<ArticleData> {
+        return fetchArticles(rss)
+            .filter { from <= it.createdDate }
     }
 
     fun isContentContainsInRss(rss: String): Boolean {
-        val feeds = fetchFeeds(rss)
-        if (feeds.isEmpty()) {
+        val articles = fetchArticles(rss)
+        if (articles.isEmpty()) {
             return false
         }
-        if (feeds[0].contents.isEmpty()) {
+        if (articles[0].content == null) {
             return false
         }
         return true
     }
 
-    private fun fetchFeeds(rss: String): List<SyndEntry> {
+    private fun fetchArticles(rss: String): List<ArticleData> {
         try {
             val input = SyndFeedInput()
             val xmlString = webClient
@@ -86,14 +69,24 @@ class RssFeedFetcher(private val webClient: WebClient) {
                 "[^\\u0009\\r\\n\\u0020-\\uD7FF\\uE000-\\uFFFD\\u10000-\\u10FFFF]".toRegex(),
                 ""
             )
-            return input.build(BufferedReader(StringReader(validXmlString))).entries
+            val entries = input.build(BufferedReader(StringReader(validXmlString))).entries
+            return entries.map {
+                ArticleData(
+                    title = it.title,
+                    content = it.content?.let { html -> htmlCompressor.compress(html) },
+                    url = it.link,
+                    createdDate = it.publishedDate.toInstant()
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate()
+                )
+            }
         } catch (e: Exception) {
             e.printStackTrace()
         }
         return emptyList()
     }
 
-    class ArticleData(
+    data class ArticleData(
         val title: String,
         val content: String?,
         val url: String,

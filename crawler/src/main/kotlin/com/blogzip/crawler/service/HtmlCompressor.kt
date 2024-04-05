@@ -1,5 +1,6 @@
 package com.blogzip.crawler.service
 
+import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter
 import org.jsoup.Jsoup
 import org.springframework.stereotype.Component
 
@@ -16,6 +17,7 @@ class HtmlCompressor {
             }
         }
         body.select("script").forEach { it.remove() }
-        return body.toString().replace(Regex(">\\s+<"), "><")
+        return FlexmarkHtmlConverter.builder().build().convert(body.toString())
+//        return body.toString().replace(Regex(">\\s+<"), "><")
     }
 }

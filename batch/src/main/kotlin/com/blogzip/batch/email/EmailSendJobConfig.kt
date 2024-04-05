@@ -1,5 +1,6 @@
 package com.blogzip.batch.email
 
+import com.blogzip.batch.common.logger
 import com.blogzip.notification.email.Article
 import com.blogzip.notification.email.EmailSender
 import com.blogzip.service.ArticleService
@@ -22,6 +23,8 @@ class EmailSendJobConfig(
     private val articleService: ArticleService,
     private val emailSender: EmailSender
 ) {
+
+    val log = logger()
 
     @Bean
     fun emailSendJob(
@@ -48,13 +51,20 @@ class EmailSendJobConfig(
                         articleService.findAllByUserAndCreatedDate(user, yesterday)
                     emailSender.sendNewArticles(
                         user.email,
-                        newArticles.map {
-                            Article(
-                                title = it.title,
-                                url = it.url,
-                                summary = it.summary ?: "",
-                            )
-                        })
+                        newArticles
+                            .filter {
+                                if (it.summary == null) {
+                                    log.error("요약되지 않아 전송 과정에서 걸러짐. article.id=${it.id}")
+                                }
+                                it.summary != null
+                            }
+                            .map {
+                                Article(
+                                    title = it.title,
+                                    url = it.url,
+                                    summary = it.summary!!,
+                                )
+                            })
                 }
                 RepeatStatus.FINISHED
             }, platformTransactionManager)

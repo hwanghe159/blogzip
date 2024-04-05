@@ -1,12 +1,12 @@
 package com.blogzip.crawler.service
 
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
 import org.openqa.selenium.By
+import org.openqa.selenium.TimeoutException
 import org.openqa.selenium.WebDriver
 import org.openqa.selenium.WebElement
 import org.openqa.selenium.chrome.ChromeDriver
 import org.openqa.selenium.chrome.ChromeOptions
+import org.openqa.selenium.support.ui.ExpectedCondition
 import org.openqa.selenium.support.ui.ExpectedConditions
 import org.openqa.selenium.support.ui.WebDriverWait
 import org.springframework.stereotype.Component
@@ -25,12 +25,17 @@ class WebScrapper(private val htmlCompressor: HtmlCompressor) {
 
     fun getTitle(url: String): String {
         val webDriver = createWebDriver()
-        webDriver.get(url)
-        val wait = WebDriverWait(webDriver, TIMEOUT)
-        wait.until(ExpectedConditions.textToBePresentInElementLocated(By.tagName("title"), ""))
-        val pageTitle: String = webDriver.title
-        webDriver.quit()
-        return pageTitle
+        try {
+            webDriver.get(url)
+            val wait = WebDriverWait(webDriver, TIMEOUT)
+            wait.until(ExpectedConditions.textToBePresentInElementLocated(By.tagName("title"), ""))
+            val pageTitle: String = webDriver.title
+            return pageTitle
+        } catch (e: TimeoutException) {
+            throw RuntimeException("웹페이지의 타이틀 조회 실패.")
+        } finally {
+            webDriver.quit()
+        }
     }
 
     fun convertToRss(url: String): List<String> {
@@ -73,19 +78,56 @@ class WebScrapper(private val htmlCompressor: HtmlCompressor) {
         }
     }
 
+
     fun getContent(url: String): String {
         val webDriver = createWebDriver()
-        webDriver.get(url)
-        val wait = WebDriverWait(webDriver, TIMEOUT)
-        wait.until(ExpectedConditions.jsReturnsValue("return document.readyState == 'complete';"))
-        val content: String = webDriver.pageSource
-        webDriver.quit()
-        return htmlCompressor.compress(content)
+        try {
+            webDriver.get(url)
+            val wait = WebDriverWait(webDriver, TIMEOUT)
+            wait.until(ExpectedConditions.jsReturnsValue("return document.readyState == 'complete';"))
+            Thread.sleep(3000L) // 페이지 내용이 모두 로딩될때까지 기다린다
+            val content: String = webDriver.pageSource
+            return htmlCompressor.compress(content)
+        } finally {
+            webDriver.quit()
+        }
+    }
+
+    fun getArticles(blogUrl: String, cssSelector: String): List<ArticleData> {
+        val webDriver = createWebDriver()
+        try {
+            webDriver.get(blogUrl)
+            val wait = WebDriverWait(webDriver, TIMEOUT)
+            wait.until(
+                ExpectedCondition { driver: WebDriver ->
+                    val element =
+                        driver.findElement(By.cssSelector(cssSelector))
+                    val href = element.getAttribute("href")
+                    href != null && href.isNotEmpty()
+                }
+            )
+            return webDriver.findElements(By.cssSelector(cssSelector))
+                .map {
+                    ArticleData(
+                        title = it.text,
+                        url = it.getAttribute("href")
+                    )
+                }
+        } finally {
+            webDriver.quit()
+        }
     }
 
     private fun createWebDriver(): WebDriver {
         val chromeOptions = ChromeOptions()
         chromeOptions.addArguments("--headless", "--no-sandbox")
-        return ChromeDriver(chromeOptions)
+        val driver = ChromeDriver(chromeOptions)
+        driver.manage().timeouts().pageLoadTimeout(TIMEOUT)
+        return driver
     }
+
+    data class ArticleData(
+        val title: String,
+        val url: String,
+    )
 }

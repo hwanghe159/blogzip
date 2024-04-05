@@ -1,7 +1,7 @@
 spring:
   jpa:
     database: mysql
-    database-platform: org.hibernate.dialect.MySQLDialect
+#    database-platform: org.hibernate.dialect.MySQLDialect
     open-in-view: false
 
 ---

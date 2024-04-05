@@ -19,16 +19,15 @@ class EmailSender(
             return
         }
         val content = emailTemplateParser.parseArticles(articles)
-//        sendEmailUsingSES(to, "제목", content)
-        println("${to} 한테 이메일보냈다!!!")
-        println(content)
+        sendEmailUsingSES(to, "제목", content)
     }
+
+    // todo 요약 퀄리티 높이기
+    // todo api, batch EC2 배포, 배치 트리거링
 
     fun sendVerification(to: String, code: String) {
         val content = emailTemplateParser.parseVerification(to, code)
-//        sendEmailUsingSES(to, "제목", content)
-        println("${to} 한테 이메일보냈다!!!")
-        println(content)
+        sendEmailUsingSES(to, "제목", content)
     }
 
     private fun sendEmailUsingSES(to: String, subject: String, content: String) {

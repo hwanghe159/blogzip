@@ -46,11 +46,12 @@ class FetchNewArticlesJobConfig(
         return StepBuilder("fetch-new-articles", jobRepository)
             .tasklet({ _, _ ->
                 val yesterday = LocalDate.of(2024, 3, 15).minusDays(1)
+//                val yesterday = LocalDate.now().minusDays(1)
                 val blogs = blogService.findAll()
                 blogs.flatMap { blog ->
-                        val articles = fetchArticles(blog, from = yesterday)
-                        articleService.saveIfNotExists(articles)
-                    }
+                    val articles = fetchArticles(blog, from = yesterday)
+                    articleService.saveIfNotExists(articles)
+                }
                 RepeatStatus.FINISHED
             }, platformTransactionManager)
             .build()
@@ -58,6 +59,7 @@ class FetchNewArticlesJobConfig(
 
     private fun fetchArticles(blog: Blog, from: LocalDate): List<Article> {
         when (blog.rssStatus) {
+
             WITH_CONTENT -> {
                 return rssFeedFetcher.fetchContents(blog.rss!!, from)
                     .map {
@@ -72,7 +74,7 @@ class FetchNewArticlesJobConfig(
             }
 
             WITHOUT_CONTENT -> {
-                return rssFeedFetcher.fetchLinks(blog.rss!!, from)
+                return rssFeedFetcher.fetchContents(blog.rss!!, from)
                     .map {
                         Article(
                             blog = blog,
@@ -85,9 +87,16 @@ class FetchNewArticlesJobConfig(
             }
 
             NO_RSS -> {
-                // todo 블로그 크롤링 -> 링크 추출
-                // todo 블로그 글 링크 -> 글 내용 크롤링
-                return emptyList()
+                val articles = webScrapper.getArticles(blog.url, blog.urlCssSelector!!)
+                return articles.map {
+                    Article(
+                        blog = blog,
+                        title = it.title,
+                        content = webScrapper.getContent(it.url),
+                        url = it.url,
+                        createdDate = from, // 직접 크롤링은 생성날짜를 알기 어려움. from 으로 고정
+                    )
+                }
             }
         }
     }

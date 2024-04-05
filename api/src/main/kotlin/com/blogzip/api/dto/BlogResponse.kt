@@ -7,6 +7,7 @@ data class BlogResponse(
     val id: Long,
     val name: String,
     val url: String,
+    val rssStatus: Blog.RssStatus,
     val rss: String?,
     val createdBy: Long,
     val createdAt: LocalDateTime,
@@ -18,6 +19,7 @@ data class BlogResponse(
                 name = blog.name,
                 url = blog.url,
                 rss = blog.rss,
+                rssStatus = blog.rssStatus,
                 createdBy = blog.createdBy,
                 createdAt = blog.createdAt,
             )
