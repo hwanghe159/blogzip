@@ -1,3 +1,5 @@
+use blogzip;
+
 drop table if exists user;
 drop table if exists blog;
 drop table if exists subscription;

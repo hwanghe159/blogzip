@@ -6,6 +6,7 @@ spring:
       - application-domain.yml
   profiles:
     active: local
+    include: domain
 
 ---
 spring:
