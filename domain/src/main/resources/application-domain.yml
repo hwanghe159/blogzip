@@ -1,7 +1,6 @@
 spring:
   jpa:
     database: mysql
-#    database-platform: org.hibernate.dialect.MySQLDialect
     open-in-view: false
 
 ---
@@ -28,9 +27,9 @@ spring:
     activate:
       on-profile: prod
   datasource:
-    url: jdbc:mysql://localhost:3306/blogzip # todo 수정
-    username: blogzip
-    password: blogzip
+    url: jdbc:mysql://13.125.138.71:3306/blogzip
+    username: ${MYSQL_USERNAME}
+    password: ${MYSQL_PASSWORD}
   sql:
     init:
       mode: never
