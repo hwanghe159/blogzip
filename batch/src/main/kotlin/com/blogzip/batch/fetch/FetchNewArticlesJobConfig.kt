@@ -33,8 +33,8 @@ class FetchNewArticlesJobConfig(
         platformTransactionManager: PlatformTransactionManager
     ): Job {
         return JobBuilder("fetch-new-articles", jobRepository)
-            .start(fetchNewArticlesStep(jobRepository, platformTransactionManager))
             .incrementer(RunIdIncrementer())
+            .start(fetchNewArticlesStep(jobRepository, platformTransactionManager))
             .build()
     }
 
@@ -45,8 +45,8 @@ class FetchNewArticlesJobConfig(
     ): Step {
         return StepBuilder("fetch-new-articles", jobRepository)
             .tasklet({ _, _ ->
-                val yesterday = LocalDate.of(2024, 3, 15).minusDays(1)
-//                val yesterday = LocalDate.now().minusDays(1)
+//                val yesterday = LocalDate.of(2024, 3, 15).minusDays(1)
+                val yesterday = LocalDate.now().minusDays(1)
                 val blogs = blogService.findAll()
                 blogs.flatMap { blog ->
                     val articles = fetchArticles(blog, from = yesterday)
@@ -61,7 +61,8 @@ class FetchNewArticlesJobConfig(
         when (blog.rssStatus) {
 
             WITH_CONTENT -> {
-                return rssFeedFetcher.fetchContents(blog.rss!!, from)
+                return rssFeedFetcher.fetchArticles(blog.rss!!)
+                    .filter { from <= it.createdDate }
                     .map {
                         Article(
                             blog = blog,
@@ -74,29 +75,41 @@ class FetchNewArticlesJobConfig(
             }
 
             WITHOUT_CONTENT -> {
-                return rssFeedFetcher.fetchContents(blog.rss!!, from)
-                    .map {
-                        Article(
-                            blog = blog,
-                            title = it.title,
-                            content = webScrapper.getContent(it.url),
-                            url = it.url,
-                            createdDate = it.createdDate
-                        )
+                return rssFeedFetcher.fetchArticles(blog.rss!!)
+                    .filter { from <= it.createdDate }
+                    .mapNotNull {
+                        val content = webScrapper.getContent(it.url)
+                        if (content == null) {
+                            null
+                        } else
+                            Article(
+                                blog = blog,
+                                title = it.title,
+                                content = content,
+                                url = it.url,
+                                createdDate = it.createdDate
+                            )
                     }
             }
 
             NO_RSS -> {
                 val articles = webScrapper.getArticles(blog.url, blog.urlCssSelector!!)
-                return articles.map {
-                    Article(
-                        blog = blog,
-                        title = it.title,
-                        content = webScrapper.getContent(it.url),
-                        url = it.url,
-                        createdDate = from, // 직접 크롤링은 생성날짜를 알기 어려움. from 으로 고정
-                    )
-                }
+                return articles
+                    .mapNotNull {
+                        val content = webScrapper.getContent(it.url)
+                        if (content == null) {
+                            null
+                        } else {
+                            Article(
+                                blog = blog,
+                                title = it.title,
+                                content = content,
+                                url = it.url,
+                                // 신규 등록 블로그의 글은 createdDate=1970/01/01로 고정
+                                createdDate = if (blog.isNew()) LocalDate.EPOCH else from,
+                            )
+                        }
+                    }
             }
         }
     }

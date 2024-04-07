@@ -1,6 +1,9 @@
 package com.blogzip.notification.email
 
+import com.blogzip.notification.config.AwsSesProperties
 import org.springframework.stereotype.Component
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.regions.Region.AP_NORTHEAST_2
 import software.amazon.awssdk.services.ses.SesClient
 import software.amazon.awssdk.services.ses.model.*
@@ -8,10 +11,11 @@ import software.amazon.awssdk.services.ses.model.*
 
 @Component
 class EmailSender(
+    private val awsSesProperties: AwsSesProperties,
     private val emailTemplateParser: EmailTemplateParser,
 ) {
     companion object {
-        private const val SENDER_EMAIL_ADDRESS = "no-replay@blogzip.com"
+        private const val SENDER_EMAIL_ADDRESS = "no-reply@blogzip.co.kr"
     }
 
     fun sendNewArticles(to: String, articles: List<Article>) {
@@ -22,9 +26,6 @@ class EmailSender(
         sendEmailUsingSES(to, "제목", content)
     }
 
-    // todo 요약 퀄리티 높이기
-    // todo api, batch EC2 배포, 배치 트리거링
-
     fun sendVerification(to: String, code: String) {
         val content = emailTemplateParser.parseVerification(to, code)
         sendEmailUsingSES(to, "제목", content)
@@ -32,6 +33,14 @@ class EmailSender(
 
     private fun sendEmailUsingSES(to: String, subject: String, content: String) {
         val sesClient = SesClient.builder()
+            .credentialsProvider(
+                StaticCredentialsProvider.create(
+                    AwsBasicCredentials.create(
+                        awsSesProperties.accessKey,
+                        awsSesProperties.secretKey
+                    )
+                )
+            )
             .region(AP_NORTHEAST_2)
             .build()
         sesClient.sendEmail(

@@ -1,0 +1,13 @@
+spring:
+  profiles:
+    active: local
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+aws:
+  ses:
+    access-key: "${AWS_SES_ACCESS_KEY}"
+    secret-key: "${AWS_SES_SECRET_KEY}"

@@ -1,5 +1,6 @@
 package com.blogzip.crawler.service
 
+import com.blogzip.crawler.common.logger
 import org.openqa.selenium.By
 import org.openqa.selenium.TimeoutException
 import org.openqa.selenium.WebDriver
@@ -18,8 +19,10 @@ import java.time.Duration
 @Component
 class WebScrapper(private val htmlCompressor: HtmlCompressor) {
 
+    val log = logger()
+
     companion object {
-        private val TIMEOUT = Duration.ofSeconds(10)
+        private val TIMEOUT = Duration.ofSeconds(20)
         private val RSS_POSTFIX = listOf("/rss", "/feed", "/rss.xml", "/feed.xml")
     }
 
@@ -79,7 +82,7 @@ class WebScrapper(private val htmlCompressor: HtmlCompressor) {
     }
 
 
-    fun getContent(url: String): String {
+    fun getContent(url: String): String? {
         val webDriver = createWebDriver()
         try {
             webDriver.get(url)
@@ -88,6 +91,9 @@ class WebScrapper(private val htmlCompressor: HtmlCompressor) {
             Thread.sleep(3000L) // 페이지 내용이 모두 로딩될때까지 기다린다
             val content: String = webDriver.pageSource
             return htmlCompressor.compress(content)
+        } catch (e: Exception) {
+            log.error("글 크롤링 실패. article.url=${url}", e)
+            return null
         } finally {
             webDriver.quit()
         }
@@ -113,6 +119,9 @@ class WebScrapper(private val htmlCompressor: HtmlCompressor) {
                         url = it.getAttribute("href")
                     )
                 }
+        } catch (e: Exception) {
+            log.error("블로그 크롤링 실패. blog.url=${blogUrl}", e)
+            return emptyList()
         } finally {
             webDriver.quit()
         }

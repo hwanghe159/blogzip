@@ -2,13 +2,12 @@ package com.blogzip.api.controller
 
 import com.blogzip.api.dto.BlogCreateRequest
 import com.blogzip.api.dto.BlogResponse
-import com.blogzip.crawler.service.WebScrapper
 import com.blogzip.crawler.service.RssFeedFetcher
+import com.blogzip.crawler.service.WebScrapper
 import com.blogzip.domain.Blog
 import com.blogzip.service.BlogService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import java.time.LocalDate
 
 
 @RestController
@@ -54,12 +53,5 @@ class BlogController(
             request.createdBy
         )
         return ResponseEntity.ok(BlogResponse.from(blog))
-    }
-
-
-    @PostMapping("/api/v1/contents")
-    fun get(@RequestParam rss: String): ResponseEntity<List<RssFeedFetcher.ArticleData>> {
-        val fetchArticles = rssFeedFetcher.fetchContents(rss, LocalDate.of(2024, 3, 21))
-        return ResponseEntity.ok(fetchArticles)
     }
 }

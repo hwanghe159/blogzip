@@ -29,7 +29,7 @@ class ArticleService(private val repository: ArticleRepository) {
     }
 
     @Transactional
-    fun findAllBySummaryIsNull(): List<Article> {
-        return repository.findAllBySummaryIsNull()
+    fun findAllSummarizeTarget(createdDate: LocalDate): List<Article> {
+        return repository.findAllByCreatedDateAndSummaryIsNull(createdDate)
     }
 }

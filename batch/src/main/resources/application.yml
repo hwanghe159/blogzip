@@ -4,6 +4,8 @@ spring:
   config:
     import:
       - application-domain.yml
+      - application-crawler.yml
+      - application-notification.yml
 open-ai:
   api-key: "${OPEN_AI_API_KEY}"
   assistant-id: "${OPEN_AI_ASSISTANT_ID}"
@@ -15,6 +17,6 @@ spring:
       on-profile: local
   sql:
     init:
-      mode: always
+      mode: never
       schema-locations:
         - classpath:schema.sql

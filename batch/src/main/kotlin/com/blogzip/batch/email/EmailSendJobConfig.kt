@@ -44,7 +44,7 @@ class EmailSendJobConfig(
     ): Step {
         return StepBuilder("email-send", jobRepository)
             .tasklet({ _, _ ->
-                val yesterday = LocalDate.now().minusDays(1)
+                val yesterday = LocalDate.now().minusDays(2) // todd 수정
                 val users = userService.findAll()
                 for (user in users) {
                     val newArticles =

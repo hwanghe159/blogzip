@@ -25,6 +25,8 @@ dependencies {
     implementation("software.amazon.awssdk:ses:2.17.100")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+
+    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 }
 
 tasks.withType<KotlinCompile> {

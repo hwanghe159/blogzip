@@ -3,6 +3,7 @@ package com.blogzip.domain
 import jakarta.persistence.*
 import org.springframework.data.annotation.CreatedDate
 import org.springframework.data.jpa.domain.support.AuditingEntityListener
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Entity
@@ -32,6 +33,13 @@ class Blog(
     @CreatedDate
     var createdAt: LocalDateTime = LocalDateTime.MIN,
 ) {
+
+    fun isNew(): Boolean {
+        val createdDate = this.createdAt.toLocalDate()
+        val yesterday = LocalDate.now().minusDays(1)
+        return yesterday <= createdDate
+    }
+
     enum class RssStatus {
         WITH_CONTENT,
         WITHOUT_CONTENT,

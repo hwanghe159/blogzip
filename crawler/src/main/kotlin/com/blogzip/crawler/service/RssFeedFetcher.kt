@@ -9,7 +9,6 @@ import java.io.BufferedReader
 import java.io.StringReader
 import java.time.LocalDate
 import java.time.ZoneId
-import java.util.*
 
 private val SyndEntry.content: String?
     get() {
@@ -29,11 +28,6 @@ class RssFeedFetcher(
     private val htmlCompressor: HtmlCompressor,
 ) {
 
-    fun fetchContents(rss: String, from: LocalDate): List<ArticleData> {
-        return fetchArticles(rss)
-            .filter { from <= it.createdDate }
-    }
-
     fun isContentContainsInRss(rss: String): Boolean {
         val articles = fetchArticles(rss)
         if (articles.isEmpty()) {
@@ -45,7 +39,7 @@ class RssFeedFetcher(
         return true
     }
 
-    private fun fetchArticles(rss: String): List<ArticleData> {
+    fun fetchArticles(rss: String): List<ArticleData> {
         try {
             val input = SyndFeedInput()
             val xmlString = webClient

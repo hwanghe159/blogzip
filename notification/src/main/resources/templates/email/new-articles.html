@@ -2,19 +2,19 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>Articles List</title>
+  <title>어제 올라온 글</title>
 </head>
 <body>
-<h1>Articles</h1>
+<h1>어제 올라온 글</h1>
 <div th:if="${articles.isEmpty()}">
-  <p>No articles available.</p>
+  <p>새로 올라온 글이 없어요. 블로그를 더 구독해 보세요!</p>
 </div>
 <div th:unless="${articles.isEmpty()}">
   <ul>
     <li th:each="article : ${articles}">
-      <h2 th:text="${article.title}">Article Title</h2>
-      <a th:href="${article.url}" th:text="${article.url}">Article URL</a>
-      <p th:text="${article.summary}">Article Summary</p>
+      <h2 th:text="${article.title}">글 제목</h2>
+      <a th:href="${article.url}" th:text="${article.url}">글 URL</a>
+      <p th:text="${article.summary}">글 요약</p>
     </li>
   </ul>
 </div>
