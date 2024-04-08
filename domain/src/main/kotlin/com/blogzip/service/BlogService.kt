@@ -1,5 +1,7 @@
 package com.blogzip.service
 
+import com.blogzip.common.DomainException
+import com.blogzip.common.ErrorCode
 import com.blogzip.domain.Blog
 import com.blogzip.domain.BlogRepository
 import org.springframework.stereotype.Service
@@ -11,7 +13,7 @@ class BlogService(private val repository: BlogRepository) {
     @Transactional(readOnly = true)
     fun findById(id: Long): Blog {
         return repository.findById(id)
-            .orElseThrow { RuntimeException("id로 블로그를 찾을 수 없음") }
+            .orElseThrow { DomainException(ErrorCode.BLOG_NOT_FOUND) }
     }
 
     @Transactional(readOnly = true)

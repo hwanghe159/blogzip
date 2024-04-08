@@ -40,7 +40,7 @@ class BlogController(
         } else {
             request.url
         }
-        val name = webScrapper.getTitle(url)
+        val name = webScrapper.getTitle(url) // todo 실패시 처리
         val rss = webScrapper.convertToRss(url).firstOrNull()
         val blog = blogService.save(
             name,

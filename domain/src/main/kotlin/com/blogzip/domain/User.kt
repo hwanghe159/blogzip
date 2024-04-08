@@ -1,5 +1,7 @@
 package com.blogzip.domain
 
+import com.blogzip.common.DomainException
+import com.blogzip.common.ErrorCode
 import jakarta.persistence.*
 import org.springframework.data.annotation.CreatedDate
 import org.springframework.data.annotation.LastModifiedDate
@@ -44,8 +46,11 @@ class User(
     }
 
     fun verify(verificationCode: String): User {
+        if (this.isVerified) {
+            throw DomainException(ErrorCode.ALREADY_VERIFIED)
+        }
         if (this.verificationCode != verificationCode || isVerificationCodeExpired()) {
-            throw RuntimeException("인증코드가 다르거나 만료됨")
+            throw DomainException(ErrorCode.VERIFY_FAILED)
         }
         this.isVerified = true
         return this

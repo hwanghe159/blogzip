@@ -23,12 +23,12 @@ class EmailSender(
             return
         }
         val content = emailTemplateParser.parseArticles(articles)
-        sendEmailUsingSES(to, "제목", content)
+        sendEmailUsingSES(to, "구독한 블로그의 새 글", content)
     }
 
     fun sendVerification(to: String, code: String) {
         val content = emailTemplateParser.parseVerification(to, code)
-        sendEmailUsingSES(to, "제목", content)
+        sendEmailUsingSES(to, "이메일 주소 인증", content)
     }
 
     private fun sendEmailUsingSES(to: String, subject: String, content: String) {

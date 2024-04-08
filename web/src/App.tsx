@@ -1,35 +1,45 @@
 import React, {useEffect, useState} from 'react';
-import logo from './logo.svg';
 import './App.css';
-import axios from "axios";
+import {PaletteMode} from '@mui/material';
+import CssBaseline from '@mui/material/CssBaseline';
+import Box from '@mui/material/Box';
+import {ThemeProvider, createTheme} from '@mui/material/styles';
+import AppAppBar from './components/AppAppBar';
+import MainPage from './components/MainPage';
+import Footer from './components/Footer';
+import {BrowserRouter, Route, Routes} from "react-router-dom";
+import EmailVerifyPage from "./components/EmailVerifyPage";
 
 function App() {
 
-  const [message, setMessage] = useState([])
+  const [mode, setMode] = React.useState<PaletteMode>('light');
+  const defaultTheme = createTheme({palette: {mode}});
 
-  useEffect(() => {
-    Test();
-  })
-
-  function Test() {
-    axios.get(`/api/v1/test`)
-    .then((res) => {
-      setMessage(res.data);
-    })
-    .catch((error) => {
-      console.log("API call 실패")
-    })
-  }
+  const toggleColorMode = () => {
+    setMode((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          {message}
-        </p>
-      </header>
-    </div>
+      <BrowserRouter>
+        <ThemeProvider theme={defaultTheme}>
+          <CssBaseline />
+          <Routes>
+            <Route
+                path="/"
+                element={
+                  <div>
+                    <AppAppBar mode={mode} toggleColorMode={toggleColorMode} />
+                    <MainPage />
+                    <Box sx={{ bgcolor: 'background.default' }}>
+                      <Footer />
+                    </Box>
+                  </div>
+                }
+            />
+            <Route path="/email-verify" element={<EmailVerifyPage />} />
+          </Routes>
+        </ThemeProvider>
+      </BrowserRouter>
   );
 }
 
