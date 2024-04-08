@@ -6,8 +6,10 @@ spring:
     url: jdbc:h2:mem:test
     username: sa
     password:
-    driver-class-name: com.h2.Driver
+    driver-class-name: org.h2.Driver
   jpa:
+    hibernate:
+      ddl-auto: none
     show-sql: true
     properties:
       hibernate:

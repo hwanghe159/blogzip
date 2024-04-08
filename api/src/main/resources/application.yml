@@ -6,9 +6,6 @@ spring:
       - application-domain.yml
       - application-crawler.yml
       - application-notification.yml
-  profiles:
-    active: local
-    include: domain
 
 ---
 spring:
