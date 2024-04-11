@@ -1,3 +1,7 @@
+plugins {
+    kotlin("plugin.jpa") version "1.9.23"
+}
+
 java {
     sourceCompatibility = JavaVersion.VERSION_21
 }
