@@ -17,6 +17,7 @@ class BlogController(
     private val webScrapper: WebScrapper,
 ) {
 
+    // todo EC2에선 swagger 예제만 나오는중..
     @GetMapping("/api/v1/blog/{id}")
     fun get(@PathVariable id: Long): ResponseEntity<BlogResponse> {
         val blog = blogService.findById(id)

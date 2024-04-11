@@ -17,7 +17,11 @@ function EmailVerifyPage() {
         navigate("/");
       })
       .on4XX((response) => {
-        alert("인증에 실패했습니다.");
+        if (response.code === "ALREADY_VERIFIED") {
+          alert("이미 인증이 완료된 이메일입니다.");
+        } else {
+          alert("인증에 실패했습니다.");
+        }
         navigate("/");
       })
       .on5XX((response) => {

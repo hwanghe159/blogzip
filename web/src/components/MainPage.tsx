@@ -12,10 +12,22 @@ import {Api} from '../utils/Api';
 export default function MainPage() {
 
   const [email, setEmail] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [isEmpty, setIsEmpty] = useState(false);
 
   const sendVerificationEmail = async (event: React.FormEvent) => {
-    // todo 따닥 방지
     event.preventDefault();
+
+    if (isSending) {
+      return
+    }
+    if (email.trim() === '') {
+      setIsEmpty(true);
+      return
+    }
+
+    setIsSending(true);
+    setIsEmpty(false);
 
     Api.post('/api/v1/user', {email: email.trim()})
     .onSuccess((response) => {
@@ -27,6 +39,8 @@ export default function MainPage() {
     .on5XX((response) => {
       alert(`요청에 실패했습니다. 잠시 후 다시 시도해주세요.`)
     });
+
+    setIsSending(false);
   };
 
   return (
@@ -69,16 +83,16 @@ export default function MainPage() {
                 color="text.secondary"
                 sx={{alignSelf: 'center', width: {sm: '100%', md: '80%'}}}
             >
-              원하는 블로그만 구독하세요. 매일 아침 ChatGPT가 요약해서 메일로 전달드릴게요.
+              원하는 블로그만 구독하세요. 매일 아침 AI가 요약해서 메일로 전달드릴게요.
             </Typography>
-            <Stack
-                direction={{xs: 'column', sm: 'row'}}
-                alignSelf="center"
-                spacing={1}
-                useFlexGap
-                sx={{pt: 2, width: {xs: '100%', sm: 'auto'}}}
-            >
-              <form onSubmit={sendVerificationEmail}>
+            <form onSubmit={sendVerificationEmail}>
+              <Stack
+                  direction={{xs: 'row', sm: 'row'}}
+                  justifyContent="center"
+                  spacing={1}
+                  useFlexGap
+                  sx={{pt: 2, width: {xs: '100%', sm: 'auto'}}}
+              >
                 <TextField
                     id="outlined-basic"
                     hiddenLabel
@@ -86,21 +100,28 @@ export default function MainPage() {
                     variant="outlined"
                     aria-label="Enter your email address"
                     placeholder="이메일 주소"
+                    error={isEmpty}
+                    helperText={isEmpty ? "이메일 주소를 입력해주세요." : ""}
                     inputProps={{
                       autoComplete: 'off',
                     }}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value)
+                      if (e.target.value) setIsEmpty(false);
+                    }}
                     onKeyPress={(e) => {
                       if (e.key === 'Enter') {
                         sendVerificationEmail(e);
                       }
                     }}
                 />
-                <Button variant="contained" color="primary" type="submit">
-                  구독하기
-                </Button>
-              </form>
-            </Stack>
+                <Box sx={{height: '100%'}}>
+                  <Button variant="contained" color="primary" type="submit" disabled={isSending}>
+                    {isSending ? "진행중.." : "구독하기"}
+                  </Button>
+                </Box>
+              </Stack>
+            </form>
           </Stack>
         </Container>
       </Box>

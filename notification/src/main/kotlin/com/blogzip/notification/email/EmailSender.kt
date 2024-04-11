@@ -31,6 +31,7 @@ class EmailSender(
         sendEmailUsingSES(to, "이메일 주소 인증", content)
     }
 
+    // todo 실패했을때의 처리
     private fun sendEmailUsingSES(to: String, subject: String, content: String) {
         val sesClient = SesClient.builder()
             .credentialsProvider(

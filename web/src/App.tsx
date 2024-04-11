@@ -9,6 +9,7 @@ import MainPage from './components/MainPage';
 import Footer from './components/Footer';
 import {BrowserRouter, Route, Routes} from "react-router-dom";
 import EmailVerifyPage from "./components/EmailVerifyPage";
+import NotFoundPage from "./components/NotFoundPage";
 
 function App() {
 
@@ -37,6 +38,7 @@ function App() {
                 }
             />
             <Route path="/email-verify" element={<EmailVerifyPage />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </ThemeProvider>
       </BrowserRouter>
