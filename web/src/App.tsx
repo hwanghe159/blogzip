@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React from 'react';
 import './App.css';
 import {PaletteMode} from '@mui/material';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -23,22 +23,22 @@ function App() {
   return (
       <BrowserRouter>
         <ThemeProvider theme={defaultTheme}>
-          <CssBaseline />
+          <CssBaseline/>
           <Routes>
             <Route
                 path="/"
                 element={
                   <div>
-                    <AppAppBar mode={mode} toggleColorMode={toggleColorMode} />
-                    <MainPage />
-                    <Box sx={{ bgcolor: 'background.default' }}>
-                      <Footer />
+                    <AppAppBar mode={mode} toggleColorMode={toggleColorMode}/>
+                    <MainPage/>
+                    <Box sx={{bgcolor: 'background.default'}}>
+                      <Footer/>
                     </Box>
                   </div>
                 }
             />
-            <Route path="/email-verify" element={<EmailVerifyPage />} />
-            <Route path="*" element={<NotFoundPage />} />
+            <Route path="/email-verify" element={<EmailVerifyPage/>}/>
+            <Route path="*" element={<NotFoundPage/>}/>
           </Routes>
         </ThemeProvider>
       </BrowserRouter>
