@@ -1,5 +1,6 @@
 package com.blogzip.batch
 
+import com.blogzip.crawler.confg.WebDriverInitializer
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan
@@ -11,6 +12,7 @@ import kotlin.system.exitProcess
 class BatchApplication
 
 fun main(args: Array<String>) {
+    WebDriverInitializer.initialize()
     val context = runApplication<BatchApplication>(*args)
     exitProcess(SpringApplication.exit(context))
 }
