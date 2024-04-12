@@ -28,6 +28,11 @@ class ArticleService(private val repository: ArticleRepository) {
         return repository.findAllByUserAndCreatedDate(user, createdDate)
     }
 
+    @Transactional(readOnly = true)
+    fun findAllByCreatedDate(createdDate: LocalDate): List<Article> {
+        return repository.findAllByCreatedDate(createdDate)
+    }
+
     @Transactional
     fun findAllSummarizeTarget(createdDate: LocalDate): List<Article> {
         return repository.findAllByCreatedDateAndSummaryIsNull(createdDate)

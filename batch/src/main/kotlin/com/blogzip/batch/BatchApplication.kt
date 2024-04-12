@@ -3,11 +3,9 @@ package com.blogzip.batch
 import com.blogzip.crawler.confg.WebDriverInitializer
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.context.properties.ConfigurationPropertiesScan
 import org.springframework.boot.runApplication
 import kotlin.system.exitProcess
 
-@ConfigurationPropertiesScan
 @SpringBootApplication(scanBasePackages = ["com.blogzip"])
 class BatchApplication
 

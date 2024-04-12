@@ -24,7 +24,12 @@ subprojects {
 
         dependencies {
             val implementation by configurations
+            val annotationProcessor by configurations
+            val testImplementation by configurations
+
             implementation("org.jetbrains.kotlin:kotlin-reflect")
+            annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
+            testImplementation("org.springframework.boot:spring-boot-starter-test")
         }
 
         tasks.withType<KotlinCompile> {

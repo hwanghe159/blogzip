@@ -13,9 +13,6 @@ dependencies {
     implementation("com.aallam.openai:openai-client")
     runtimeOnly("io.ktor:ktor-client-okhttp")
 
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.batch:spring-batch-test")
     testImplementation("io.mockk:mockk:1.13.10")
-
-    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 }

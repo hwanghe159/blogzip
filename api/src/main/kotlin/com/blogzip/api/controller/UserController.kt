@@ -1,10 +1,13 @@
 package com.blogzip.api.controller
 
+import com.blogzip.api.dto.LoginRequest
+import com.blogzip.api.dto.LoginResponse
 import com.blogzip.api.dto.RandomCode
 import com.blogzip.api.dto.UserCreateRequest
 import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
 import com.blogzip.notification.email.EmailSender
+import com.blogzip.service.AuthService
 import com.blogzip.service.UserService
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 class UserController(
     private val userService: UserService,
+    private val authService: AuthService,
     private val emailSender: EmailSender,
 ) {
 
@@ -48,5 +52,16 @@ class UserController(
     ): ResponseEntity<Void> {
         userService.verify(emailAddress, code)
         return ResponseEntity.ok().build()
+    }
+
+    @PostMapping("/api/v1/login")
+    fun login(@RequestBody @Valid request: LoginRequest): ResponseEntity<LoginResponse> {
+        val token = authService.login(request.email, request.password)
+        return ResponseEntity.ok(
+            LoginResponse(
+                token.accessToken,
+                token.refreshToken
+            )
+        )
     }
 }
