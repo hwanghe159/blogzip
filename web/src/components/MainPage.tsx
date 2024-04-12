@@ -26,21 +26,26 @@ export default function MainPage() {
       return
     }
 
+    if (!window.confirm(`${email}로 인증 메일을 보내드리겠습니다. 메일 주소가 올바른지 다시 한번 확인해주세요.`)) {
+      return
+    }
+
     setIsSending(true);
     setIsEmpty(false);
 
     Api.post('/api/v1/user', {email: email.trim()})
     .onSuccess((response) => {
       alert(`${email}로 인증 메일을 보냈습니다. 메일함을 확인해주세요.`)
+      setIsSending(false);
     })
     .on4XX((response) => {
       alert(response.message)
+      setIsSending(false);
     })
     .on5XX((response) => {
       alert(`요청에 실패했습니다. 잠시 후 다시 시도해주세요.`)
+      setIsSending(false);
     });
-
-    setIsSending(false);
   };
 
   return (
@@ -92,6 +97,7 @@ export default function MainPage() {
                   sx={{pt: 2, width: {xs: '100%', sm: 'auto'}}}
               >
                 <TextField
+                    sx={{width: {xs: '50%'}}}
                     id="outlined-basic"
                     hiddenLabel
                     size="small"
