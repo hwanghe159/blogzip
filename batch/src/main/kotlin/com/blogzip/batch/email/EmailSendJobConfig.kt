@@ -64,6 +64,7 @@ class EmailSendJobConfig(
                                     title = it.title,
                                     url = it.url,
                                     summary = it.summary!!,
+                                    blogName = it.blog.name,
                                 )
                             })
                 }

@@ -17,6 +17,11 @@ class BlogService(private val repository: BlogRepository) {
     }
 
     @Transactional(readOnly = true)
+    fun existsByUrl(url: String): Boolean {
+        return repository.existsByUrl(url)
+    }
+
+    @Transactional(readOnly = true)
     fun findAll(): List<Blog> {
         return repository.findAll()
     }

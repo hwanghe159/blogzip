@@ -12,6 +12,7 @@ private val ErrorCode.toHttpStatus: HttpStatus
     get() {
         return when (this) {
             ErrorCode.BLOG_NOT_FOUND -> HttpStatus.NOT_FOUND
+            ErrorCode.BLOG_URL_DUPLICATED -> HttpStatus.CONFLICT
             ErrorCode.ALREADY_VERIFIED -> HttpStatus.CONFLICT
             ErrorCode.ALREADY_SENT_VERIFICATION_EMAIL -> HttpStatus.CONFLICT
             ErrorCode.EMAIL_NOT_FOUND -> HttpStatus.NOT_FOUND

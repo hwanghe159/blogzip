@@ -5,18 +5,21 @@
   <title>어제 올라온 글</title>
 </head>
 <body>
-<h1>어제 올라온 글</h1>
 <div th:if="${articles.isEmpty()}">
   <p>새로 올라온 글이 없어요. 블로그를 더 구독해 보세요!</p>
+  <a href="https://blogzip.co.kr">구독하러 가기</a>
 </div>
 <div th:unless="${articles.isEmpty()}">
-  <ul>
-    <li th:each="article : ${articles}">
-      <h2 th:text="${article.title}">글 제목</h2>
-      <a th:href="${article.url}" th:text="${article.url}">글 URL</a>
-      <p th:text="${article.summary}">글 요약</p>
-    </li>
-  </ul>
+  <div th:each="article : ${articles}">
+    <h2>
+      <span th:text="${article.title}">글 제목</span>
+      <span th:text="'by ' + ${article.blogName}"
+            style="font-size: 0.8em;color: grey;">by 블로그 이름</span>
+    </h2>
+    <span th:text="${article.summary}">글 내용</span>
+    <a href="#" th:href="@{${article.url}}" th:text="'(원문보기)'"
+       style="font-size: 0.9em;text-decoration: none;margin-left: 5px;">(원문보기)</a>
+  </div>
 </div>
 </body>
 </html>

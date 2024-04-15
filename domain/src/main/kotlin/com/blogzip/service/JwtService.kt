@@ -4,7 +4,7 @@ import com.blogzip.domain.User
 import com.blogzip.dto.JwtProperties
 import com.blogzip.dto.UserToken
 import io.jsonwebtoken.Jwts
-import io.jsonwebtoken.Jwts.SIG.HS256
+import io.jsonwebtoken.security.Keys
 import org.springframework.stereotype.Component
 import java.util.*
 
@@ -14,26 +14,31 @@ class JwtService(
     private val jwtProperties: JwtProperties,
 ) {
 
-    // todo secret-key 적용 필요
+    private final val key = Keys.hmacShaKeyFor(jwtProperties.secretKey.toByteArray(Charsets.UTF_8))
+
     fun createToken(user: User): UserToken {
+        val now = Date()
+        val accessTokenExpiration =
+            Date(now.time + jwtProperties.accessTokenExpiresDays * 1000 * 60 * 60 * 24)
         val accessToken = Jwts.builder()
             .header()
             .type("JWT")
             .and()
             .subject(user.email)
-            .expiration(Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24 * jwtProperties.accessTokenExpiresDays))
-            .signWith(HS256.key().build())
+            .expiration(accessTokenExpiration)
+            .signWith(key, Jwts.SIG.HS256)
             .compact()
-
-        val refreshToken = Jwts.builder()
-            .subject(user.email)
-            .expiration(Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24 * jwtProperties.refreshTokenExpiresDays))
-            .signWith(HS256.key().build())
-            .compact()
-        return UserToken(accessToken, refreshToken)
+        return UserToken(accessToken, refreshToken = "")
     }
 
-    fun verifyToken(token: String): Boolean {
-        return true
+    fun getEmail(token: String): String? {
+        return try {
+            Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token).payload.subject
+        } catch (e: Exception) {
+            null
+        }
     }
 }

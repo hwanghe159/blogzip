@@ -11,7 +11,6 @@ dependencies {
 
     implementation(platform("com.aallam.openai:openai-client-bom:3.7.0"))
     implementation("com.aallam.openai:openai-client")
-    runtimeOnly("io.ktor:ktor-client-okhttp")
 
     testImplementation("org.springframework.batch:spring-batch-test")
     testImplementation("io.mockk:mockk:1.13.10")

@@ -1,7 +1,11 @@
 package com.blogzip.api.controller
 
+import com.blogzip.api.auth.Authenticated
+import com.blogzip.api.auth.AuthenticatedUser
 import com.blogzip.api.dto.BlogCreateRequest
 import com.blogzip.api.dto.BlogResponse
+import com.blogzip.common.DomainException
+import com.blogzip.common.ErrorCode
 import com.blogzip.crawler.service.RssFeedFetcher
 import com.blogzip.crawler.service.WebScrapper
 import com.blogzip.domain.Blog
@@ -35,12 +39,19 @@ class BlogController(
     }
 
     @PostMapping("/api/v1/blog")
-    fun save(@RequestBody request: BlogCreateRequest): ResponseEntity<BlogResponse> {
+    fun save(
+        @Authenticated user: AuthenticatedUser,
+        @RequestBody request: BlogCreateRequest
+    ): ResponseEntity<BlogResponse> {
         val url: String = if (request.url.endsWith('/')) {
             request.url.dropLast(1)
         } else {
             request.url
         }
+        if (blogService.existsByUrl(url)) {
+            throw DomainException(ErrorCode.BLOG_URL_DUPLICATED)
+        }
+
         val name = webScrapper.getTitle(url) // todo 실패시 처리
         val rss = webScrapper.convertToRss(url).firstOrNull()
         val blog = blogService.save(
@@ -51,7 +62,7 @@ class BlogController(
             if (rss == null) Blog.RssStatus.NO_RSS
             else if (rssFeedFetcher.isContentContainsInRss(rss)) Blog.RssStatus.WITH_CONTENT
             else Blog.RssStatus.WITHOUT_CONTENT,
-            request.createdBy
+            user.id,
         )
         return ResponseEntity.ok(BlogResponse.from(blog))
     }

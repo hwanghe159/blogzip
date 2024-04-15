@@ -1,10 +1,7 @@
 package com.blogzip.domain
 
 import jakarta.persistence.*
-import org.springframework.data.annotation.CreatedDate
-import org.springframework.data.jpa.domain.support.AuditingEntityListener
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 @Entity
 class Article(
@@ -34,5 +31,9 @@ class Article(
         if (createdDate == null) {
             createdDate = LocalDate.now()
         }
+    }
+
+    override fun toString(): String {
+        return "Article(id=$id, blog=$blog, title='$title', content='$content', url='$url', summary=$summary, summarizedBy=$summarizedBy, createdDate=$createdDate)"
     }
 }

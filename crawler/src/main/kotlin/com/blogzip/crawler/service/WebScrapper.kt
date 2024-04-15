@@ -1,6 +1,7 @@
 package com.blogzip.crawler.service
 
 import com.blogzip.crawler.common.logger
+import com.blogzip.crawler.vo.VelogUrl
 import org.openqa.selenium.By
 import org.openqa.selenium.TimeoutException
 import org.openqa.selenium.WebDriver
@@ -11,19 +12,22 @@ import org.openqa.selenium.support.ui.ExpectedCondition
 import org.openqa.selenium.support.ui.ExpectedConditions
 import org.openqa.selenium.support.ui.WebDriverWait
 import org.springframework.stereotype.Component
-import java.net.HttpURLConnection
-import java.net.URI
-import java.net.URL
+import org.springframework.web.reactive.function.client.WebClient
 import java.time.Duration
 
 @Component
-class WebScrapper(private val htmlCompressor: HtmlCompressor) {
+class WebScrapper(
+    private val webClient: WebClient,
+    private val htmlCompressor: HtmlCompressor,
+) {
 
     val log = logger()
 
     companion object {
         private val TIMEOUT = Duration.ofSeconds(20)
         private val RSS_POSTFIX = listOf("/rss", "/feed", "/rss.xml", "/feed.xml")
+        private val RSS_CONTENT_TYPE =
+            setOf("application/xml", "application/rss+xml", "application/atom+xml", "text/xml")
     }
 
     fun getTitle(url: String): String {
@@ -55,21 +59,22 @@ class WebScrapper(private val htmlCompressor: HtmlCompressor) {
             return result
         }
 
-        val url2 = URI.create(url).toURL()
-        if (url2.host == "velog.io") {
-            val userName = url2.path.substringAfterLast("@").split("/")[0]
-            return listOf("https://v2.velog.io/rss/${userName}")
+        if (VelogUrl.isVelogUrl(url)) {
+            return listOf(VelogUrl(url).rssUrl())
         }
 
         var rssUrl: String? = null
         for (postfix in RSS_POSTFIX) {
-            val connection = URL(url + postfix).openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            val contentType = connection.contentType ?: break
-            if (contentType.startsWith("application/rss+xml") ||
-                contentType.startsWith("application/atom+xml") ||
-                contentType.startsWith("text/xml")
-            ) {
+            val containsRssUrl = webClient.get()
+                .uri(url + postfix)
+                .retrieve()
+                .toEntity(String::class.java)
+                .map { response ->
+                    RSS_CONTENT_TYPE.contains(response.headers.contentType.toString())
+                }
+                .onErrorReturn(false)
+                .block() ?: false
+            if (containsRssUrl) {
                 rssUrl = url + postfix
                 break
             }

@@ -50,7 +50,7 @@ class FetchNewArticlesJobConfig(
                 val blogs = blogService.findAll()
                 blogs.flatMap { blog ->
                     val articles = fetchArticles(blog, from = yesterday)
-                    articleService.saveIfNotExists(articles)
+                    articleService.saveAll(articles)
                 }
                 RepeatStatus.FINISHED
             }, platformTransactionManager)

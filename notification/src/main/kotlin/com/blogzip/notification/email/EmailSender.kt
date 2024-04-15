@@ -1,5 +1,6 @@
 package com.blogzip.notification.email
 
+import com.blogzip.notification.common.logger
 import com.blogzip.notification.config.AwsSesProperties
 import org.springframework.stereotype.Component
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
@@ -18,10 +19,9 @@ class EmailSender(
         private const val SENDER_EMAIL_ADDRESS = "no-reply@blogzip.co.kr"
     }
 
+    var log = logger()
+
     fun sendNewArticles(to: String, articles: List<Article>) {
-        if (articles.isEmpty()) {
-            return
-        }
         val content = emailTemplateParser.parseArticles(articles)
         sendEmailUsingSES(to, "구독한 블로그의 새 글", content)
     }
@@ -31,7 +31,6 @@ class EmailSender(
         sendEmailUsingSES(to, "이메일 주소 인증", content)
     }
 
-    // todo 실패했을때의 처리
     private fun sendEmailUsingSES(to: String, subject: String, content: String) {
         val sesClient = SesClient.builder()
             .credentialsProvider(
@@ -44,33 +43,38 @@ class EmailSender(
             )
             .region(AP_NORTHEAST_2)
             .build()
-        sesClient.sendEmail(
-            SendEmailRequest.builder()
-                .source(SENDER_EMAIL_ADDRESS)
-                .destination(
-                    Destination.builder()
-                        .toAddresses(to)
-                        .build()
-                )
-                .message(
-                    Message.builder()
-                        .subject(
-                            Content.builder()
-                                .data(subject)
+        try {
+            sesClient.use { client ->
+                client.sendEmail(
+                    SendEmailRequest.builder()
+                        .source(SENDER_EMAIL_ADDRESS)
+                        .destination(
+                            Destination.builder()
+                                .toAddresses(to)
                                 .build()
                         )
-                        .body(
-                            Body.builder()
-                                .html(
+                        .message(
+                            Message.builder()
+                                .subject(
                                     Content.builder()
-                                        .data(content)
+                                        .data(subject)
                                         .build()
-                                ).build()
+                                )
+                                .body(
+                                    Body.builder()
+                                        .html(
+                                            Content.builder()
+                                                .data(content)
+                                                .build()
+                                        ).build()
+                                )
+                                .build()
                         )
                         .build()
                 )
-                .build()
-        )
-        sesClient.close()
+            }
+        } catch (e: Exception) {
+            log.error("이메일 발송 실패. to=${to}")
+        }
     }
 }

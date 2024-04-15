@@ -4,7 +4,7 @@ spring:
     open-in-view: false
 jwt:
   secret-key: "${JWT_SECRET_KEY}"
-  access-token-expires-days: 1
+  access-token-expires-days: 7
   refresh-token-expires-days: 30
 
 ---
