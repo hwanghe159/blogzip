@@ -1,4 +1,4 @@
-package com.blogzip.dto
+package com.blogzip.api.auth
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 

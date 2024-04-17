@@ -18,7 +18,3 @@ spring:
   sql:
     init:
       mode: never
-jwt:
-  secret-key: secretsecretsecretsecretsecretsecretsecretsecretsecretsecret
-  access-token-expires-days: 1
-  refresh-token-expires-days: 30

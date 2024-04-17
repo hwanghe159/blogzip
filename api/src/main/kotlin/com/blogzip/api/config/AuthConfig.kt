@@ -1,6 +1,6 @@
-package com.blogzip.config
+package com.blogzip.api.config
 
-import com.blogzip.dto.JwtProperties
+import com.blogzip.api.auth.JwtProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

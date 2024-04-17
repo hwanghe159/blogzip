@@ -6,6 +6,10 @@ spring:
       - application-domain.yml
       - application-crawler.yml
       - application-notification.yml
+jwt:
+  secret-key: "${JWT_SECRET_KEY}"
+  access-token-expires-days: 7
+  refresh-token-expires-days: 30
 
 ---
 spring:

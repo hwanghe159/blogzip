@@ -1,7 +1,7 @@
-package com.blogzip.service
+package com.blogzip.api.common
 
+import com.blogzip.api.auth.JwtProperties
 import com.blogzip.domain.User
-import com.blogzip.dto.JwtProperties
 import com.blogzip.dto.UserToken
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys

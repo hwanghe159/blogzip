@@ -4,7 +4,7 @@ import com.blogzip.api.dto.*
 import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
 import com.blogzip.notification.email.EmailSender
-import com.blogzip.service.AuthService
+import com.blogzip.api.common.AuthService
 import com.blogzip.service.UserService
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity

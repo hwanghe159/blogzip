@@ -1,8 +1,8 @@
 package com.blogzip.api.auth
 
+import com.blogzip.api.common.JwtService
 import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
-import com.blogzip.service.JwtService
 import com.blogzip.service.UserService
 import org.springframework.core.MethodParameter
 import org.springframework.stereotype.Component

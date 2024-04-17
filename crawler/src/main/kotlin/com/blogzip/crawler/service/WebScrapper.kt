@@ -1,6 +1,7 @@
 package com.blogzip.crawler.service
 
 import com.blogzip.crawler.common.logger
+import com.blogzip.crawler.confg.SeleniumProperties
 import com.blogzip.crawler.vo.VelogUrl
 import org.openqa.selenium.By
 import org.openqa.selenium.TimeoutException
@@ -19,12 +20,13 @@ import java.time.Duration
 class WebScrapper(
     private val webClient: WebClient,
     private val htmlCompressor: HtmlCompressor,
+    private val seleniumProperties: SeleniumProperties,
 ) {
 
     val log = logger()
 
     companion object {
-        private val TIMEOUT = Duration.ofSeconds(20)
+        private val TIMEOUT = Duration.ofSeconds(100)
         private val RSS_POSTFIX = listOf("/rss", "/feed", "/rss.xml", "/feed.xml")
         private val RSS_CONTENT_TYPE =
             setOf("application/xml", "application/rss+xml", "application/atom+xml", "text/xml")
@@ -105,6 +107,7 @@ class WebScrapper(
     }
 
     fun getArticles(blogUrl: String, cssSelector: String): List<ArticleData> {
+        // js 코드 -> document.querySelectorAll('...');
         val webDriver = createWebDriver()
         try {
             webDriver.get(blogUrl)
@@ -134,7 +137,7 @@ class WebScrapper(
 
     private fun createWebDriver(): WebDriver {
         val chromeOptions = ChromeOptions()
-        chromeOptions.addArguments("--headless", "--no-sandbox")
+        chromeOptions.addArguments(seleniumProperties.chromeOptions)
         val driver = ChromeDriver(chromeOptions)
         driver.manage().timeouts().pageLoadTimeout(TIMEOUT)
         return driver

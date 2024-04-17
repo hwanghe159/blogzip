@@ -1,5 +1,6 @@
 package com.blogzip.batch.fetch
 
+import com.blogzip.batch.common.logger
 import com.blogzip.crawler.service.RssFeedFetcher
 import com.blogzip.crawler.service.WebScrapper
 import com.blogzip.domain.Article
@@ -27,6 +28,8 @@ class FetchNewArticlesJobConfig(
     private val webScrapper: WebScrapper,
 ) {
 
+    var log = logger()
+
     @Bean
     fun fetchNewArticlesJob(
         jobRepository: JobRepository,
@@ -51,9 +54,6 @@ class FetchNewArticlesJobConfig(
                 for (blog in blogs) {
                     val articles = fetchArticles(blog, from = yesterday)
                     for (article in articles) {
-                        if (articleService.existsByUrl(article.url)) {
-                            continue
-                        }
                         articleService.save(article)
                     }
                 }
@@ -98,7 +98,12 @@ class FetchNewArticlesJobConfig(
             }
 
             NO_RSS -> {
+                if (blog.urlCssSelector == null) {
+                    log.error("css selector가 없어 새 글 가져오기 실패. url=${blog.url}")
+                    return emptyList()
+                }
                 val articles = webScrapper.getArticles(blog.url, blog.urlCssSelector!!)
+                    .distinctBy { it.url }
                 return articles
                     .mapNotNull {
                         val content = webScrapper.getContent(it.url)

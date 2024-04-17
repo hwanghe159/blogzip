@@ -49,7 +49,6 @@ class SummarizeJobConfig(
                         val summary = articleContentSummarizer.summarize(article.content)
                         article.summary = summary
                         article.summarizedBy = "gpt-3.5-turbo-0125"
-                        articleService.save(article)
                     }
                 }
                 log.info("요약 성공. 총 ${articles.size}건")

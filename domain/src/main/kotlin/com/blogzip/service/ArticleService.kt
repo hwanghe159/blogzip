@@ -27,8 +27,10 @@ class ArticleService(private val repository: ArticleRepository) {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    fun save(article: Article): Article {
-        return repository.save(article)
+    fun save(article: Article) {
+        if (!repository.existsByUrl(article.url)) {
+            repository.save(article)
+        }
     }
 
     @Transactional(readOnly = true)

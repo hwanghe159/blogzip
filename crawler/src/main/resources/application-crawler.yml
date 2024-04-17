@@ -1,0 +1,18 @@
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+selenium:
+  chrome-options:
+    - "--no-sandbox"
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+selenium:
+  chrome-options:
+    - "--headless"
+    - "--no-sandbox"
