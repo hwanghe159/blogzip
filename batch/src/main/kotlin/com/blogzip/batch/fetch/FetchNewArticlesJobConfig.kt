@@ -48,9 +48,14 @@ class FetchNewArticlesJobConfig(
 //                val yesterday = LocalDate.of(2024, 3, 15).minusDays(1)
                 val yesterday = LocalDate.now().minusDays(1)
                 val blogs = blogService.findAll()
-                blogs.flatMap { blog ->
+                for (blog in blogs) {
                     val articles = fetchArticles(blog, from = yesterday)
-                    articleService.saveIfNotExists(articles)
+                    for (article in articles) {
+                        if (articleService.existsByUrl(article.url)) {
+                            continue
+                        }
+                        articleService.save(article)
+                    }
                 }
                 RepeatStatus.FINISHED
             }, platformTransactionManager)
