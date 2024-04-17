@@ -15,15 +15,10 @@ class ArticleService(private val repository: ArticleRepository) {
     var log = logger()
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    fun saveAll(articles: Iterable<Article>): List<Article> {
-        return articles.mapNotNull { article ->
-            try {
-                repository.save(article)
-            } catch (e: Exception) {
-                log.error("article 저장 실패. $article")
-                null
-            }
-        }
+    fun saveIfNotExists(articles: Iterable<Article>): List<Article> {
+        return articles.filter { !repository.existsByUrl(it.url) }
+            .map { repository.save(it) }
+            .toList()
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

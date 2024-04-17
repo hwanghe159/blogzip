@@ -10,6 +10,7 @@ import com.blogzip.crawler.service.RssFeedFetcher
 import com.blogzip.crawler.service.WebScrapper
 import com.blogzip.domain.Blog
 import com.blogzip.service.BlogService
+import io.swagger.v3.oas.annotations.Parameter
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -40,7 +41,7 @@ class BlogController(
 
     @PostMapping("/api/v1/blog")
     fun save(
-        @Authenticated user: AuthenticatedUser,
+        @Parameter(hidden = true) @Authenticated user: AuthenticatedUser,
         @RequestBody request: BlogCreateRequest
     ): ResponseEntity<BlogResponse> {
         val url: String = if (request.url.endsWith('/')) {
@@ -54,14 +55,15 @@ class BlogController(
 
         val name = webScrapper.getTitle(url) // todo 실패시 처리
         val rss = webScrapper.convertToRss(url).firstOrNull()
+        val rssStatus =
+            if (rss == null) Blog.RssStatus.NO_RSS
+            else if (rssFeedFetcher.isContentContainsInRss(rss)) Blog.RssStatus.WITH_CONTENT
+            else Blog.RssStatus.WITHOUT_CONTENT
         val blog = blogService.save(
             name,
             url,
             rss,
-            rssStatus =
-            if (rss == null) Blog.RssStatus.NO_RSS
-            else if (rssFeedFetcher.isContentContainsInRss(rss)) Blog.RssStatus.WITH_CONTENT
-            else Blog.RssStatus.WITHOUT_CONTENT,
+            rssStatus = rssStatus,
             user.id,
         )
         return ResponseEntity.ok(BlogResponse.from(blog))

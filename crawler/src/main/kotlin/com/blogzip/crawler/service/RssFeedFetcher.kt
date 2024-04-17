@@ -1,5 +1,6 @@
 package com.blogzip.crawler.service
 
+import com.blogzip.crawler.common.logger
 import com.rometools.rome.feed.synd.SyndEntry
 import com.rometools.rome.io.SyndFeedInput
 import org.springframework.stereotype.Component
@@ -10,12 +11,16 @@ import java.io.StringReader
 import java.time.LocalDate
 import java.time.ZoneId
 
+// contents 또는 description 이 500자 이하인 경우, 요약본으로 판단.
 private val SyndEntry.content: String?
     get() {
         if (this.contents.isNotEmpty()) {
-            return this.contents[0].value
+            val content = this.contents[0].value
+            if (content.length <= 500) {
+                return null
+            }
+            return content
         }
-        // description 에 전체 내용이 아닌 요약만 있는 경우도 있음. 500자 이하인 경우엔 전체 내용이 아니고 요약본이라고 판단한다.
         if (this.description.value.length <= 500) {
             return null
         }
@@ -27,6 +32,8 @@ class RssFeedFetcher(
     private val webClient: WebClient,
     private val htmlCompressor: HtmlCompressor,
 ) {
+
+    val log = logger()
 
     fun isContentContainsInRss(rss: String): Boolean {
         val articles = fetchArticles(rss)
@@ -69,13 +76,13 @@ class RssFeedFetcher(
                     title = it.title,
                     content = it.content?.let { html -> htmlCompressor.compress(html) },
                     url = it.link,
-                    createdDate = it.publishedDate.toInstant()
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate()
+                    createdDate = it.publishedDate?.toInstant()
+                        ?.atZone(ZoneId.systemDefault())
+                        ?.toLocalDate()
                 )
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            log.error("${rss}의 글 가져오기 실패.", e)
         }
         return emptyList()
     }
@@ -84,6 +91,6 @@ class RssFeedFetcher(
         val title: String,
         val content: String?,
         val url: String,
-        val createdDate: LocalDate
+        val createdDate: LocalDate?
     )
 }
