@@ -1,0 +1,4 @@
+selenium:
+  chrome-options:
+    - "--headless"
+    - "--no-sandbox"
