@@ -21,6 +21,9 @@ spring:
       mode: never
       schema-locations:
         - classpath:schema.sql
+logging:
+  level:
+    root: info
 
 ---
 spring:
@@ -32,3 +35,6 @@ spring:
       mode: never
       schema-locations:
         - classpath:schema.sql
+logging:
+  level:
+    root: warn

@@ -40,7 +40,9 @@ subprojects {
         }
 
         tasks.withType<Test> {
-            useJUnitPlatform()
+            useJUnitPlatform {
+                excludeTags("exclude") // @Tag("exclude") 으로 빌드 시 테스트 제외
+            }
         }
     }
 }

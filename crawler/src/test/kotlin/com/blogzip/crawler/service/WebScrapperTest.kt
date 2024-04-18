@@ -1,11 +1,14 @@
 package com.blogzip.crawler.service
 
+import com.blogzip.crawler.confg.SeleniumProperties
 import org.junit.jupiter.api.Test
 import org.springframework.web.reactive.function.client.WebClient
 
 class WebScrapperTest {
 
-    private val webScrapper = WebScrapper(WebClient.create(), HtmlCompressor())
+    private val webScrapper = WebScrapper(WebClient.create(), HtmlCompressor(), SeleniumProperties(
+        emptyList()
+    ))
 
     @Test
     fun getArticleUrls() {

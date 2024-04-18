@@ -24,10 +24,12 @@ class EmailTemplateParserTest {
                 title = "title1",
                 url = "url1",
                 summary = "summary1",
+                blogName = "blogName1"
             ), Article(
                 title = "title2",
                 url = "url2",
                 summary = "summary2",
+                blogName = "blogName2"
             )
         )
         assertDoesNotThrow { emailTemplateParser.parseArticles(articles) }

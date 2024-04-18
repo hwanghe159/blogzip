@@ -1,11 +1,14 @@
 package com.blogzip.crawler.service
 
+import com.blogzip.crawler.common.logger
 import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter
 import org.jsoup.Jsoup
 import org.springframework.stereotype.Component
 
 @Component
 class HtmlCompressor {
+
+    val log = logger()
 
     fun compress(html: String): String {
         val body = Jsoup.parse(html).body()
@@ -17,7 +20,13 @@ class HtmlCompressor {
             }
         }
         body.select("script").forEach { it.remove() }
-        return FlexmarkHtmlConverter.builder().build().convert(body.toString())
-//        return body.toString().replace(Regex(">\\s+<"), "><")
+
+        // html -> md
+        val result = FlexmarkHtmlConverter.builder().build().convert(body.toString())
+        if (result.isBlank()) {
+            log.error("html -> md 변환 실패. html = ${html.substring(0, 100)}")
+            return html
+        }
+        return result
     }
 }

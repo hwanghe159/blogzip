@@ -66,22 +66,53 @@ class FetchNewArticlesJobConfig(
         when (blog.rssStatus) {
 
             WITH_CONTENT -> {
+                if (blog.rss == null) {
+                    log.error("blog.rss가 없어 새 글 가져오기 실패. blog.id=${blog.id}")
+                    return emptyList()
+                }
                 return rssFeedFetcher.fetchArticles(blog.rss!!)
-                    .filter { from <= it.createdDate }
+                    .filter {
+                        if (it.createdDate == null) {
+                            true
+                        } else {
+                            from <= it.createdDate
+                        }
+                    }
                     .map {
                         Article(
                             blog = blog,
                             title = it.title,
                             content = it.content!!,
                             url = it.url,
-                            createdDate = it.createdDate
+                            // RSS 안에 글 작성 날짜가 주어지지 않는 경우도 있음
+                            createdDate =
+                            if (it.createdDate == null) {
+                                if (blog.isNew()) {
+                                    LocalDate.EPOCH
+                                } else {
+                                    LocalDate.now()
+                                }
+                            } else {
+                                it.createdDate
+                            }
                         )
                     }
             }
 
             WITHOUT_CONTENT -> {
+                if (blog.rss == null) {
+                    log.error("blog.rss가 없어 새 글 가져오기 실패. blog.id=${blog.id}")
+                    return emptyList()
+                }
                 return rssFeedFetcher.fetchArticles(blog.rss!!)
-                    .filter { from <= it.createdDate }
+                    .filterNot { articleService.existsByUrl(it.url) }
+                    .filter {
+                        if (it.createdDate == null) {
+                            true
+                        } else {
+                            from <= it.createdDate
+                        }
+                    }
                     .mapNotNull {
                         val content = webScrapper.getContent(it.url)
                         if (content == null) {
@@ -92,7 +123,16 @@ class FetchNewArticlesJobConfig(
                                 title = it.title,
                                 content = content,
                                 url = it.url,
-                                createdDate = it.createdDate
+                                createdDate =
+                                if (it.createdDate == null) {
+                                    if (blog.isNew()) {
+                                        LocalDate.EPOCH
+                                    } else {
+                                        LocalDate.now()
+                                    }
+                                } else {
+                                    it.createdDate
+                                }
                             )
                     }
             }
@@ -105,6 +145,7 @@ class FetchNewArticlesJobConfig(
                 val articles = webScrapper.getArticles(blog.url, blog.urlCssSelector!!)
                     .distinctBy { it.url }
                 return articles
+                    .filterNot { articleService.existsByUrl(it.url) }
                     .mapNotNull {
                         val content = webScrapper.getContent(it.url)
                         if (content == null) {

@@ -14,5 +14,5 @@ spring:
       on-profile: prod
 selenium:
   chrome-options:
-    - "--headless"
+    - "--headless" # 크롬창 노출 x
     - "--no-sandbox"
