@@ -18,6 +18,7 @@ private val ErrorCode.toHttpStatus: HttpStatus
             ErrorCode.EMAIL_NOT_FOUND -> HttpStatus.NOT_FOUND
             ErrorCode.VERIFY_FAILED -> HttpStatus.UNAUTHORIZED
             ErrorCode.LOGIN_FAILED -> HttpStatus.UNAUTHORIZED
+            ErrorCode.USER_NOT_FOUND -> HttpStatus.NOT_FOUND
         }
     }
 

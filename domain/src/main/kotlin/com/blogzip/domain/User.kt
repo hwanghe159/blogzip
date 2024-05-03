@@ -28,8 +28,13 @@ class User(
     @Convert(converter = ReceiveDaysConverter::class)
     val receiveDays: List<DayOfWeek> = DayOfWeek.entries.toList(),
 
-    @OneToMany(mappedBy = "user")
-    val subscriptions: List<Subscription> = emptyList(),
+    @OneToMany(
+        mappedBy = "user",
+        fetch = FetchType.LAZY,
+        cascade = [CascadeType.ALL],
+        orphanRemoval = true
+    )
+    val subscriptions: MutableList<Subscription> = mutableListOf(),
 
     @CreatedDate
     var createdAt: LocalDateTime = LocalDateTime.MIN,
@@ -65,5 +70,15 @@ class User(
         this.verificationCodeExpiredAt =
             LocalDateTime.now().plusHours(VERIFICATION_CODE_EXPIRY_HOURS)
         return this
+    }
+
+    fun addSubscription(blog: Blog): Subscription {
+        val subscription = Subscription(user = this, blog = blog)
+        this.subscriptions.add(subscription)
+        return subscription
+    }
+
+    fun deleteSubscription(blogId: Long): Boolean {
+        return this.subscriptions.removeIf { it.blog.id == blogId }
     }
 }

@@ -22,5 +22,5 @@ class Subscription(
     val blog: Blog,
 
     @CreatedDate
-    val createdAt: LocalDateTime,
+    var createdAt: LocalDateTime = LocalDateTime.MIN,
 )
