@@ -6,14 +6,25 @@ import Container from '@mui/material/Container';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import {Api} from '../utils/Api';
+import {useNavigate} from "react-router-dom";
 
 export default function MainPage() {
 
   const [email, setEmail] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isEmpty, setIsEmpty] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (accessToken) {
+      navigate('/my')
+    } else {
+      return
+    }
+  }, [navigate])
 
   const sendVerificationEmail = async (event: React.FormEvent) => {
     event.preventDefault();

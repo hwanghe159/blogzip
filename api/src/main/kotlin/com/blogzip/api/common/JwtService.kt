@@ -3,6 +3,7 @@ package com.blogzip.api.common
 import com.blogzip.api.auth.JwtProperties
 import com.blogzip.domain.User
 import com.blogzip.dto.UserToken
+import io.jsonwebtoken.Claims
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
 import org.springframework.stereotype.Component
@@ -40,5 +41,9 @@ class JwtService(
         } catch (e: Exception) {
             null
         }
+    }
+
+    fun decodePayload(token: String): Claims {
+        return Jwts.parser().build().parseSignedClaims(token).payload
     }
 }

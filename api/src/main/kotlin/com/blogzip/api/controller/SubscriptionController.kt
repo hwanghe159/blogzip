@@ -16,7 +16,8 @@ class SubscriptionController(
 ) {
 
     @GetMapping("/api/v1/subscription")
-    fun getMySubscriptions(@Parameter(hidden = true) @Authenticated user: AuthenticatedUser): ResponseEntity<List<SubscriptionResponse>> {
+    fun getMySubscriptions(@Parameter(hidden = true) @Authenticated user: AuthenticatedUser)
+            : ResponseEntity<List<SubscriptionResponse>> {
         val response = subscriptionService.findByUserId(user.id)
             .map {
                 SubscriptionResponse(

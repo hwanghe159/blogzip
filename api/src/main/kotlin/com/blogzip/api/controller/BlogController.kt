@@ -39,6 +39,23 @@ class BlogController(
         )
     }
 
+    @GetMapping("/api/v1/blog")
+    fun getAll(): ResponseEntity<List<BlogResponse>> {
+        val response = blogService.findAll()
+            .map {
+                BlogResponse(
+                    id = it.id!!,
+                    name = it.name,
+                    url = it.url,
+                    rss = it.rss,
+                    rssStatus = it.rssStatus,
+                    createdBy = it.createdBy,
+                    createdAt = it.createdAt,
+                )
+            }
+        return ResponseEntity.ok(response)
+    }
+
     @PostMapping("/api/v1/blog")
     fun save(
         @Parameter(hidden = true) @Authenticated user: AuthenticatedUser,

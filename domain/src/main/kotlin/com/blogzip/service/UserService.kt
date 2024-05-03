@@ -33,4 +33,14 @@ class UserService(private val repository: UserRepository) {
     ): User {
         return repository.save(User(email = email, verificationCode = verificationCode))
     }
+
+    @Transactional
+    fun save(user: User): User {
+        return repository.save(user)
+    }
+
+    @Transactional(readOnly = true)
+    fun findByGoogleId(googleId: String): User? {
+        return repository.findByGoogleId(googleId)
+    }
 }

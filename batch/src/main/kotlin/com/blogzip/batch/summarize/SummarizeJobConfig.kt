@@ -51,7 +51,7 @@ class SummarizeJobConfig(
                         article.summarizedBy = "gpt-3.5-turbo-0125"
                     }
                 }
-                log.info("요약 성공. 총 ${articles.size}건")
+                log.warn("요약 성공. 총 ${articles.size}건")
                 RepeatStatus.FINISHED
             }, platformTransactionManager)
             .build()

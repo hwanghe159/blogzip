@@ -5,20 +5,29 @@ import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
 import com.blogzip.notification.email.EmailSender
 import com.blogzip.api.common.AuthService
+import com.blogzip.api.common.GoogleAuthService
+import com.blogzip.dto.UserToken
 import com.blogzip.service.UserService
+import jakarta.servlet.Servlet
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
+import org.springframework.http.HttpRequest
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.reactive.result.view.RedirectView
 
 @RestController
 class UserController(
     private val userService: UserService,
     private val authService: AuthService,
     private val emailSender: EmailSender,
+    private val googleAuthService: GoogleAuthService,
 ) {
 
     @PostMapping("/api/v1/user")
@@ -58,6 +67,17 @@ class UserController(
             LoginResponse(
                 token.accessToken,
                 token.refreshToken
+            )
+        )
+    }
+
+    @GetMapping("/api/v1/login/google")
+    fun googleLogin(@RequestParam code: String): ResponseEntity<UserToken> {
+        googleAuthService.googleLogin(code)
+
+        return ResponseEntity.ok(
+            UserToken(
+                accessToken = "", refreshToken = ""
             )
         )
     }

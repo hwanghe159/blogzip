@@ -10,15 +10,14 @@ import Footer from './components/Footer';
 import {BrowserRouter, Route, Routes} from "react-router-dom";
 import EmailVerifyPage from "./components/EmailVerifyPage";
 import NotFoundPage from "./components/NotFoundPage";
+import {LoginPage} from "./components/LoginPage";
+import MyPage from "./components/MyPage";
+import {GoogleLoginPage} from "./components/GoogleLoginPage";
 
 function App() {
 
-  const [mode, setMode] = React.useState<PaletteMode>('light');
+  const [mode] = React.useState<PaletteMode>('light');
   const defaultTheme = createTheme({palette: {mode}});
-
-  const toggleColorMode = () => {
-    setMode((prev) => (prev === 'dark' ? 'light' : 'dark'));
-  };
 
   return (
       <BrowserRouter>
@@ -29,7 +28,7 @@ function App() {
                 path="/"
                 element={
                   <div>
-                    <AppAppBar mode={mode} toggleColorMode={toggleColorMode}/>
+                    <AppAppBar/>
                     <MainPage/>
                     <Box sx={{bgcolor: 'background.default'}}>
                       <Footer/>
@@ -38,6 +37,9 @@ function App() {
                 }
             />
             <Route path="/email-verify" element={<EmailVerifyPage/>}/>
+            <Route path="/login" element={<LoginPage/>}/>
+            <Route path="/login/google" element={<GoogleLoginPage/>}/>
+            <Route path="/my" element={<MyPage/>}/>
             <Route path="*" element={<NotFoundPage/>}/>
           </Routes>
         </ThemeProvider>

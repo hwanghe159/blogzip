@@ -1,26 +1,11 @@
 import * as React from 'react';
-import {PaletteMode} from '@mui/material';
 import Box from '@mui/material/Box';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
-import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
-import MenuItem from '@mui/material/MenuItem';
-import Drawer from '@mui/material/Drawer';
-import MenuIcon from '@mui/icons-material/Menu';
-import ToggleColorMode from './ToggleColorMode';
+import GoogleLoginButton from "./GoogleLoginButton";
 
-interface AppAppBarProps {
-  mode: PaletteMode;
-  toggleColorMode: () => void;
-}
-
-function AppAppBar({mode, toggleColorMode}: AppAppBarProps) {
-  const [open, setOpen] = React.useState(false);
-
-  const toggleDrawer = (newOpen: boolean) => () => {
-    setOpen(newOpen);
-  };
+function AppAppBar() {
 
   return (
       <div>
@@ -65,76 +50,23 @@ function AppAppBar({mode, toggleColorMode}: AppAppBarProps) {
                     px: 0,
                   }}
               >
-
-                <Box sx={{display: {xs: 'none', md: 'flex'}}}>
-                </Box>
               </Box>
               <Box
                   sx={{
-                    display: {xs: 'none', md: 'flex'},
+                    display: 'flex',
                     gap: 0.5,
                     alignItems: 'center',
                   }}
               >
-                <ToggleColorMode mode={mode} toggleColorMode={toggleColorMode}/>
-                <Button
-                    onClick={() => {
-                      alert('준비 중이에요!');
-                    }}
-                    color="primary"
-                    variant="contained"
-                    size="small"
-                    component="a"
-                    target="_blank"
-                >
-                  로그인
-                </Button>
-              </Box>
-              <Box sx={{display: {sm: '', md: 'none'}}}>
-                <Button
-                    variant="text"
-                    color="primary"
-                    aria-label="menu"
-                    onClick={toggleDrawer(true)}
-                    sx={{minWidth: '30px', p: '4px'}}
-                >
-                  <MenuIcon/>
-                </Button>
-                <Drawer anchor="right" open={open} onClose={toggleDrawer(false)}>
-                  <Box
-                      sx={{
-                        minWidth: '60dvw',
-                        p: 2,
-                        backgroundColor: 'background.paper',
-                        flexGrow: 1,
-                      }}
-                  >
-                    <Box
-                        sx={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'end',
-                          flexGrow: 1,
-                        }}
-                    >
-                      <ToggleColorMode mode={mode} toggleColorMode={toggleColorMode}/>
-                    </Box>
-                    <MenuItem>
-                      <Button
-                          onClick={() => {
-                            alert('준비 중이에요!');
-                          }}
-                          color="primary"
-                          variant="contained"
-                          component="a"
-                          target="_blank"
-                          sx={{width: '100%'}}
-                      >
-                        로그인
-                      </Button>
-                    </MenuItem>
-                  </Box>
-                </Drawer>
+                <GoogleLoginButton buttonProps={{
+                  color: "primary",
+                  variant: "contained",
+                  size: "small",
+                  component: "a",
+                  target: "_blank",
+                  sx: {width: '100%'},
+                }}
+                text='로그인'/>
               </Box>
             </Toolbar>
           </Container>
