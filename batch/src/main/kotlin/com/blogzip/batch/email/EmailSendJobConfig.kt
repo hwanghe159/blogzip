@@ -49,7 +49,8 @@ class EmailSendJobConfig(
                 val users = userService.findAllByDayOfWeek(today.dayOfWeek).filter { it.isVerified }
                 for (user in users) {
                     val accumulatedDates = user.getAccumulatedDates(today)
-                    val newArticles = articleService.findAllByCreatedDates(accumulatedDates)
+                    val newArticles = user.subscriptions
+                        .flatMap { it.blog.articles.filter { accumulatedDates.contains(it.createdDate) } }
                     emailSender.sendNewArticles(
                         User(
                             email = user.email,
