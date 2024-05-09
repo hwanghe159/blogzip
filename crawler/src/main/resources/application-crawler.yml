@@ -5,6 +5,7 @@ spring:
       on-profile: local
 selenium:
   chrome-options:
+    - "--headless" # 크롬창 노출 x
     - "--no-sandbox"
 
 ---

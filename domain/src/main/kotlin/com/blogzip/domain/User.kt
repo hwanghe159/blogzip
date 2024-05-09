@@ -6,7 +6,7 @@ import jakarta.persistence.*
 import org.springframework.data.annotation.CreatedDate
 import org.springframework.data.annotation.LastModifiedDate
 import org.springframework.data.jpa.domain.support.AuditingEntityListener
-import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Entity
@@ -25,8 +25,7 @@ class User(
 
     var isVerified: Boolean = false,
 
-    @Convert(converter = ReceiveDaysConverter::class)
-    val receiveDays: List<DayOfWeek> = DayOfWeek.entries.toList(),
+    val receiveDays: String,
 
     @OneToMany(
         mappedBy = "user",
@@ -80,5 +79,23 @@ class User(
 
     fun deleteSubscription(blogId: Long): Boolean {
         return this.subscriptions.removeIf { it.blog.id == blogId }
+    }
+
+    fun getAccumulatedDates(emailDate: LocalDate): List<LocalDate> {
+        val receiveDays = ReceiveDaysConverter.toList(this.receiveDays)
+        if (!receiveDays.contains(emailDate.dayOfWeek)) {
+            return emptyList()
+        }
+        val result = mutableListOf<LocalDate>()
+        var date = emailDate
+        while (true) {
+            date = date.minusDays(1)
+            if (receiveDays.contains(date.dayOfWeek)) {
+                result.add(date)
+                break
+            }
+            result.add(date)
+        }
+        return result.reversed()
     }
 }

@@ -3,6 +3,7 @@ package com.blogzip.api.controller
 import com.blogzip.api.auth.Authenticated
 import com.blogzip.api.auth.AuthenticatedUser
 import com.blogzip.api.dto.SubscriptionCreateRequest
+import com.blogzip.api.dto.SubscriptionDeleteRequest
 import com.blogzip.api.dto.SubscriptionResponse
 import com.blogzip.service.SubscriptionService
 import io.swagger.v3.oas.annotations.Parameter
@@ -35,7 +36,7 @@ class SubscriptionController(
     @DeleteMapping("/api/v1/subscription")
     fun deleteSubscription(
         @Parameter(hidden = true) @Authenticated user: AuthenticatedUser,
-        @RequestBody request: SubscriptionCreateRequest,
+        @RequestBody request: SubscriptionDeleteRequest,
     ): ResponseEntity<Void> {
         subscriptionService.delete(user.id, request.blogId)
         return ResponseEntity.noContent().build()

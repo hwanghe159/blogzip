@@ -22,5 +22,7 @@ interface ArticleRepository : JpaRepository<Article, Long> {
 
     fun findAllByCreatedDate(createdDate: LocalDate): List<Article>
 
+    fun findAllByCreatedDateIn(createdDates: List<LocalDate>): List<Article>
+
     fun findAllByCreatedDateAndSummaryIsNull(createdDate: LocalDate): List<Article>
 }

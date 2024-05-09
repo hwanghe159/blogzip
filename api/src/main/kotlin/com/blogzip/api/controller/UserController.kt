@@ -1,18 +1,16 @@
 package com.blogzip.api.controller
 
+import com.blogzip.api.common.AuthService
 import com.blogzip.api.dto.*
 import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
+import com.blogzip.domain.User
 import com.blogzip.notification.email.EmailSender
-import com.blogzip.api.common.AuthService
 import com.blogzip.service.UserService
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
+import java.time.DayOfWeek
 
 @RestController
 class UserController(
@@ -60,5 +58,18 @@ class UserController(
                 token.refreshToken
             )
         )
+    }
+
+    @GetMapping("/api/v1/user/{day}")
+    fun getByDay(@PathVariable day: DayOfWeek): ResponseEntity<List<UserResponse>> {
+        val response = userService.findAllByDayOfWeek(day)
+            .map { UserResponse.from(it) }
+        return ResponseEntity.ok(response)
+    }
+
+    @GetMapping("/api/v1/user")
+    fun getAll(): ResponseEntity<List<User>> {
+        val users = userService.findAll()
+        return ResponseEntity.ok(users)
     }
 }
