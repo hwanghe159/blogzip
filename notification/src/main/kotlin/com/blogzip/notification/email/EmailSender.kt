@@ -16,14 +16,15 @@ class EmailSender(
     private val emailTemplateParser: EmailTemplateParser,
 ) {
     companion object {
+        private const val SENDER_NAME = "blogzip"
         private const val SENDER_EMAIL_ADDRESS = "no-reply@blogzip.co.kr"
     }
 
     var log = logger()
 
-    fun sendNewArticles(to: String, articles: List<Article>) {
-        val content = emailTemplateParser.parseArticles(articles)
-        sendEmailUsingSES(to, "구독한 블로그의 새 글", content)
+    fun sendNewArticles(to: User, articles: List<Article>) {
+        val content = emailTemplateParser.parseArticles(to, articles)
+        sendEmailUsingSES(to.email, "구독한 블로그의 새 글", content)
     }
 
     fun sendVerification(to: String, code: String) {
@@ -47,7 +48,7 @@ class EmailSender(
             sesClient.use { client ->
                 client.sendEmail(
                     SendEmailRequest.builder()
-                        .source(SENDER_EMAIL_ADDRESS)
+                        .source("$SENDER_NAME <${SENDER_EMAIL_ADDRESS}>")
                         .destination(
                             Destination.builder()
                                 .toAddresses(to)

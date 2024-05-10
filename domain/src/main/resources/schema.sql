@@ -38,8 +38,9 @@ create table subscription
     user_id    bigint   not null comment 'user.id',
     blog_id    bigint   not null comment 'blog.id',
     created_at datetime not null default current_timestamp comment '구독 시각',
-    index udx_user_id (user_id),
-    index udx_blog_id (blog_id)
+    unique index udx_user_blog (user_id, blog_id),
+    index idx_user_id (user_id),
+    index idx_blog_id (blog_id),
 ) comment '사용자-블로그 구독 정보';
 
 create table article

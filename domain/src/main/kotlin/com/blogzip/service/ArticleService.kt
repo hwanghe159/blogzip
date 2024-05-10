@@ -43,6 +43,10 @@ class ArticleService(private val repository: ArticleRepository) {
         return repository.findAllByCreatedDate(createdDate)
     }
 
+    fun findAllByCreatedDates(createdDates: List<LocalDate>): List<Article> {
+        return repository.findAllByCreatedDateIn(createdDates)
+    }
+
     @Transactional
     fun findAllSummarizeTarget(createdDate: LocalDate): List<Article> {
         return repository.findAllByCreatedDateAndSummaryIsNull(createdDate)

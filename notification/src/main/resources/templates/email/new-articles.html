@@ -10,16 +10,20 @@
   <a href="https://blogzip.co.kr">구독하러 가기</a>
 </div>
 <div th:unless="${articles.isEmpty()}">
+  <h1><span th:text="|${dateRange}에 올라온 새 글|">5/8(수)에 올라온 새 글</span></h1>
   <div th:each="article : ${articles}">
     <h2>
       <span th:text="${article.title}">글 제목</span>
-      <span th:text="'by ' + ${article.blogName}"
-            style="font-size: 0.8em;color: grey;">by 블로그 이름</span>
+      <span th:text="${article.blogName}"
+            style="font-size: 0.8em;color: grey;">블로그 이름</span>
     </h2>
     <span th:text="${article.summary}">글 내용</span>
     <a href="#" th:href="@{${article.url}}" th:text="'(원문보기)'"
        style="font-size: 0.9em;text-decoration: none;margin-left: 5px;">(원문보기)</a>
   </div>
 </div>
+<p>
+<div><br><br>서비스에 의견이 있으시다면 <a href="mailto:hwanghe159@gmail.com">hwanghe159@gmail.com</a>으로 문의해주세요!</div>
+</p>
 </body>
 </html>

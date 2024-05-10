@@ -3,6 +3,7 @@ package com.blogzip.batch.email
 import com.blogzip.batch.common.logger
 import com.blogzip.notification.email.Article
 import com.blogzip.notification.email.EmailSender
+import com.blogzip.notification.email.User
 import com.blogzip.service.ArticleService
 import com.blogzip.service.UserService
 import org.springframework.batch.core.Job
@@ -44,14 +45,17 @@ class EmailSendJobConfig(
     ): Step {
         return StepBuilder("email-send", jobRepository)
             .tasklet({ _, _ ->
-                val yesterday = LocalDate.now().minusDays(1)
-                val users = userService.findAll().filter { it.isVerified }
-                val newArticles = articleService.findAllByCreatedDate(yesterday) // todo 변경
+                val today = LocalDate.now()
+                val users = userService.findAllByDayOfWeek(today.dayOfWeek).filter { it.isVerified }
                 for (user in users) {
-//                    val newArticles =
-//                        articleService.findAllByUserAndCreatedDate(user, yesterday)
+                    val accumulatedDates = user.getAccumulatedDates(today)
+                    val newArticles = user.subscriptions
+                        .flatMap { it.blog.articles.filter { accumulatedDates.contains(it.createdDate) } }
                     emailSender.sendNewArticles(
-                        user.email,
+                        User(
+                            email = user.email,
+                            receiveDates = accumulatedDates,
+                        ),
                         newArticles
                             .filter {
                                 if (it.summary == null) {
@@ -65,6 +69,7 @@ class EmailSendJobConfig(
                                     url = it.url,
                                     summary = it.summary!!,
                                     blogName = it.blog.name,
+                                    createdDate = it.createdDate!!,
                                 )
                             })
                 }

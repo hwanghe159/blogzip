@@ -13,11 +13,11 @@ class Blog(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
 
-    @OneToMany(mappedBy = "blog")
-    val subscriptions: List<Subscription> = emptyList(),
+    @OneToMany(mappedBy = "blog", fetch = FetchType.LAZY)
+    val subscriptions: MutableList<Subscription> = mutableListOf(),
 
-    @OneToMany(mappedBy = "blog")
-    val articles: List<Article> = emptyList(),
+    @OneToMany(mappedBy = "blog", fetch = FetchType.LAZY)
+    val articles: MutableList<Article> = mutableListOf(),
 
     val name: String,
 

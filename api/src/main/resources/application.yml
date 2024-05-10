@@ -25,7 +25,7 @@ spring:
       on-profile: local
 logging:
   level:
-    root: info
+    root: debug
 oauth2:
   google:
     redirect-uri: http://localhost:3000/login/google
