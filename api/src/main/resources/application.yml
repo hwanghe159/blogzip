@@ -10,6 +10,9 @@ jwt:
   secret-key: "${JWT_SECRET_KEY}"
   access-token-expires-days: 7
   refresh-token-expires-days: 30
+logging:
+  level:
+    org.hibernate.SQL: info
 
 ---
 spring:
@@ -18,7 +21,7 @@ spring:
       on-profile: local
 logging:
   level:
-    root: debug
+    root: info
 
 ---
 spring:

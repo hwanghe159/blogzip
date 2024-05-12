@@ -3,7 +3,7 @@ package com.blogzip.api.dto
 import com.blogzip.domain.Blog
 import java.time.LocalDateTime
 
-data class BlogResponse(
+data class BlogResponse private constructor(
     val id: Long,
     val name: String,
     val url: String,

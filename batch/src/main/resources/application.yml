@@ -10,6 +10,9 @@ open-ai:
   api-key: "${OPEN_AI_API_KEY}"
   assistant-id: "${OPEN_AI_ASSISTANT_ID}"
   thread-id: "${OPEN_AI_THREAD_ID}"
+logging:
+  level:
+    org.hibernate.SQL: info
 
 ---
 spring:
@@ -23,7 +26,7 @@ spring:
         - classpath:schema.sql
 logging:
   level:
-    root: debug
+    root: info
 
 ---
 spring:

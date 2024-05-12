@@ -10,37 +10,18 @@ import Footer from './components/Footer';
 import {BrowserRouter, Route, Routes} from "react-router-dom";
 import EmailVerifyPage from "./components/EmailVerifyPage";
 import NotFoundPage from "./components/NotFoundPage";
+import NavBar from "./components/NavBar";
+import ArticlesPage from "./components/ArticlesPage";
 
 function App() {
 
-  const [mode, setMode] = React.useState<PaletteMode>('light');
-  const defaultTheme = createTheme({palette: {mode}});
-
-  const toggleColorMode = () => {
-    setMode((prev) => (prev === 'dark' ? 'light' : 'dark'));
-  };
-
   return (
       <BrowserRouter>
-        <ThemeProvider theme={defaultTheme}>
-          <CssBaseline/>
-          <Routes>
-            <Route
-                path="/"
-                element={
-                  <div>
-                    <AppAppBar mode={mode} toggleColorMode={toggleColorMode}/>
-                    <MainPage/>
-                    <Box sx={{bgcolor: 'background.default'}}>
-                      <Footer/>
-                    </Box>
-                  </div>
-                }
-            />
-            <Route path="/email-verify" element={<EmailVerifyPage/>}/>
-            <Route path="*" element={<NotFoundPage/>}/>
-          </Routes>
-        </ThemeProvider>
+        <NavBar/>
+        <Routes>
+          <Route path="/" element={<ArticlesPage/>}/>
+          <Route path="*" element={<NotFoundPage/>}/>
+        </Routes>
       </BrowserRouter>
   );
 }

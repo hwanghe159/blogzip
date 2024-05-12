@@ -26,17 +26,7 @@ class BlogController(
     @GetMapping("/api/v1/blog/{id}")
     fun get(@PathVariable id: Long): ResponseEntity<BlogResponse> {
         val blog = blogService.findById(id)
-        return ResponseEntity.ok(
-            BlogResponse(
-                id = blog.id!!,
-                name = blog.name,
-                url = blog.url,
-                rss = blog.rss,
-                rssStatus = blog.rssStatus,
-                createdBy = blog.createdBy,
-                createdAt = blog.createdAt,
-            )
-        )
+        return ResponseEntity.ok(BlogResponse.from(blog))
     }
 
     @PostMapping("/api/v1/blog")
