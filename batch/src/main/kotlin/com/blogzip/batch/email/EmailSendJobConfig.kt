@@ -1,6 +1,9 @@
 package com.blogzip.batch.email
 
+import com.blogzip.batch.common.JobResultListener
 import com.blogzip.batch.common.logger
+import com.blogzip.notification.common.SlackSender
+import com.blogzip.notification.common.SlackSender.SlackChannel.ERROR_LOG
 import com.blogzip.notification.email.Article
 import com.blogzip.notification.email.EmailSender
 import com.blogzip.notification.email.User
@@ -22,26 +25,33 @@ import java.time.LocalDate
 class EmailSendJobConfig(
     private val userService: UserService,
     private val articleService: ArticleService,
-    private val emailSender: EmailSender
+    private val jobResultListener: JobResultListener,
+    private val emailSender: EmailSender,
+    private val slackSender: SlackSender,
 ) {
 
     val log = logger()
+
+    companion object {
+        private const val JOB_NAME = "email-send"
+    }
 
     @Bean
     fun emailSendJob(
         jobRepository: JobRepository,
         platformTransactionManager: PlatformTransactionManager
     ): Job {
-        return JobBuilder("email-send", jobRepository)
+        return JobBuilder(JOB_NAME, jobRepository)
             .start(emailSendStep(jobRepository, platformTransactionManager))
             .incrementer(RunIdIncrementer())
+            .listener(jobResultListener)
             .build()
     }
 
     @Bean
     fun emailSendStep(
         jobRepository: JobRepository,
-        platformTransactionManager: PlatformTransactionManager
+        platformTransactionManager: PlatformTransactionManager,
     ): Step {
         return StepBuilder("email-send", jobRepository)
             .tasklet({ _, _ ->
@@ -59,7 +69,9 @@ class EmailSendJobConfig(
                         newArticles
                             .filter {
                                 if (it.summary == null) {
-                                    log.error("요약되지 않아 전송 과정에서 걸러짐. article.id=${it.id}")
+                                    val errorMessage = "요약되지 않아 전송 과정에서 걸러짐. article.id=${it.id}"
+                                    log.error(errorMessage)
+                                    slackSender.sendMessageAsync(channel = ERROR_LOG, errorMessage)
                                 }
                                 it.summary != null
                             }

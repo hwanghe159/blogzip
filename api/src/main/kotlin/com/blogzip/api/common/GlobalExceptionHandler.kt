@@ -2,6 +2,8 @@ package com.blogzip.api.common
 
 import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
+import com.blogzip.notification.common.SlackSender
+import com.blogzip.notification.common.SlackSender.SlackChannel.*
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -23,7 +25,9 @@ private val ErrorCode.toHttpStatus: HttpStatus
     }
 
 @RestControllerAdvice
-class GlobalExceptionHandler {
+class GlobalExceptionHandler(
+    private val SlackSender: SlackSender
+) {
 
     val log = logger()
 
@@ -51,6 +55,7 @@ class GlobalExceptionHandler {
     @ExceptionHandler(value = [Exception::class])
     fun handleException(ex: Exception): ResponseEntity<ErrorResponse> {
         log.error(ex.message, ex)
+        SlackSender.sendStackTraceAsync(ERROR_LOG, ex)
         val response = ErrorResponse(code = null, message = null)
         return ResponseEntity
             .internalServerError()

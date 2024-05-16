@@ -1,5 +1,6 @@
 package com.blogzip.batch.summarize
 
+import com.blogzip.batch.common.JobResultListener
 import com.blogzip.crawler.common.logger
 import com.blogzip.service.ArticleService
 import kotlinx.coroutines.runBlocking
@@ -18,19 +19,25 @@ import java.time.LocalDate
 @Configuration
 class SummarizeJobConfig(
     private val articleService: ArticleService,
-    private val articleContentSummarizer: ArticleContentSummarizer
+    private val jobResultListener: JobResultListener,
+    private val articleContentSummarizer: ArticleContentSummarizer,
 ) {
 
     val log = logger()
+
+    companion object {
+        private const val JOB_NAME = "summarize"
+    }
 
     @Bean
     fun summarizeJob(
         jobRepository: JobRepository,
         platformTransactionManager: PlatformTransactionManager
     ): Job {
-        return JobBuilder("summarize", jobRepository)
+        return JobBuilder(JOB_NAME, jobRepository)
             .incrementer(RunIdIncrementer())
             .start(summarizeStep(jobRepository, platformTransactionManager))
+            .listener(jobResultListener)
             .build()
     }
 

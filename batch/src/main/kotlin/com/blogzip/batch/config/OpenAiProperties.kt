@@ -1,4 +1,4 @@
-package com.blogzip.batch.summarize
+package com.blogzip.batch.config
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 

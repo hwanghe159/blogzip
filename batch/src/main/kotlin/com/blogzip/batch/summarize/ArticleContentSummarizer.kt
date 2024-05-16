@@ -9,6 +9,7 @@ import com.aallam.openai.api.message.MessageRequest
 import com.aallam.openai.api.run.RunRequest
 import com.aallam.openai.api.thread.ThreadId
 import com.aallam.openai.client.OpenAI
+import com.blogzip.batch.config.OpenAiProperties
 import kotlinx.coroutines.delay
 import org.springframework.stereotype.Component
 

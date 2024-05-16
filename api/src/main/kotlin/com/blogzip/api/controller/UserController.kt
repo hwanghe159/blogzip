@@ -5,6 +5,8 @@ import com.blogzip.api.dto.*
 import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
 import com.blogzip.domain.User
+import com.blogzip.notification.common.SlackSender
+import com.blogzip.notification.common.SlackSender.SlackChannel.MONITORING
 import com.blogzip.notification.email.EmailSender
 import com.blogzip.service.UserService
 import jakarta.validation.Valid
@@ -17,6 +19,7 @@ class UserController(
     private val userService: UserService,
     private val authService: AuthService,
     private val emailSender: EmailSender,
+    private val slackSender: SlackSender,
 ) {
 
     @PostMapping("/api/v1/user")
@@ -37,6 +40,7 @@ class UserController(
         }
         user.refreshVerificationCode(verificationCode)
         emailSender.sendVerification(email, verificationCode)
+        slackSender.sendMessageAsync(channel = MONITORING, "회원가입 발생! email=$email")
         return ResponseEntity.ok().build()
     }
 

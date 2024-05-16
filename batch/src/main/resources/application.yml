@@ -23,7 +23,7 @@ spring:
         - classpath:schema.sql
 logging:
   level:
-    root: debug
+    root: info
 
 ---
 spring:
