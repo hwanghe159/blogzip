@@ -28,6 +28,7 @@ subprojects {
             val testImplementation by configurations
 
             implementation("org.jetbrains.kotlin:kotlin-reflect")
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
             annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
             testImplementation("org.springframework.boot:spring-boot-starter-test")
         }
