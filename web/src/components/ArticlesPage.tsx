@@ -19,6 +19,7 @@ export interface BlogResponse {
   id: number;
   name: string;
   url: string;
+  image: string | null;
   rssStatus: string;
   rss: string;
   createdBy: number;
@@ -75,7 +76,8 @@ function ArticlesPage() {
 
   return (
       <Container>
-        <Typography variant="h4" component="h1">어제 올라온 새 글</Typography>
+        <Typography variant="h4" component="h4">어제 올라온 새 글</Typography>
+        <Typography variant="h6" component="h6">ChatGPT 요약</Typography>
         <InfiniteScroll
             dataLength={articles.length}
             next={fetchData}
@@ -91,7 +93,9 @@ function ArticlesPage() {
               </p>
             }
         >
-          {articles.map(article => <Article key={article.id} article={article}/>)}
+          {articles.map(article =>
+              <Article key={article.id} article={article}/>
+          )}
         </InfiniteScroll>
       </Container>
   );

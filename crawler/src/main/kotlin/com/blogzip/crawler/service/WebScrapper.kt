@@ -3,8 +3,8 @@ package com.blogzip.crawler.service
 import com.blogzip.crawler.common.logger
 import com.blogzip.crawler.confg.SeleniumProperties
 import com.blogzip.crawler.vo.VelogUrl
+import org.jsoup.Jsoup
 import org.openqa.selenium.By
-import org.openqa.selenium.TimeoutException
 import org.openqa.selenium.WebDriver
 import org.openqa.selenium.WebElement
 import org.openqa.selenium.chrome.ChromeDriver
@@ -40,8 +40,26 @@ class WebScrapper(
             wait.until(ExpectedConditions.textToBePresentInElementLocated(By.tagName("title"), ""))
             val pageTitle: String = webDriver.title
             return pageTitle
-        } catch (e: TimeoutException) {
-            throw RuntimeException("웹페이지의 타이틀 조회 실패.")
+        } catch (e: Exception) {
+            throw RuntimeException("웹페이지의 타이틀 조회 실패. url=$url", e)
+        } finally {
+            webDriver.quit()
+        }
+    }
+
+    fun getImageUrl(url: String): String {
+        val webDriver = createWebDriver()
+        try {
+            webDriver.get(url)
+            val pageSource = webDriver.pageSource
+            val document = Jsoup.parse(pageSource)
+            val imageElement = document
+                .select("head meta[property=og:image]")
+                .firstOrNull()
+                ?: throw RuntimeException("head 태그 내 image가 존재하지 않음.")
+            return imageElement.attr("content")
+        } catch (e: Exception) {
+            throw RuntimeException("웹페이지의 이미지 조회 실패. url=$url", e)
         } finally {
             webDriver.quit()
         }

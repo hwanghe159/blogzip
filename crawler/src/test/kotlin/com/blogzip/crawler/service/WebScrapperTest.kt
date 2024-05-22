@@ -29,4 +29,9 @@ class WebScrapperTest {
         val rss = webScrapper.convertToRss("https://velog.io/@jay/posts")
         println(rss)
     }
+
+    @Test
+    fun getImageUrl() {
+        println(webScrapper.getImageUrl("https://techblog.woowahan.com/"))
+    }
 }
