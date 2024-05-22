@@ -52,6 +52,7 @@ class BlogController(
         val blog = blogService.save(
             name,
             url,
+            image = null, // todo 이미지 조회
             rss,
             rssStatus = rssStatus,
             user.id,

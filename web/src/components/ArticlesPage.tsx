@@ -1,22 +1,21 @@
 import * as React from 'react';
-import AppBar from '@mui/material/AppBar';
-import Toolbar from '@mui/material/Toolbar';
-import Button from '@mui/material/Button';
 import Typography from "@mui/material/Typography";
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useState} from "react";
 import {Api} from "../utils/Api";
 import styled from "styled-components";
+import InfiniteScroll from "react-infinite-scroll-component";
+import Article from "./Article";
 
-interface Article {
+export interface ArticleResponse {
   id: number;
-  blog: Blog;
+  blog: BlogResponse;
   title: string;
   url: string;
   summary: string;
   createdDate: string;
 }
 
-interface Blog {
+export interface BlogResponse {
   id: number;
   name: string;
   url: string;
@@ -41,69 +40,59 @@ const Container = styled.nav`
 
 function ArticlesPage() {
 
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [next, setNext] = useState<string | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [articles, setArticles] = useState<ArticleResponse[]>([]);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const yesterday = new Date(new Date().setDate(new Date().getDate() - 1));
 
   useEffect(() => {
-    loadMoreArticles(true)
+    fetchData()
   }, []);
 
-  // todo 무한스크롤 작동 안함
-  const handleScroll = () => {
-    if (!containerRef.current) return;
-
-    const {scrollTop, scrollHeight, clientHeight} = containerRef.current;
-    if (scrollTop + clientHeight >= scrollHeight) {
-      loadMoreArticles(false);
-    }
-  };
-
-  const loadMoreArticles = (initialRequest: boolean) => {
-    const today = new Date()
-    const yesterday = new Date(today)
-    yesterday.setDate(today.getDate() - 1)
-
-    if (!initialRequest && !next) {
-      return
-    }
-
+  function fetchData() {
     Api.get(`/api/v1/article`, {
       params:
           {
             from: yesterday.toLocaleDateString('en-CA'),
-            next: next,
-            size: 5, // todo 제거
+            next: articles.length == 0 ? null : articles[articles.length - 1].id,
           }
     })
     .onSuccess((response) => {
       setArticles(prevArticles => {
             const newItems = response.data.items
-            .filter((newItem: Article) => !prevArticles.some(prevItem => prevItem.id === newItem.id))
+            .filter((newItem: ArticleResponse) => !prevArticles.some(prevItem => prevItem.id === newItem.id))
             return [...prevArticles, ...newItems]
           }
       )
-      setNext(response.data.next)
+      if (response.data.next == null) {
+        setHasMore(false)
+      }
     })
     .on4XX((response) => {
     })
     .on5XX((response) => {
     });
-  };
+  }
 
   return (
-      <Container ref={containerRef} onScroll={handleScroll}>
+      <Container>
         <Typography variant="h4" component="h1">어제 올라온 새 글</Typography>
-        <ul>
-          {articles.map(article => (
-              <li key={article.id}>
-                <h2>{article.title}</h2>
-                <p>{article.summary}</p>
-                {article.blog.name}
-                <a href={article.url} target="_blank">원본 보기</a>
-              </li>
-          ))}
-        </ul>
+        <InfiniteScroll
+            dataLength={articles.length}
+            next={fetchData}
+            hasMore={hasMore}
+            loader={<h4>Loading...</h4>}
+            endMessage={
+              <p style={{
+                textAlign: 'center',
+                marginTop: '50px',
+                marginBottom: '50px'
+              }}>
+                <b>더 올라온 글이 없어요</b>
+              </p>
+            }
+        >
+          {articles.map(article => <Article key={article.id} article={article}/>)}
+        </InfiniteScroll>
       </Container>
   );
 }

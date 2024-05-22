@@ -23,6 +23,8 @@ class Blog(
 
     val url: String,
 
+    val image: String?,
+
     @Enumerated(EnumType.STRING)
     val rssStatus: RssStatus,
 

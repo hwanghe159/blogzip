@@ -21,6 +21,8 @@ class ArticleContentSummarizer(private val openAiProperties: OpenAiProperties) {
         val openAI = OpenAI(openAiProperties.apiKey)
         val threadId = ThreadId(openAiProperties.threadId)
         val assistantId = AssistantId(openAiProperties.assistantId)
+
+        // GET https://api.openai.com/v1/threads/{thread_id}/messages
         openAI.message(
             threadId = threadId,
             request = MessageRequest(
@@ -28,6 +30,7 @@ class ArticleContentSummarizer(private val openAiProperties: OpenAiProperties) {
                 content = content
             )
         )
+        // POST https://api.openai.com/v1/threads/{thread_id}/runs
         val run = openAI.createRun(
             threadId,
             request = RunRequest(
@@ -36,6 +39,7 @@ class ArticleContentSummarizer(private val openAiProperties: OpenAiProperties) {
         )
         do {
             delay(3000)
+            // GET https://api.openai.com/v1/threads/{thread_id}/runs/{run_id}
             val retrievedRun = openAI.getRun(threadId = threadId, runId = run.id)
         } while (retrievedRun.status != Status.Completed)
         val messages = openAI.messages(threadId)

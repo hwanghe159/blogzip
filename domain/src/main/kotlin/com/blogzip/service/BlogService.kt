@@ -30,6 +30,7 @@ class BlogService(private val repository: BlogRepository) {
     fun save(
         name: String,
         url: String,
+        image: String?,
         rss: String?,
         rssStatus: Blog.RssStatus,
         createdBy: Long
@@ -38,6 +39,7 @@ class BlogService(private val repository: BlogRepository) {
             Blog(
                 name = name,
                 url = url,
+                image = image,
                 rss = rss,
                 rssStatus = rssStatus,
                 createdBy = createdBy

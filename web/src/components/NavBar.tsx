@@ -1,8 +1,5 @@
 import * as React from 'react';
-import AppBar from '@mui/material/AppBar';
-import Toolbar from '@mui/material/Toolbar';
 import Button from '@mui/material/Button';
-import Typography from "@mui/material/Typography";
 import styled from 'styled-components';
 
 const Container = styled.nav`
@@ -21,7 +18,7 @@ const NavBarInner = styled.div`
   margin-right: auto;
   width: 100%;
   max-width: 1000px;
-  
+
   @media screen and (max-width: 1000px) {
     width: calc(100% - 20px);
     max-width: none;
@@ -29,23 +26,26 @@ const NavBarInner = styled.div`
 `;
 
 const Logo = styled.div`
-  font-size: 24px; 
+  font-size: 24px;
   font-weight: bold;
 `;
 
-const LoginButton = styled.button`
-  color: black; 
-  border: none; 
-  cursor: pointer; 
-  font-size: 20px;
-`;
-
 function NavBar() {
+
+  function login() {
+    alert("준비중이에요!")
+  }
+
   return (
       <Container>
         <NavBarInner>
           <Logo>블로그zip</Logo>
-          <LoginButton>로그인</LoginButton>
+          <Button
+              onClick={login}
+              size="large"
+              disableRipple={true}>
+            로그인
+          </Button>
         </NavBarInner>
       </Container>
   );
