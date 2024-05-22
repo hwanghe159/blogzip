@@ -23,12 +23,16 @@ class Blog(
 
     val url: String,
 
+    val image: String?,
+
     @Enumerated(EnumType.STRING)
     val rssStatus: RssStatus,
 
     val rss: String?,
 
     val urlCssSelector: String? = null,
+
+    val isShowOnMain: Boolean,
 
     val createdBy: Long,
 

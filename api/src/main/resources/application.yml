@@ -17,18 +17,21 @@ oauth2:
     scope:
       - profile
       - email
+logging:
+  level:
+    org.hibernate.SQL: info
 
 ---
 spring:
   config:
     activate:
       on-profile: local
-logging:
-  level:
-    root: debug
 oauth2:
   google:
     redirect-uri: http://localhost:3000/login/google
+logging:
+  level:
+    root: info
 
 ---
 spring:

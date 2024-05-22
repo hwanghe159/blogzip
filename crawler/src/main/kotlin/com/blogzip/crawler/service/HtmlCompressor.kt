@@ -23,10 +23,6 @@ class HtmlCompressor {
 
         // html -> md
         val result = FlexmarkHtmlConverter.builder().build().convert(body.toString())
-        if (result.isBlank()) {
-            log.error("html -> md 변환 실패. html = ${html.substring(0, 100)}")
-            return html
-        }
         return result
     }
 }

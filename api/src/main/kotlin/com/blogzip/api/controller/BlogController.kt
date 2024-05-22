@@ -9,10 +9,13 @@ import com.blogzip.common.ErrorCode
 import com.blogzip.crawler.service.RssFeedFetcher
 import com.blogzip.crawler.service.WebScrapper
 import com.blogzip.domain.Blog
+import com.blogzip.notification.common.SlackSender
+import com.blogzip.notification.common.SlackSender.SlackChannel.*
 import com.blogzip.service.BlogService
 import io.swagger.v3.oas.annotations.Parameter
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.lang.Exception
 
 
 @RestController
@@ -20,23 +23,14 @@ class BlogController(
     private val blogService: BlogService,
     private val rssFeedFetcher: RssFeedFetcher,
     private val webScrapper: WebScrapper,
+    private val slackSender: SlackSender,
 ) {
 
     // todo EC2에선 swagger 예제만 나오는중..
     @GetMapping("/api/v1/blog/{id}")
     fun get(@PathVariable id: Long): ResponseEntity<BlogResponse> {
         val blog = blogService.findById(id)
-        return ResponseEntity.ok(
-            BlogResponse(
-                id = blog.id!!,
-                name = blog.name,
-                url = blog.url,
-                rss = blog.rss,
-                rssStatus = blog.rssStatus,
-                createdBy = blog.createdBy,
-                createdAt = blog.createdAt,
-            )
-        )
+        return ResponseEntity.ok(BlogResponse.from(blog))
     }
 
     @GetMapping("/api/v1/blog")
@@ -70,18 +64,25 @@ class BlogController(
             throw DomainException(ErrorCode.BLOG_URL_DUPLICATED)
         }
 
-        val name = webScrapper.getTitle(url) // todo 실패시 처리
+        val blogTitle = webScrapper.getTitle(url)
+        val imageUrl = try {
+            webScrapper.getImageUrl(url)
+        } catch (e: Exception) {
+            slackSender.sendStackTraceAsync(ERROR_LOG, e)
+            null
+        }
         val rss = webScrapper.convertToRss(url).firstOrNull()
         val rssStatus =
             if (rss == null) Blog.RssStatus.NO_RSS
             else if (rssFeedFetcher.isContentContainsInRss(rss)) Blog.RssStatus.WITH_CONTENT
             else Blog.RssStatus.WITHOUT_CONTENT
         val blog = blogService.save(
-            name,
-            url,
-            rss,
+            name = blogTitle,
+            url = url,
+            image = imageUrl,
+            rss = rss,
             rssStatus = rssStatus,
-            user.id,
+            createdBy = user.id,
         )
         return ResponseEntity.ok(BlogResponse.from(blog))
     }

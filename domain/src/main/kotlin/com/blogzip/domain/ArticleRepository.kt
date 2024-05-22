@@ -1,5 +1,6 @@
 package com.blogzip.domain
 
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import java.time.LocalDate
@@ -25,4 +26,23 @@ interface ArticleRepository : JpaRepository<Article, Long> {
     fun findAllByCreatedDateIn(createdDates: List<LocalDate>): List<Article>
 
     fun findAllByCreatedDateAndSummaryIsNull(createdDate: LocalDate): List<Article>
+
+    @Query(
+        """
+            select article
+            from Article article 
+            join fetch article.blog blog
+            where article.createdDate >= :from
+            and article.createdDate <= :to
+            and (:next is null or article.id <= :next)
+            and article.summary is not null
+            and blog.isShowOnMain = true
+        """
+    )
+    fun search(
+        from: LocalDate,
+        to: LocalDate,
+        next: Long?,
+        pageable: Pageable
+    ): List<Article>
 }
