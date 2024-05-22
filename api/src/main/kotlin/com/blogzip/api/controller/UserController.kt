@@ -11,10 +11,7 @@ import com.blogzip.api.common.AuthService
 import com.blogzip.api.common.GoogleAuthService
 import com.blogzip.dto.UserToken
 import com.blogzip.service.UserService
-import jakarta.servlet.Servlet
-import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
-import org.springframework.http.HttpRequest
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -22,9 +19,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.reactive.function.client.WebClient
-import org.springframework.web.reactive.result.view.RedirectView
-import org.springframework.web.bind.annotation.*
 import java.time.DayOfWeek
 
 @RestController
@@ -78,6 +72,7 @@ class UserController(
         )
     }
 
+    // todo 구글로그인 구현, refresh token 제거
     @GetMapping("/api/v1/login/google")
     fun googleLogin(@RequestParam code: String): ResponseEntity<UserToken> {
         googleAuthService.googleLogin(code)

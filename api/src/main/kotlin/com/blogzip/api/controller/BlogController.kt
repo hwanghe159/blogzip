@@ -36,17 +36,7 @@ class BlogController(
     @GetMapping("/api/v1/blog")
     fun getAll(): ResponseEntity<List<BlogResponse>> {
         val response = blogService.findAll()
-            .map {
-                BlogResponse(
-                    id = it.id!!,
-                    name = it.name,
-                    url = it.url,
-                    rss = it.rss,
-                    rssStatus = it.rssStatus,
-                    createdBy = it.createdBy,
-                    createdAt = it.createdAt,
-                )
-            }
+            .map { BlogResponse.from(it) }
         return ResponseEntity.ok(response)
     }
 
