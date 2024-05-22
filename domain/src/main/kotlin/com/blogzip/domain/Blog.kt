@@ -32,6 +32,8 @@ class Blog(
 
     val urlCssSelector: String? = null,
 
+    val isShowOnMain: Boolean,
+
     val createdBy: Long,
 
     @CreatedDate

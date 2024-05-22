@@ -36,6 +36,7 @@ interface ArticleRepository : JpaRepository<Article, Long> {
             and article.createdDate <= :to
             and (:next is null or article.id <= :next)
             and article.summary is not null
+            and blog.isShowOnMain = true
         """
     )
     fun search(

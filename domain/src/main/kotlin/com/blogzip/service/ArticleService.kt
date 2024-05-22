@@ -17,7 +17,7 @@ class ArticleService(private val repository: ArticleRepository) {
 
     var log = logger()
 
-    // 노출될 글 조회
+    // 메인에 노출될 글 조회
     @Transactional(readOnly = true)
     fun search(from: LocalDate, to: LocalDate?, next: Long?, size: Int): SearchedArticles {
         val articles = repository.search(

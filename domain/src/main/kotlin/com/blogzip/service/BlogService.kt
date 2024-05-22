@@ -42,6 +42,7 @@ class BlogService(private val repository: BlogRepository) {
                 image = image,
                 rss = rss,
                 rssStatus = rssStatus,
+                isShowOnMain = false,
                 createdBy = createdBy
             )
         )

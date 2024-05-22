@@ -3,7 +3,6 @@ package com.blogzip.crawler.service
 import com.blogzip.crawler.common.logger
 import com.blogzip.crawler.confg.SeleniumProperties
 import com.blogzip.crawler.vo.VelogUrl
-import org.jsoup.Jsoup
 import org.openqa.selenium.By
 import org.openqa.selenium.WebDriver
 import org.openqa.selenium.WebElement
@@ -51,13 +50,14 @@ class WebScrapper(
         val webDriver = createWebDriver()
         try {
             webDriver.get(url)
-            val pageSource = webDriver.pageSource
-            val document = Jsoup.parse(pageSource)
-            val imageElement = document
-                .select("head meta[property=og:image]")
-                .firstOrNull()
-                ?: throw RuntimeException("head 태그 내 image가 존재하지 않음.")
-            return imageElement.attr("content")
+            val wait = WebDriverWait(webDriver, TIMEOUT)
+            val element =
+                wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("meta[property='og:image']")))
+            val imageUrl = element.getAttribute("content")
+            if (imageUrl.isBlank()) {
+                throw RuntimeException("head 태그 내 image가 공백임.")
+            }
+            return imageUrl
         } catch (e: Exception) {
             throw RuntimeException("웹페이지의 이미지 조회 실패. url=$url", e)
         } finally {
