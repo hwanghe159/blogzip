@@ -54,8 +54,10 @@ class SummarizeJobConfig(
                 for (article in articles) {
                     runBlocking {
                         val summary = articleContentSummarizer.summarize(article.content)
-                        article.summary = summary
-                        article.summarizedBy = "gpt-3.5-turbo-0125"
+                        if (summary != null) {
+                            article.summary = summary
+                            article.summarizedBy = "gpt-3.5-turbo-0125"
+                        }
                     }
                 }
                 log.warn("요약 성공. 총 ${articles.size}건")

@@ -4,7 +4,7 @@ import {useEffect, useState} from "react";
 import {Api} from "../utils/Api";
 import styled from "styled-components";
 import InfiniteScroll from "react-infinite-scroll-component";
-import Article from "./Article";
+import ArticlesWithDate from "./ArticlesWithDate";
 
 export interface ArticleResponse {
   id: number;
@@ -43,7 +43,7 @@ function ArticlesPage() {
 
   const [articles, setArticles] = useState<ArticleResponse[]>([]);
   const [hasMore, setHasMore] = useState<boolean>(true);
-  const yesterday = new Date(new Date().setDate(new Date().getDate() - 1));
+  const past = new Date(new Date().setDate(new Date().getDate() - 7));
 
   useEffect(() => {
     fetchData()
@@ -53,7 +53,7 @@ function ArticlesPage() {
     Api.get(`/api/v1/article`, {
       params:
           {
-            from: yesterday.toLocaleDateString('en-CA'),
+            from: past.toLocaleDateString('en-CA'),
             next: articles.length == 0 ? null : articles[articles.length - 1].id,
           }
     })
@@ -74,9 +74,21 @@ function ArticlesPage() {
     });
   }
 
+  function groupArticlesByDate(articles: ArticleResponse[]): ArticleResponse[][] {
+    const groupedArticles: { [key: string]: ArticleResponse[] } = {};
+    articles.forEach((article) => {
+      const date = article.createdDate;
+      if (!groupedArticles[date.toString()]) {
+        groupedArticles[date.toString()] = [];
+      }
+      groupedArticles[date.toString()].push(article);
+    });
+    return Object.values(groupedArticles);
+  }
+
   return (
       <Container>
-        <Typography variant="h4" component="h4">어제 올라온 새 글</Typography>
+        <Typography variant="h4" component="h4">최근 일주일간 올라온 새 글</Typography>
         <Typography variant="h6" component="h6">ChatGPT 요약</Typography>
         <InfiniteScroll
             dataLength={articles.length}
@@ -93,8 +105,12 @@ function ArticlesPage() {
               </p>
             }
         >
-          {articles.map(article =>
-              <Article key={article.id} article={article}/>
+          {groupArticlesByDate(articles)
+          .map(articles =>
+              <ArticlesWithDate key={articles[0].createdDate}
+                                date={articles[0].createdDate}
+                                articles={articles}
+              />
           )}
         </InfiniteScroll>
       </Container>

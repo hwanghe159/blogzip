@@ -1,6 +1,7 @@
 import * as React from 'react';
 import Button from '@mui/material/Button';
 import styled from 'styled-components';
+import {Link, useNavigate} from "react-router-dom";
 
 const Container = styled.nav`
   //justify-content: center; // 좌우 정렬
@@ -31,17 +32,15 @@ const Logo = styled.div`
 `;
 
 function NavBar() {
-
-  function login() {
-    alert("준비중이에요!")
-  }
+  const navigate = useNavigate();
 
   return (
       <Container>
         <NavBarInner>
-          <Logo>블로그zip</Logo>
+          <Logo onClick={() => navigate('/')}>블로그zip</Logo>
           <Button
-              onClick={login}
+              to="/login"
+              component={Link}
               size="large"
               disableRipple={true}>
             로그인

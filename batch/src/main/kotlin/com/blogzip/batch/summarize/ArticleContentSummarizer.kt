@@ -9,41 +9,54 @@ import com.aallam.openai.api.message.MessageRequest
 import com.aallam.openai.api.run.RunRequest
 import com.aallam.openai.api.thread.ThreadId
 import com.aallam.openai.client.OpenAI
+import com.blogzip.batch.common.logger
 import com.blogzip.batch.config.OpenAiProperties
+import com.blogzip.notification.common.SlackSender
 import kotlinx.coroutines.delay
 import org.springframework.stereotype.Component
 
 @Component
-class ArticleContentSummarizer(private val openAiProperties: OpenAiProperties) {
+class ArticleContentSummarizer(
+    private val openAiProperties: OpenAiProperties,
+    private val slackSender: SlackSender,
+) {
+
+    val log = logger()
 
     @OptIn(BetaOpenAI::class)
-    suspend fun summarize(content: String): String {
+    suspend fun summarize(content: String): String? {
         val openAI = OpenAI(openAiProperties.apiKey)
         val threadId = ThreadId(openAiProperties.threadId)
         val assistantId = AssistantId(openAiProperties.assistantId)
 
-        // GET https://api.openai.com/v1/threads/{thread_id}/messages
-        openAI.message(
-            threadId = threadId,
-            request = MessageRequest(
-                role = Role.User,
-                content = content
+        try {
+            // GET https://api.openai.com/v1/threads/{thread_id}/messages
+            openAI.message(
+                threadId = threadId,
+                request = MessageRequest(
+                    role = Role.User,
+                    content = content
+                )
             )
-        )
-        // POST https://api.openai.com/v1/threads/{thread_id}/runs
-        val run = openAI.createRun(
-            threadId,
-            request = RunRequest(
-                assistantId = assistantId
+            // POST https://api.openai.com/v1/threads/{thread_id}/runs
+            val run = openAI.createRun(
+                threadId,
+                request = RunRequest(
+                    assistantId = assistantId
+                )
             )
-        )
-        do {
-            delay(3000)
-            // GET https://api.openai.com/v1/threads/{thread_id}/runs/{run_id}
-            val retrievedRun = openAI.getRun(threadId = threadId, runId = run.id)
-        } while (retrievedRun.status != Status.Completed)
-        val messages = openAI.messages(threadId)
-        val textContent = messages.first().content.first() as MessageContent.Text
-        return textContent.text.value
+            do {
+                delay(3000)
+                // GET https://api.openai.com/v1/threads/{thread_id}/runs/{run_id}
+                val retrievedRun = openAI.getRun(threadId = threadId, runId = run.id)
+            } while (retrievedRun.status != Status.Completed)
+            val messages = openAI.messages(threadId)
+            val textContent = messages.first().content.first() as MessageContent.Text
+            return textContent.text.value
+        } catch (e: Exception) {
+            log.error("요약 실패. content = ${content.substring(0, 100)}...", e)
+            slackSender.sendStackTraceAsync(SlackSender.SlackChannel.ERROR_LOG, e)
+            return null
+        }
     }
 }
