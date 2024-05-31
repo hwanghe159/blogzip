@@ -1,7 +1,10 @@
 import * as React from 'react';
-import Button from '@mui/material/Button';
 import styled from 'styled-components';
-import {Link, useNavigate} from "react-router-dom";
+import {useNavigate} from "react-router-dom";
+import GoogleLoginButton from "./GoogleLoginButton";
+import {useEffect} from "react";
+import {getLoginUser} from "../utils/LoginUserHelper";
+import Profile from "./Profile";
 
 const Container = styled.nav`
   //justify-content: center; // 좌우 정렬
@@ -29,22 +32,32 @@ const NavBarInner = styled.div`
 const Logo = styled.div`
   font-size: 24px;
   font-weight: bold;
+  cursor: pointer;
 `;
+
+export interface LoginUser {
+  id: number;
+  accessToken: string,
+  email: string,
+  image: string,
+}
 
 function NavBar() {
   const navigate = useNavigate();
+  const [loginUser, setLoginUser] = React.useState<LoginUser | null>(null);
+
+  useEffect(() => {
+    const storedUser = getLoginUser()
+    if (storedUser) {
+      setLoginUser(storedUser);
+    }
+  }, []);
 
   return (
       <Container>
         <NavBarInner>
           <Logo onClick={() => navigate('/')}>블로그zip</Logo>
-          <Button
-              to="/login"
-              component={Link}
-              size="large"
-              disableRipple={true}>
-            로그인
-          </Button>
+          {loginUser == null ? (<GoogleLoginButton/>) : (<Profile/>)}
         </NavBarInner>
       </Container>
   );

@@ -5,4 +5,9 @@ spring:
 jwt:
   secret-key: secretsecretsecretsecretsecretsecretsecretsecretsecretsecret
   access-token-expires-days: 1
-  refresh-token-expires-days: 30
+
+oauth2:
+  google:
+    client-id: client-id
+    client-secret: client-secret
+    redirect-uri: redirect-uri

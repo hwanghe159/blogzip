@@ -1,87 +1,40 @@
 package com.blogzip.api.controller
 
+import com.blogzip.api.auth.Authenticated
+import com.blogzip.api.auth.AuthenticatedUser
 import com.blogzip.api.dto.*
-import com.blogzip.common.DomainException
-import com.blogzip.common.ErrorCode
 import com.blogzip.domain.User
-import com.blogzip.notification.common.SlackSender
-import com.blogzip.notification.common.SlackSender.SlackChannel.MONITORING
-import com.blogzip.notification.email.EmailSender
-import com.blogzip.api.common.AuthService
 import com.blogzip.api.common.GoogleAuthService
-import com.blogzip.dto.UserToken
 import com.blogzip.service.UserService
-import jakarta.validation.Valid
+import io.swagger.v3.oas.annotations.Parameter
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.time.DayOfWeek
 
 @RestController
 class UserController(
     private val userService: UserService,
-    private val authService: AuthService,
     private val googleAuthService: GoogleAuthService,
-    private val emailSender: EmailSender,
-    private val slackSender: SlackSender,
 ) {
 
-    @PostMapping("/api/v1/user")
-    fun add(@RequestBody @Valid request: UserCreateRequest): ResponseEntity<Void> {
-        val email = request.email
-        val user = userService.findByEmail(email)
-        val verificationCode = RandomCode(length = 20).value
-        if (user == null) {
-            userService.save(email, verificationCode)
-            emailSender.sendVerification(email, verificationCode)
-            return ResponseEntity.ok().build()
-        }
-        if (user.isVerified) {
-            throw DomainException(ErrorCode.ALREADY_VERIFIED)
-        }
-        if (!user.isVerificationCodeExpired()) {
-            throw DomainException(ErrorCode.ALREADY_SENT_VERIFICATION_EMAIL)
-        }
-        user.refreshVerificationCode(verificationCode)
-        emailSender.sendVerification(email, verificationCode)
-        slackSender.sendMessageAsync(channel = MONITORING, "회원가입 발생! email=$email")
-        return ResponseEntity.ok().build()
-    }
-
-    @GetMapping("/api/v1/email/{emailAddress}/verify/{code}")
-    fun verifyEmail(
-        @PathVariable emailAddress: String,
-        @PathVariable code: String
-    ): ResponseEntity<Void> {
-        userService.verify(emailAddress, code)
-        return ResponseEntity.ok().build()
-    }
-
-    @PostMapping("/api/v1/login")
-    fun login(@RequestBody @Valid request: LoginRequest): ResponseEntity<LoginResponse> {
-        val token = authService.login(request.email, request.password)
-        return ResponseEntity.ok(
-            LoginResponse(
-                token.accessToken,
-                token.refreshToken
-            )
-        )
-    }
-
-    // todo 구글로그인 구현, refresh token 제거
     @GetMapping("/api/v1/login/google")
-    fun googleLogin(@RequestParam code: String): ResponseEntity<UserToken> {
-        googleAuthService.googleLogin(code)
+    fun googleLogin(@RequestParam code: String): ResponseEntity<LoginResponse> {
+        val response = googleAuthService.googleLogin(code)
+        return ResponseEntity.ok(response)
+    }
 
-        return ResponseEntity.ok(
-            UserToken(
-                accessToken = "", refreshToken = ""
-            )
-        )
+    @GetMapping("/api/v1/me")
+    fun me(@Parameter(hidden = true) @Authenticated user: AuthenticatedUser): ResponseEntity<UserResponse> {
+        return ResponseEntity.ok(UserResponse.from(user))
+    }
+
+    @PutMapping("/api/v1/me")
+    fun update(
+        @Parameter(hidden = true) @Authenticated user: AuthenticatedUser,
+        @RequestBody request: UserUpdateRequest,
+    ): ResponseEntity<UserResponse> {
+        userService.update(user.id, request.receiveDays)
+        return ResponseEntity.ok(UserResponse.from(user))
     }
 
     @GetMapping("/api/v1/user/{day}")

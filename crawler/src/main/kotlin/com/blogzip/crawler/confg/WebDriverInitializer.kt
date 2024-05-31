@@ -7,7 +7,7 @@ class WebDriverInitializer {
 
     companion object {
         fun initialize() {
-            WebDriverManager.chromedriver().driverVersion("123.0.6312.122").setup()
+            WebDriverManager.chromedriver().setup()
         }
     }
 }

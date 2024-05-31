@@ -56,7 +56,7 @@ class EmailSendJobConfig(
         return StepBuilder("email-send", jobRepository)
             .tasklet({ _, _ ->
                 val today = LocalDate.now()
-                val users = userService.findAllByDayOfWeek(today.dayOfWeek).filter { it.isVerified }
+                val users = userService.findAllByDayOfWeek(today.dayOfWeek)
                 for (user in users) {
                     val accumulatedDates = user.getAccumulatedDates(today)
                     val newArticles = user.subscriptions

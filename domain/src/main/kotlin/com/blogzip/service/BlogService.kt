@@ -47,4 +47,9 @@ class BlogService(private val repository: BlogRepository) {
             )
         )
     }
+
+    @Transactional(readOnly = true)
+    fun search(query: String): List<Blog> {
+        return repository.search(query)
+    }
 }

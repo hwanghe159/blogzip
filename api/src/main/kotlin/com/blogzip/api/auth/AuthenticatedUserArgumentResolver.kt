@@ -35,6 +35,14 @@ class AuthenticatedUserArgumentResolver(
         val email = jwtService.getEmail(token) ?: throw DomainException(ErrorCode.LOGIN_FAILED)
         val user =
             userService.findByEmail(email) ?: throw DomainException(ErrorCode.LOGIN_FAILED)
-        return AuthenticatedUser(id = user.id!!, email = user.email)
+        return AuthenticatedUser(
+            id = user.id!!,
+            email = user.email,
+            socialType = user.socialType,
+            socialId = user.socialId,
+            receiveDays = user.receiveDays,
+            createdAt = user.createdAt,
+            updatedAt = user.updatedAt,
+        )
     }
 }

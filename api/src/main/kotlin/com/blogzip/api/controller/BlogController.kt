@@ -26,7 +26,6 @@ class BlogController(
     private val slackSender: SlackSender,
 ) {
 
-    // todo EC2에선 swagger 예제만 나오는중..
     @GetMapping("/api/v1/blog/{id}")
     fun get(@PathVariable id: Long): ResponseEntity<BlogResponse> {
         val blog = blogService.findById(id)
@@ -36,6 +35,15 @@ class BlogController(
     @GetMapping("/api/v1/blog")
     fun getAll(): ResponseEntity<List<BlogResponse>> {
         val response = blogService.findAll()
+            .map { BlogResponse.from(it) }
+        return ResponseEntity.ok(response)
+    }
+
+    @GetMapping("/api/v1/blog/search")
+    fun searchBlog(
+        @RequestParam(required = true) query: String,
+    ): ResponseEntity<List<BlogResponse>> {
+        val response = blogService.search(query)
             .map { BlogResponse.from(it) }
         return ResponseEntity.ok(response)
     }

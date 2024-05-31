@@ -9,9 +9,6 @@ create table user
 (
     id                           bigint auto_increment primary key,
     email                        varchar(200) not null comment '이메일 주소',
-    password                     varchar(200) null comment '암호화된 비밀번호',
-    verification_code            varchar(100) not null comment '이메일 인증코드',
-    is_verified                  tinyint(1)   not null default 0 comment '이메일 인증 여부',
     receive_days                 varchar(100) not null comment '수신 희망 요일',
     verification_code_expired_at datetime     not null default current_timestamp comment '이메일 인증코드 만료시각',
     created_at                   datetime     not null default current_timestamp comment '생성 시각',
@@ -40,7 +37,7 @@ create table subscription
     created_at datetime not null default current_timestamp comment '구독 시각',
     unique index udx_user_blog (user_id, blog_id),
     index idx_user_id (user_id),
-    index idx_blog_id (blog_id),
+    index idx_blog_id (blog_id)
 ) comment '사용자-블로그 구독 정보';
 
 create table article

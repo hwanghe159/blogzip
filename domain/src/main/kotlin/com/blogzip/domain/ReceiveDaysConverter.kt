@@ -9,6 +9,9 @@ class ReceiveDaysConverter {
         }
 
         fun toList(dbData: String): List<DayOfWeek> {
+            if (dbData.isBlank()) {
+                return emptyList()
+            }
             return dbData.split(",").map { DayOfWeek.valueOf(it) }
         }
     }

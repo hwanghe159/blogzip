@@ -9,14 +9,10 @@ spring:
 jwt:
   secret-key: "${JWT_SECRET_KEY}"
   access-token-expires-days: 7
-  refresh-token-expires-days: 30
 oauth2:
   google:
     client-id: 538244264177-f2a956r71n7g6cp1tomqfmcsvdu6nhcp.apps.googleusercontent.com
-    client-secret: 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
-    scope:
-      - profile
-      - email
+    client-secret: ${GOOGLE_CLIENT_SECRET}
 logging:
   level:
     org.hibernate.SQL: info

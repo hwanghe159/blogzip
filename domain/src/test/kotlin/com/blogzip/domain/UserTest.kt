@@ -20,8 +20,9 @@ class UserTest {
     ) {
         val user = User(
             email = "",
+            socialType = SocialType.GOOGLE,
+            socialId = "",
             receiveDays = ReceiveDaysConverter.toString(receiveDays),
-            verificationCode = ""
         )
 
         val accumulatedDates = user.getAccumulatedDates(date)

@@ -3,6 +3,7 @@ package com.blogzip.service
 import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
 import com.blogzip.domain.ReceiveDaysConverter
+import com.blogzip.domain.SocialType
 import com.blogzip.domain.User
 import com.blogzip.domain.UserRepository
 import org.springframework.stereotype.Service
@@ -18,6 +19,11 @@ class UserService(private val repository: UserRepository) {
     }
 
     @Transactional(readOnly = true)
+    fun findById(id: Long): User? {
+        return repository.findById(id).orElse(null)
+    }
+
+    @Transactional(readOnly = true)
     fun findByEmail(email: String): User? {
         return repository.findByEmail(email)
     }
@@ -28,32 +34,19 @@ class UserService(private val repository: UserRepository) {
     }
 
     @Transactional
-    fun verify(email: String, code: String) {
-        val user = repository.findByEmail(email) ?: throw DomainException(ErrorCode.EMAIL_NOT_FOUND)
-        user.verify(code)
-    }
-
-    @Transactional
-    fun save(
-        email: String,
-        verificationCode: String
-    ): User {
-        return repository.save(
-            User(
-                email = email,
-                verificationCode = verificationCode,
-                receiveDays = ReceiveDaysConverter.toString(DayOfWeek.entries),
-            )
-        )
-    }
-
-    @Transactional
     fun save(user: User): User {
         return repository.save(user)
     }
 
     @Transactional(readOnly = true)
     fun findByGoogleId(googleId: String): User? {
-        return repository.findByGoogleId(googleId)
+        return repository.findBySocialTypeAndSocialId(SocialType.GOOGLE, googleId)
+    }
+
+    @Transactional
+    fun update(id: Long, receiveDays: List<String>): User {
+        return repository.findById(id)
+            .orElseThrow { DomainException(ErrorCode.USER_NOT_FOUND) }
+            .updateReceiveDays(ReceiveDaysConverter.toString(receiveDays.map { DayOfWeek.valueOf(it) }))
     }
 }

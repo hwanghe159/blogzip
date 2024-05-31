@@ -1,7 +1,5 @@
 package com.blogzip.domain
 
-import com.blogzip.common.DomainException
-import com.blogzip.common.ErrorCode
 import jakarta.persistence.*
 import org.springframework.data.annotation.CreatedDate
 import org.springframework.data.annotation.LastModifiedDate
@@ -19,13 +17,12 @@ class User(
 
     val email: String,
 
-    val googleId: String? = null,
+    @Enumerated(EnumType.STRING)
+    val socialType: SocialType,
 
-    var verificationCode: String,
+    val socialId: String,
 
-    var isVerified: Boolean = false,
-
-    val receiveDays: String,
+    var receiveDays: String,
 
     @OneToMany(
         mappedBy = "user",
@@ -40,36 +37,7 @@ class User(
 
     @LastModifiedDate
     var updatedAt: LocalDateTime = LocalDateTime.MIN,
-
-    var verificationCodeExpiredAt: LocalDateTime =
-        LocalDateTime.now().plusHours(VERIFICATION_CODE_EXPIRY_HOURS)
 ) {
-
-    companion object {
-        private const val VERIFICATION_CODE_EXPIRY_HOURS: Long = 24
-    }
-
-    fun verify(verificationCode: String): User {
-        if (this.isVerified) {
-            throw DomainException(ErrorCode.ALREADY_VERIFIED)
-        }
-        if (this.verificationCode != verificationCode || isVerificationCodeExpired()) {
-            throw DomainException(ErrorCode.VERIFY_FAILED)
-        }
-        this.isVerified = true
-        return this
-    }
-
-    fun isVerificationCodeExpired(): Boolean {
-        return this.verificationCodeExpiredAt <= LocalDateTime.now()
-    }
-
-    fun refreshVerificationCode(verificationCode: String): User {
-        this.verificationCode = verificationCode
-        this.verificationCodeExpiredAt =
-            LocalDateTime.now().plusHours(VERIFICATION_CODE_EXPIRY_HOURS)
-        return this
-    }
 
     fun addSubscription(blog: Blog): Subscription {
         val subscription = Subscription(user = this, blog = blog)
@@ -97,5 +65,10 @@ class User(
             result.add(date)
         }
         return result.reversed()
+    }
+
+    fun updateReceiveDays(receiveDays: String): User {
+        this.receiveDays = receiveDays
+        return this
     }
 }

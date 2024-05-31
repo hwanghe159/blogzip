@@ -1,6 +1,6 @@
 import * as React from 'react';
 import Typography from "@mui/material/Typography";
-import {ArticleResponse} from "./ArticlesPage";
+import {ArticleResponse} from "../pages/MainPage";
 import Article from "./Article";
 import Box from "@mui/material/Box";
 

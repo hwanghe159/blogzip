@@ -4,7 +4,10 @@ import {useEffect, useState} from "react";
 import {Api} from "../utils/Api";
 import styled from "styled-components";
 import InfiniteScroll from "react-infinite-scroll-component";
-import ArticlesWithDate from "./ArticlesWithDate";
+import ArticlesWithDate from "../components/ArticlesWithDate";
+import {CircularProgress} from "@mui/material";
+import Box from "@mui/material/Box";
+import {getLoginUser, isLogined} from "../utils/LoginUserHelper";
 
 export interface ArticleResponse {
   id: number;
@@ -39,7 +42,7 @@ const Container = styled.nav`
   }
 `;
 
-function ArticlesPage() {
+function MainPage() {
 
   const [articles, setArticles] = useState<ArticleResponse[]>([]);
   const [hasMore, setHasMore] = useState<boolean>(true);
@@ -50,7 +53,18 @@ function ArticlesPage() {
   }, []);
 
   function fetchData() {
-    Api.get(`/api/v1/article`, {
+    let url: string;
+    let headers = {};
+    if (isLogined()) {
+      url = '/api/v1/my/article';
+      headers = {
+        Authorization: `Bearer ${getLoginUser()?.accessToken}`,
+      }
+    } else {
+      url = '/api/v1/article';
+    }
+    Api.get(url, {
+      headers: headers,
       params:
           {
             from: past.toLocaleDateString('en-CA'),
@@ -94,7 +108,12 @@ function ArticlesPage() {
             dataLength={articles.length}
             next={fetchData}
             hasMore={hasMore}
-            loader={<h4>Loading...</h4>}
+            loader=
+                {
+                  <Box sx={{display: 'flex', justifyContent: 'center'}}>
+                    <CircularProgress/>
+                  </Box>
+                }
             endMessage={
               <p style={{
                 textAlign: 'center',
@@ -117,4 +136,4 @@ function ArticlesPage() {
   );
 }
 
-export default ArticlesPage;
+export default MainPage;

@@ -7,7 +7,7 @@ import java.time.DayOfWeek
 interface UserRepository : JpaRepository<User, Long> {
     fun findByEmail(email: String): User?
 
-    fun findByGoogleId(googleId: String): User?
+    fun findBySocialTypeAndSocialId(socialType: SocialType, socialId: String): User?
 
     @Query(
         """

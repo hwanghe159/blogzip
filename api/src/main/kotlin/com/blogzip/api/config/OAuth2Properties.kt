@@ -10,6 +10,5 @@ data class OAuth2Properties(
         val clientId: String,
         val clientSecret: String,
         val redirectUri: String,
-        val scope: List<String>,
     )
 }

@@ -45,4 +45,25 @@ interface ArticleRepository : JpaRepository<Article, Long> {
         next: Long?,
         pageable: Pageable
     ): List<Article>
+
+    @Query(
+        """
+            select article
+            from Article article 
+            join fetch article.blog blog
+            join fetch blog.subscriptions subscriptions
+            where subscriptions.user.id = :userId 
+            and article.createdDate >= :from
+            and article.createdDate <= :to
+            and (:next is null or article.id <= :next)
+            and article.summary is not null
+        """
+    )
+    fun searchMy(
+        userId: Long,
+        from: LocalDate,
+        to: LocalDate,
+        next: Long?,
+        pageable: Pageable
+    ): List<Article>
 }

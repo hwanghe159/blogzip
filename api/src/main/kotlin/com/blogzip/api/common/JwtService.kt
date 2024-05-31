@@ -2,7 +2,6 @@ package com.blogzip.api.common
 
 import com.blogzip.api.auth.JwtProperties
 import com.blogzip.domain.User
-import com.blogzip.dto.UserToken
 import io.jsonwebtoken.Claims
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
@@ -17,7 +16,7 @@ class JwtService(
 
     private final val key = Keys.hmacShaKeyFor(jwtProperties.secretKey.toByteArray(Charsets.UTF_8))
 
-    fun createToken(user: User): UserToken {
+    fun createToken(user: User): String {
         val now = Date()
         val accessTokenExpiration =
             Date(now.time + jwtProperties.accessTokenExpiresDays * 1000 * 60 * 60 * 24)
@@ -29,7 +28,7 @@ class JwtService(
             .expiration(accessTokenExpiration)
             .signWith(key, Jwts.SIG.HS256)
             .compact()
-        return UserToken(accessToken, refreshToken = "")
+        return accessToken
     }
 
     fun getEmail(token: String): String? {

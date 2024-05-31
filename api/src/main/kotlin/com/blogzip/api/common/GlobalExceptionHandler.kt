@@ -26,13 +26,15 @@ private val ErrorCode.toHttpStatus: HttpStatus
 
 @RestControllerAdvice
 class GlobalExceptionHandler(
-    private val SlackSender: SlackSender
+    private val slackSender: SlackSender
 ) {
 
     val log = logger()
 
     @ExceptionHandler(value = [DomainException::class])
     fun handleDomainException(ex: DomainException): ResponseEntity<ErrorResponse> {
+        log.warn(ex.message, ex)
+        slackSender.sendStackTraceAsync(ERROR_LOG, ex)
         val errorCode: ErrorCode = ex.errorCode
         val response = ErrorResponse(code = errorCode.name, message = errorCode.message)
         return ResponseEntity
@@ -42,6 +44,8 @@ class GlobalExceptionHandler(
 
     @ExceptionHandler(value = [MethodArgumentNotValidException::class])
     fun handleMethodArgumentNotValidException(ex: MethodArgumentNotValidException): ResponseEntity<ErrorResponse> {
+        log.warn(ex.message, ex)
+        slackSender.sendStackTraceAsync(ERROR_LOG, ex)
         return ResponseEntity
             .status(HttpStatus.BAD_REQUEST)
             .body(
@@ -55,7 +59,7 @@ class GlobalExceptionHandler(
     @ExceptionHandler(value = [Exception::class])
     fun handleException(ex: Exception): ResponseEntity<ErrorResponse> {
         log.error(ex.message, ex)
-        SlackSender.sendStackTraceAsync(ERROR_LOG, ex)
+        slackSender.sendStackTraceAsync(ERROR_LOG, ex)
         val response = ErrorResponse(code = null, message = null)
         return ResponseEntity
             .internalServerError()

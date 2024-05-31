@@ -2,7 +2,7 @@ import * as React from 'react';
 import {Card, CardContent, CardMedia, Divider} from "@mui/material";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import {ArticleResponse} from "./ArticlesPage";
+import {ArticleResponse} from "../pages/MainPage";
 
 interface ArticleProps {
   article: ArticleResponse
