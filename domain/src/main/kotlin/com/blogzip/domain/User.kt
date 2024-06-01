@@ -18,9 +18,9 @@ class User(
     val email: String,
 
     @Enumerated(EnumType.STRING)
-    val socialType: SocialType,
+    var socialType: SocialType,
 
-    val socialId: String,
+    var socialId: String,
 
     var receiveDays: String,
 
@@ -70,5 +70,10 @@ class User(
     fun updateReceiveDays(receiveDays: String): User {
         this.receiveDays = receiveDays
         return this
+    }
+
+    fun updateGoogleId(googleId: String) {
+        this.socialType = SocialType.GOOGLE
+        this.socialId = googleId
     }
 }

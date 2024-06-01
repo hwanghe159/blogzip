@@ -31,9 +31,12 @@ class GoogleAuthService(
 
         val googleId = googleUserInfo.sub
         val email = googleUserInfo.email
-        var user = userService.findByGoogleId(googleId)
-        if (user == null) {
-            user = userService.save(
+        val user = userService.findByEmail(email)
+        if (user != null) {
+            user.updateGoogleId(googleId)
+            userService.save(user)
+        } else {
+            userService.save(
                 User(
                     email = email,
                     socialType = SocialType.GOOGLE,
@@ -46,7 +49,7 @@ class GoogleAuthService(
                 "회원가입 발생! email=${email}"
             )
         }
-        val accessToken = jwtService.createToken(user)
+        val accessToken = jwtService.createToken(user!!)
         return LoginResponse(
             id = user.id!!,
             accessToken = accessToken,
