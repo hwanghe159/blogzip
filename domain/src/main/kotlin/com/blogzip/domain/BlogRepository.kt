@@ -16,4 +16,14 @@ interface BlogRepository : JpaRepository<Blog, Long> {
     """
     )
     fun search(query: String): List<Blog>
+
+    @Query(
+        """
+            select blog
+            from Blog blog
+            join fetch blog.subscriptions subscriptions 
+            where subscriptions.user.id = :userId
+    """
+    )
+    fun getSubscribedBlogs(userId: Long): List<Blog>
 }

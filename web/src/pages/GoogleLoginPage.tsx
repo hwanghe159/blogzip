@@ -40,7 +40,7 @@ export function GoogleLoginPage() {
           minHeight="100vh"
       >
         <Typography component="h6" variant="h6">
-          리다이렉트 중..
+          로그인 중..
         </Typography>
       </Box>
   )

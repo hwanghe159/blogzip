@@ -117,6 +117,5 @@ class GoogleAuthService(
          */
         val name: String,
         val picture: String,
-        val locale: String,
     )
 }

@@ -3,6 +3,7 @@ package com.blogzip.service
 import com.blogzip.common.logger
 import com.blogzip.domain.Article
 import com.blogzip.domain.ArticleRepository
+import com.blogzip.domain.Blog
 import com.blogzip.domain.User
 import com.blogzip.dto.SearchedArticles
 import org.springframework.data.domain.PageRequest
@@ -37,14 +38,14 @@ class ArticleService(private val repository: ArticleRepository) {
     // 메인에 노출될 글 조회 (로그인)
     @Transactional(readOnly = true)
     fun searchMy(
-        userId: Long,
+        blogs: Collection<Blog>,
         from: LocalDate,
         to: LocalDate?,
         next: Long?,
         size: Int
     ): SearchedArticles {
         val articles = repository.searchMy(
-            userId,
+            blogs,
             from,
             to ?: LocalDate.now(),
             next,

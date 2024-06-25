@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.servlet.resource.NoResourceFoundException
 
 private val ErrorCode.toHttpStatus: HttpStatus
     get() {
@@ -54,6 +55,16 @@ class GlobalExceptionHandler(
                     message = ex.bindingResult.allErrors.firstOrNull()?.defaultMessage
                 )
             )
+    }
+
+    // 없는 API 호출
+    @ExceptionHandler(value = [NoResourceFoundException::class])
+    fun handleNoResourceFoundException(ex: NoResourceFoundException): ResponseEntity<ErrorResponse> {
+        log.error(ex.message, ex)
+        val response = ErrorResponse(code = null, message = null)
+        return ResponseEntity
+            .internalServerError()
+            .body(response)
     }
 
     @ExceptionHandler(value = [Exception::class])

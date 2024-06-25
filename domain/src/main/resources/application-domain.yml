@@ -2,6 +2,10 @@ spring:
   jpa:
     database: mysql
     open-in-view: false
+    properties:
+      hibernate:
+        query:
+          fail_on_pagination_over_collection_fetch: true # 메모리에서 페이징 처리 사전 차단
 
 ---
 spring:

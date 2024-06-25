@@ -51,8 +51,7 @@ interface ArticleRepository : JpaRepository<Article, Long> {
             select article
             from Article article 
             join fetch article.blog blog
-            join fetch blog.subscriptions subscriptions
-            where subscriptions.user.id = :userId 
+            where article.blog in :blogs
             and article.createdDate >= :from
             and article.createdDate <= :to
             and (:next is null or article.id <= :next)
@@ -60,7 +59,7 @@ interface ArticleRepository : JpaRepository<Article, Long> {
         """
     )
     fun searchMy(
-        userId: Long,
+        blogs: Collection<Blog>,
         from: LocalDate,
         to: LocalDate,
         next: Long?,
