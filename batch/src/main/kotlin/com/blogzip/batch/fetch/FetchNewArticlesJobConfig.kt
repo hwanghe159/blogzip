@@ -22,6 +22,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.transaction.PlatformTransactionManager
 import java.lang.Exception
+import java.lang.RuntimeException
 import java.time.LocalDate
 
 @Configuration
@@ -88,8 +89,9 @@ class FetchNewArticlesJobConfig(
                 try {
                     articles = rssFeedFetcher.fetchArticles(blog.rss!!)
                 } catch (e: Exception) {
-                    log.error("${blog.rss}의 글 가져오기 실패.", e)
-                    slackSender.sendStackTraceAsync(channel = ERROR_LOG, e)
+                    val exception = RuntimeException("${blog.rss}의 글 가져오기 실패.", e)
+                    log.error(exception.message, exception)
+                    slackSender.sendStackTraceAsync(channel = ERROR_LOG, exception)
                 }
                 articles.filter {
                     if (it.createdDate == null) {
