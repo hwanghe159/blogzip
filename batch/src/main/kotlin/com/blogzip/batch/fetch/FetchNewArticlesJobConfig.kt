@@ -4,7 +4,7 @@ import com.blogzip.batch.common.JobResultListener
 import com.blogzip.batch.common.logger
 import com.blogzip.crawler.service.RssFeedFetcher
 import com.blogzip.crawler.service.WebScrapper
-import com.blogzip.domain.Article
+import com.blogzip.crawler.service.XmlParser
 import com.blogzip.domain.Blog
 import com.blogzip.domain.Blog.RssStatus.*
 import com.blogzip.notification.common.SlackSender
@@ -33,6 +33,7 @@ class FetchNewArticlesJobConfig(
     private val rssFeedFetcher: RssFeedFetcher,
     private val webScrapper: WebScrapper,
     private val slackSender: SlackSender,
+    private val xmlParser: XmlParser,
 ) {
 
     var log = logger()
@@ -74,7 +75,7 @@ class FetchNewArticlesJobConfig(
             .build()
     }
 
-    private fun fetchArticles(blog: Blog, from: LocalDate): List<Article> {
+    private fun fetchArticles(blog: Blog, from: LocalDate): List<com.blogzip.domain.Article> {
         return when (blog.rssStatus) {
 
             WITH_CONTENT -> {
@@ -85,14 +86,17 @@ class FetchNewArticlesJobConfig(
                     return emptyList()
                 }
 
-                var articles: List<RssFeedFetcher.ArticleData> = emptyList()
+                var articles: List<com.blogzip.crawler.dto.Article> = emptyList()
+                val xmlString = rssFeedFetcher.fetchXmlString(blog.rss!!)
                 try {
-                    articles = rssFeedFetcher.fetchArticles(blog.rss!!)
+                    articles = xmlParser.convertToArticles(xmlString)
                 } catch (e: Exception) {
-                    val exception = RuntimeException("${blog.rss}의 글 가져오기 실패.", e)
+                    val errorMessage = "xml 파싱 실패. rss=${blog.rss}, xml=${xmlString}"
+                    val exception = RuntimeException(errorMessage, e)
                     log.error(exception.message, exception)
-                    slackSender.sendStackTraceAsync(channel = ERROR_LOG, exception)
+                    slackSender.sendMessageAsync(channel = ERROR_LOG, errorMessage)
                 }
+
                 articles.filter {
                     if (it.createdDate == null) {
                         true
@@ -101,7 +105,7 @@ class FetchNewArticlesJobConfig(
                     }
                 }
                     .map {
-                        Article(
+                        com.blogzip.domain.Article(
                             blog = blog,
                             title = it.title,
                             content = it.content!!,
@@ -129,9 +133,10 @@ class FetchNewArticlesJobConfig(
                     return emptyList()
                 }
 
-                var articles: List<RssFeedFetcher.ArticleData> = emptyList()
+                var articles: List<com.blogzip.crawler.dto.Article> = emptyList()
                 try {
-                    articles = rssFeedFetcher.fetchArticles(blog.rss!!)
+                    val xmlString = rssFeedFetcher.fetchXmlString(blog.rss!!)
+                    articles = xmlParser.convertToArticles(xmlString)
                 } catch (e: Exception) {
                     log.error("${blog.rss}의 글 가져오기 실패.", e)
                     slackSender.sendStackTraceAsync(channel = ERROR_LOG, e)
@@ -154,7 +159,7 @@ class FetchNewArticlesJobConfig(
                             )
                             null
                         } else
-                            Article(
+                            com.blogzip.domain.Article(
                                 blog = blog,
                                 title = it.title,
                                 content = content,
@@ -189,7 +194,7 @@ class FetchNewArticlesJobConfig(
                         if (content == null) {
                             null
                         } else {
-                            Article(
+                            com.blogzip.domain.Article(
                                 blog = blog,
                                 title = it.title,
                                 content = content,

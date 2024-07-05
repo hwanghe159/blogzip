@@ -48,12 +48,17 @@ class SlackSender(
     }
 
     fun sendMessageAsync(channel: SlackChannel, message: String) {
+        val maxLength = 3997
         CoroutineScope(Dispatchers.Default).launch {
             callApi(
                 slackProperties.webhookUrl,
                 Payload.builder()
                     .channel("#${channel.channelName}")
-                    .text(message)
+                    .text(
+                        if (message.length > maxLength) {
+                            message.substring(0, maxLength) + "..."
+                        } else message
+                    )
                     .build()
             )
         }
