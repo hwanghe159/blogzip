@@ -7,7 +7,7 @@ import InfiniteScroll from "react-infinite-scroll-component";
 import ArticlesWithDate from "../components/ArticlesWithDate";
 import {CircularProgress} from "@mui/material";
 import Box from "@mui/material/Box";
-import {getLoginUser, isLogined} from "../utils/LoginUserHelper";
+import {getLoginUser, isLogined, removeLoginUser} from "../utils/LoginUserHelper";
 
 export interface ArticleResponse {
   id: number;
@@ -83,6 +83,8 @@ function MainPage() {
       }
     })
     .on4XX((response) => {
+      removeLoginUser()
+      window.location.href = '/';
     })
     .on5XX((response) => {
     });
