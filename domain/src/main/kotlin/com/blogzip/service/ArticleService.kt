@@ -1,5 +1,7 @@
 package com.blogzip.service
 
+import com.blogzip.common.DomainException
+import com.blogzip.common.ErrorCode
 import com.blogzip.common.logger
 import com.blogzip.domain.Article
 import com.blogzip.domain.ArticleRepository
@@ -8,6 +10,7 @@ import com.blogzip.domain.User
 import com.blogzip.dto.SearchedArticles
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
@@ -69,6 +72,12 @@ class ArticleService(private val repository: ArticleRepository) {
     @Transactional(readOnly = true)
     fun existsByUrl(url: String): Boolean {
         return repository.existsByUrl(url)
+    }
+
+    @Transactional(readOnly = true)
+    fun findById(id: Long): Article {
+        return repository.findByIdOrNull(id)
+            ?: throw DomainException(ErrorCode.ARTICLE_NOT_FOUND)
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

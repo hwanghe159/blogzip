@@ -3,7 +3,7 @@ package com.blogzip.api.common
 import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
 import com.blogzip.notification.common.SlackSender
-import com.blogzip.notification.common.SlackSender.SlackChannel.*
+import com.blogzip.notification.common.SlackSender.SlackChannel.ERROR_LOG
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -14,6 +14,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException
 private val ErrorCode.toHttpStatus: HttpStatus
     get() {
         return when (this) {
+            ErrorCode.ARTICLE_NOT_FOUND -> HttpStatus.NOT_FOUND
             ErrorCode.BLOG_NOT_FOUND -> HttpStatus.NOT_FOUND
             ErrorCode.BLOG_URL_DUPLICATED -> HttpStatus.CONFLICT
             ErrorCode.ALREADY_VERIFIED -> HttpStatus.CONFLICT
