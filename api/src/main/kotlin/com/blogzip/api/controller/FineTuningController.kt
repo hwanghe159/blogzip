@@ -5,6 +5,7 @@ import com.blogzip.api.dto.TunedArticleResponse
 import com.blogzip.domain.FineTuning
 import com.blogzip.service.ArticleService
 import com.blogzip.service.FineTuningService
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.core.io.InputStreamResource
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -17,6 +18,7 @@ import java.io.ByteArrayInputStream
 class FineTuningController(
     private val articleService: ArticleService,
     private val fineTuningService: FineTuningService,
+    private val jsonlObjectMapper: ObjectMapper,
 ) {
 
     @GetMapping("/api/v1/article/{id}/fine-tuning")
@@ -58,16 +60,13 @@ class FineTuningController(
 
     private fun convertToJsonl(tunings: List<FineTuning>): String {
         val sb = StringBuilder()
-        tunings.filter {
-            it.article.summary != null
+        tunings.forEach {
+            val map = mapOf(
+                "prompt" to it.article.content,
+                "completion" to it.summary
+            )
+            sb.appendLine(jsonlObjectMapper.writeValueAsString(map))
         }
-            .forEach {
-                sb.append(
-                    """
-                        "prompt": "${it.article.summary}","completion": "${it.summary}"
-                    """.trimIndent()
-                )
-            }
         return sb.toString()
     }
 }
