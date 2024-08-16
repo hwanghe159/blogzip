@@ -61,9 +61,17 @@ class FineTuningController(
     private fun convertToJsonl(tunings: List<FineTuning>): String {
         val sb = StringBuilder()
         tunings.forEach {
+//            val map = mapOf(
+//                "prompt" to it.article.content,
+//                "completion" to it.summary
+//            )
+
             val map = mapOf(
-                "prompt" to it.article.content,
-                "completion" to it.summary
+                "messages" to listOf(
+                    mapOf("role" to "system", "content" to "너는 한국인을 대상으로 하는 테크블로그 내용 요약기야. markdown 형식의 글을 입력받으면 내용을 요약하는 역할이야. 내용을 5줄 정도의 줄글로 요약해줘. 말투는 친근하지만 정중한 존댓말인 '~~요'체를 써줘. 바로 요약 내용만 말해줘."),
+                    mapOf("role" to "user", "content" to it.article.content),
+                    mapOf("role" to "assistant", "content" to it.summary),
+                )
             )
             sb.appendLine(jsonlObjectMapper.writeValueAsString(map))
         }

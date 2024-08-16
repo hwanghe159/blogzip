@@ -11,10 +11,8 @@ interface UserRepository : JpaRepository<User, Long> {
 
     @Query(
         """
-        select user
-        from User user 
-        join fetch user.subscriptions subscription
-        join fetch subscription.blog
+        select user 
+        from User user left join fetch user.subscriptions 
         where user.id = :userId
     """
     )

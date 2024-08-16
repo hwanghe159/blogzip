@@ -30,7 +30,8 @@ class ArticleContentSummarizer(
         val assistantId = AssistantId(openAiProperties.assistantId)
 
         try {
-            // GET https://api.openai.com/v1/threads/{thread_id}/messages
+            // POST https://api.openai.com/v1/threads/{thread_id}/messages
+            // https://platform.openai.com/docs/api-reference/messages-v1/createMessage
             openAI.message(
                 threadId = threadId,
                 request = MessageRequest(
@@ -39,6 +40,8 @@ class ArticleContentSummarizer(
                 )
             )
             // POST https://api.openai.com/v1/threads/{thread_id}/runs
+            // https://platform.openai.com/docs/api-reference/runs-v1/createRun
+            // todo model 지정
             val run = openAI.createRun(
                 threadId,
                 request = RunRequest(
@@ -48,8 +51,11 @@ class ArticleContentSummarizer(
             do {
                 delay(3000)
                 // GET https://api.openai.com/v1/threads/{thread_id}/runs/{run_id}
+                // https://platform.openai.com/docs/api-reference/runs-v1/getRun
                 val retrievedRun = openAI.getRun(threadId = threadId, runId = run.id)
             } while (retrievedRun.status != Status.Completed)
+            // GET https://api.openai.com/v1/threads/{thread_id}/messages
+            // https://platform.openai.com/docs/api-reference/messages-v1/listMessages
             val messages = openAI.messages(threadId)
             val textContent = messages.first().content.first() as MessageContent.Text
             return textContent.text.value
