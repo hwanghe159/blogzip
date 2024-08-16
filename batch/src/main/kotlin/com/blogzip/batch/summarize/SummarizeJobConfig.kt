@@ -53,10 +53,10 @@ class SummarizeJobConfig(
                 val articles = articleService.findAllSummarizeTarget(createdDate = yesterday)
                 for (article in articles) {
                     runBlocking {
-                        val summary = articleContentSummarizer.summarize(article.content)
-                        if (summary != null) {
-                            article.summary = summary
-                            article.summarizedBy = "gpt-3.5-turbo-0125"
+                        val summarizeResult = articleContentSummarizer.summarize(article.content)
+                        if (summarizeResult != null) {
+                            article.summary = summarizeResult.summary
+                            article.summarizedBy = summarizeResult.summarizedBy
                         }
                     }
                 }

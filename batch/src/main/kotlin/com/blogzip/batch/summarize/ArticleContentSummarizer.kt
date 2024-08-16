@@ -24,7 +24,7 @@ class ArticleContentSummarizer(
     val log = logger()
 
     @OptIn(BetaOpenAI::class)
-    suspend fun summarize(content: String): String? {
+    suspend fun summarize(content: String): SummarizeResult? {
         val openAI = OpenAI(openAiProperties.apiKey)
         val threadId = ThreadId(openAiProperties.threadId)
         val assistantId = AssistantId(openAiProperties.assistantId)
@@ -41,7 +41,6 @@ class ArticleContentSummarizer(
             )
             // POST https://api.openai.com/v1/threads/{thread_id}/runs
             // https://platform.openai.com/docs/api-reference/runs-v1/createRun
-            // todo model 지정
             val run = openAI.createRun(
                 threadId,
                 request = RunRequest(
@@ -58,11 +57,19 @@ class ArticleContentSummarizer(
             // https://platform.openai.com/docs/api-reference/messages-v1/listMessages
             val messages = openAI.messages(threadId)
             val textContent = messages.first().content.first() as MessageContent.Text
-            return textContent.text.value
+            return SummarizeResult(
+                summary = textContent.text.value,
+                summarizedBy = run.model.id
+            )
         } catch (e: Exception) {
             log.error("요약 실패. content = ${content.substring(0, 100)}...", e)
             slackSender.sendStackTraceAsync(SlackSender.SlackChannel.ERROR_LOG, e)
             return null
         }
     }
+
+    data class SummarizeResult(
+        val summary: String,
+        val summarizedBy: String,
+    )
 }
