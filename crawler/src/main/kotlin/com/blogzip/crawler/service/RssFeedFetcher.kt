@@ -8,7 +8,7 @@ import reactor.core.publisher.Mono
 
 @Component
 class RssFeedFetcher(
-    private val webClient: WebClient,
+    private val xmlWebClient: WebClient,
     private val xmlParser: XmlParser
 ) {
 
@@ -34,14 +34,14 @@ class RssFeedFetcher(
     }
 
     fun fetchXmlString(rss: String): String {
-        val xmlString = webClient
+        val xmlString = xmlWebClient
             .get()
             .uri(rss)
             .exchangeToMono { response ->
                 if (response.statusCode().is3xxRedirection) {
                     val newUrl = response.headers().header("Location").firstOrNull()
                     if (newUrl != null) {
-                        webClient.get()
+                        xmlWebClient.get()
                             .uri(newUrl)
                             .retrieve()
                             .bodyToMono(String::class.java)

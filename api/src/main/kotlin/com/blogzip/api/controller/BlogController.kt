@@ -48,6 +48,7 @@ class BlogController(
         return ResponseEntity.ok(response)
     }
 
+    // todo 부가정보 비동기로 update 하는 것 고려
     @PostMapping("/api/v1/blog")
     fun save(
         @Parameter(hidden = true) @Authenticated user: AuthenticatedUser,
@@ -74,6 +75,10 @@ class BlogController(
             if (rss == null) Blog.RssStatus.NO_RSS
             else if (rssFeedFetcher.isContentContainsInRss(rss)) Blog.RssStatus.WITH_CONTENT
             else Blog.RssStatus.WITHOUT_CONTENT
+
+        if (rssStatus == Blog.RssStatus.NO_RSS) {
+            slackSender.sendMessageAsync(MONITORING, "url_css_selector 직접 추가 필요. url=$url")
+        }
         val blog = blogService.save(
             name = blogTitle,
             url = url,

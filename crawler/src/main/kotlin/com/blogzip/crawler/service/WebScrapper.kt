@@ -17,7 +17,7 @@ import java.time.Duration
 
 @Component
 class WebScrapper(
-    private val webClient: WebClient,
+    private val defaultWebClient: WebClient,
     private val htmlCompressor: HtmlCompressor,
     private val seleniumProperties: SeleniumProperties,
 ) {
@@ -85,7 +85,7 @@ class WebScrapper(
 
         var rssUrl: String? = null
         for (postfix in RSS_POSTFIX) {
-            val containsRssUrl = webClient.get()
+            val containsRssUrl = defaultWebClient.get()
                 .uri(url + postfix)
                 .retrieve()
                 .toEntity(String::class.java)
