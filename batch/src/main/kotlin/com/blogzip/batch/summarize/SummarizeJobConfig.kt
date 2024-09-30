@@ -2,25 +2,20 @@ package com.blogzip.batch.summarize
 
 import com.blogzip.batch.common.JobResultListener
 import com.blogzip.crawler.common.logger
-import com.blogzip.service.ArticleService
-import kotlinx.coroutines.runBlocking
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
 import org.springframework.batch.core.job.builder.JobBuilder
 import org.springframework.batch.core.launch.support.RunIdIncrementer
 import org.springframework.batch.core.repository.JobRepository
 import org.springframework.batch.core.step.builder.StepBuilder
-import org.springframework.batch.repeat.RepeatStatus
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.transaction.PlatformTransactionManager
-import java.time.LocalDate
 
 @Configuration
 class SummarizeJobConfig(
-    private val articleService: ArticleService,
     private val jobResultListener: JobResultListener,
-    private val articleContentSummarizer: ArticleContentSummarizer,
+    private val summarizeTasklet: SummarizeTasklet,
 ) {
 
     val log = logger()
@@ -47,22 +42,7 @@ class SummarizeJobConfig(
         platformTransactionManager: PlatformTransactionManager
     ): Step {
         return StepBuilder("summarize", jobRepository)
-            .tasklet({ _, _ ->
-                val yesterday = LocalDate.now().minusDays(1)
-//                val yesterday = LocalDate.of(2024, 4, 5)
-                val articles = articleService.findAllSummarizeTarget(createdDate = yesterday)
-                for (article in articles) {
-                    runBlocking {
-                        val summarizeResult = articleContentSummarizer.summarize(article.content)
-                        if (summarizeResult != null) {
-                            article.summary = summarizeResult.summary
-                            article.summarizedBy = summarizeResult.summarizedBy
-                        }
-                    }
-                }
-                log.warn("요약 성공. 총 ${articles.size}건")
-                RepeatStatus.FINISHED
-            }, platformTransactionManager)
+            .tasklet(summarizeTasklet, platformTransactionManager)
             .build()
     }
 
