@@ -1,4 +1,4 @@
-package com.blogzip.crawler.confg
+package com.blogzip.crawler.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

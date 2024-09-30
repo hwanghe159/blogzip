@@ -1,7 +1,7 @@
 package com.blogzip.crawler.service
 
 import com.blogzip.crawler.common.logger
-import com.blogzip.crawler.confg.SeleniumProperties
+import com.blogzip.crawler.config.SeleniumProperties
 import com.blogzip.crawler.vo.VelogUrl
 import org.openqa.selenium.By
 import org.openqa.selenium.WebDriver

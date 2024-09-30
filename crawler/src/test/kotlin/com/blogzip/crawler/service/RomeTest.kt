@@ -1,6 +1,6 @@
 package com.blogzip.crawler.service
 
-import com.blogzip.crawler.confg.WebClientConfig
+import com.blogzip.crawler.config.WebClientConfig
 import org.junit.jupiter.api.BeforeEach
 
 import org.junit.jupiter.api.assertDoesNotThrow

@@ -1,6 +1,6 @@
 package com.blogzip.api
 
-import com.blogzip.crawler.confg.WebDriverInitializer
+import com.blogzip.crawler.config.WebDriverInitializer
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 

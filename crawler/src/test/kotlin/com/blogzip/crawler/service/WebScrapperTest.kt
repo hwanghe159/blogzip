@@ -1,6 +1,6 @@
 package com.blogzip.crawler.service
 
-import com.blogzip.crawler.confg.SeleniumProperties
+import com.blogzip.crawler.config.SeleniumProperties
 import org.junit.jupiter.api.Test
 import org.springframework.web.reactive.function.client.WebClient
 

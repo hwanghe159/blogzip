@@ -1,4 +1,4 @@
-package com.blogzip.crawler.confg
+package com.blogzip.crawler.config
 
 import io.github.bonigarcia.wdm.WebDriverManager
 
