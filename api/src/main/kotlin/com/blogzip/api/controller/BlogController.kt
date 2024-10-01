@@ -71,6 +71,7 @@ class BlogController(
             null
         }
         val rss = webScrapper.convertToRss(url).firstOrNull()
+        // todo rss 가 있어도 cloudflare에 의해 차단되는 경우가 있음. 이 경우엔 NO_RSS 가 되어야 함
         val rssStatus =
             if (rss == null) Blog.RssStatus.NO_RSS
             else if (rssFeedFetcher.isContentContainsInRss(rss)) Blog.RssStatus.WITH_CONTENT

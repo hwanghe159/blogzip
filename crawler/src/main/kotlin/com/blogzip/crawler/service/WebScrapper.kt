@@ -3,11 +3,10 @@ package com.blogzip.crawler.service
 import com.blogzip.crawler.common.logger
 import com.blogzip.crawler.config.SeleniumProperties
 import com.blogzip.crawler.vo.VelogUrl
-import org.openqa.selenium.By
-import org.openqa.selenium.WebDriver
-import org.openqa.selenium.WebElement
+import org.openqa.selenium.*
 import org.openqa.selenium.chrome.ChromeDriver
 import org.openqa.selenium.chrome.ChromeOptions
+import org.openqa.selenium.interactions.Actions
 import org.openqa.selenium.support.ui.ExpectedCondition
 import org.openqa.selenium.support.ui.ExpectedConditions
 import org.openqa.selenium.support.ui.WebDriverWait
@@ -124,25 +123,38 @@ class WebScrapper(
         }
     }
 
-    fun getArticles(blogUrl: String, cssSelector: String): List<ArticleData> {
-        // js 코드 -> document.querySelectorAll('...');
+    /**
+     * 아래는 모든 title 정보를 가져오는 js 코드
+     * const articles = document.querySelectorAll('...');
+     * const titles = Array.from(articles)
+     *     .map(article => article.textContent.trim())
+     */
+    fun getArticles(blogUrl: String, cssSelector: String): List<Article> {
         val webDriver = createWebDriver()
         try {
             webDriver.get(blogUrl)
             val wait = WebDriverWait(webDriver, TIMEOUT)
             wait.until(
-                ExpectedCondition { driver: WebDriver ->
-                    val element =
-                        driver.findElement(By.cssSelector(cssSelector))
-                    val href = element.getAttribute("href")
-                    href != null && href.isNotEmpty()
+                ExpectedCondition { driver ->
+                    val elements =
+                        driver.findElements(By.cssSelector(cssSelector))
+                    elements.isNotEmpty() && elements.all { it.text.isNotBlank() }
                 }
             )
             return webDriver.findElements(By.cssSelector(cssSelector))
-                .map {
-                    ArticleData(
-                        title = it.text,
-                        url = it.getAttribute("href")
+                .map { element ->
+                    // todo 실패 시 블로그 내 모든 글 실패가 아닌 하나만 실패하도록
+                    val title = element.text.trim()
+                    val currentWindow = webDriver.windowHandle
+                    element.openNewTab(webDriver)
+                    val newWindow = webDriver.windowHandles.lastOrNull { it != currentWindow }
+                    webDriver.switchTo().window(newWindow)
+                    val url = webDriver.currentUrl
+                    webDriver.close()
+                    webDriver.switchTo().window(currentWindow)
+                    Article(
+                        title = title,
+                        url = url
                     )
                 }
         } catch (e: Exception) {
@@ -153,6 +165,7 @@ class WebScrapper(
         }
     }
 
+    // todo webDriver 주입 고려
     private fun createWebDriver(): WebDriver {
         val chromeOptions = ChromeOptions()
         chromeOptions.addArguments(seleniumProperties.chromeOptions)
@@ -161,8 +174,15 @@ class WebScrapper(
         return driver
     }
 
-    data class ArticleData(
+    data class Article(
         val title: String,
         val url: String,
     )
+}
+
+private fun WebElement.openNewTab(webDriver: WebDriver) {
+    val actions = Actions(webDriver)
+    val modifierKey =
+        if (System.getProperty("os.name").contains("Mac")) Keys.COMMAND else Keys.CONTROL
+    actions.keyDown(modifierKey).click(this).keyUp(modifierKey).build().perform()
 }
