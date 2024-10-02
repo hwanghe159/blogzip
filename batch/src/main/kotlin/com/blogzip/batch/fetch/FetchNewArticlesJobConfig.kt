@@ -9,6 +9,7 @@ import com.blogzip.domain.Blog
 import com.blogzip.domain.Blog.RssStatus.*
 import com.blogzip.notification.common.SlackSender
 import com.blogzip.notification.common.SlackSender.SlackChannel.ERROR_LOG
+import com.blogzip.notification.common.SlackSender.SlackChannel.MONITORING
 import com.blogzip.service.ArticleService
 import com.blogzip.service.BlogService
 import org.springframework.batch.core.Job
@@ -187,6 +188,9 @@ class FetchNewArticlesJobConfig(
                 }
                 val articles = webScrapper.getArticles(blog.url, blog.urlCssSelector!!)
                     .distinctBy { it.url }
+                if (articles.isEmpty()) {
+                    slackSender.sendMessageAsync(MONITORING, "${blog.url} 크롤링 실패")
+                }
                 return articles
                     .filterNot { articleService.existsByUrl(it.url) }
                     .mapNotNull {
