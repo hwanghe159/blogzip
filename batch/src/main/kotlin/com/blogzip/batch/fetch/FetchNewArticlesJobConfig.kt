@@ -1,6 +1,7 @@
 package com.blogzip.batch.fetch
 
 import com.blogzip.batch.common.JobResultListener
+import com.blogzip.batch.common.getParameter
 import com.blogzip.batch.common.logger
 import com.blogzip.crawler.service.RssFeedFetcher
 import com.blogzip.crawler.service.WebScrapper
@@ -41,6 +42,7 @@ class FetchNewArticlesJobConfig(
 
     companion object {
         private const val JOB_NAME = "fetch-new-articles"
+        const val PARAMETER_NAME = "target-date"
     }
 
     @Bean
@@ -61,12 +63,18 @@ class FetchNewArticlesJobConfig(
         platformTransactionManager: PlatformTransactionManager
     ): Step {
         return StepBuilder("fetch-new-articles", jobRepository)
-            .tasklet({ _, _ ->
-//                val yesterday = LocalDate.of(2024, 3, 15).minusDays(1)
-                val yesterday = LocalDate.now().minusDays(1)
+            .tasklet({ _, chunkContext ->
+                val parameter = chunkContext.getParameter(PARAMETER_NAME)
+                val targetDate: LocalDate
+                if (parameter.isNullOrBlank()) {
+                    val yesterday = LocalDate.now().minusDays(1)
+                    targetDate = yesterday
+                } else {
+                    targetDate = LocalDate.parse(parameter)
+                }
                 val blogs = blogService.findAll()
                 for (blog in blogs) {
-                    val articles = fetchArticles(blog, from = yesterday)
+                    val articles = fetchArticles(blog, from = targetDate)
                     for (article in articles) {
                         articleService.save(article)
                     }

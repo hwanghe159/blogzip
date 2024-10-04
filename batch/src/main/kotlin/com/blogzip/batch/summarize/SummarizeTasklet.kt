@@ -1,6 +1,8 @@
 package com.blogzip.batch.summarize
 
 import com.blogzip.batch.common.JobResultListener
+import com.blogzip.batch.common.getParameter
+import com.blogzip.batch.summarize.SummarizeJobConfig.Companion.PARAMETER_NAME
 import com.blogzip.crawler.common.logger
 import com.blogzip.notification.common.SlackSender
 import com.blogzip.service.ArticleService
@@ -34,9 +36,16 @@ class SummarizeTasklet(
         contribution: StepContribution,
         chunkContext: ChunkContext
     ): RepeatStatus? {
-        val yesterday = LocalDate.now().minusDays(1)
-//        val yesterday = LocalDate.of(2024, 4, 5)
-        val articles = articleService.findAllSummarizeTarget(createdDate = yesterday)
+        val parameter = chunkContext.getParameter(PARAMETER_NAME)
+        val targetDate: LocalDate
+        if (parameter.isNullOrBlank()) {
+            val yesterday = LocalDate.now().minusDays(1)
+            targetDate = yesterday
+        } else {
+            targetDate = LocalDate.parse(parameter)
+        }
+
+        val articles = articleService.findAllSummarizeTarget(createdDate = targetDate)
         var failCount = 0
         for (article in articles) {
             runBlocking {

@@ -28,7 +28,11 @@ class ArticleService(private val repository: ArticleRepository) {
             from,
             to ?: LocalDate.now(),
             next,
-            PageRequest.of(0, size + 1, Sort.by(Sort.Direction.DESC, "id"))
+            PageRequest.of(
+                0, size + 1,
+                Sort.by("createdDate").descending()
+                    .and(Sort.by("id").descending())
+            )
         )
         val existsNext = articles.size == size + 1
 
@@ -52,7 +56,11 @@ class ArticleService(private val repository: ArticleRepository) {
             from,
             to ?: LocalDate.now(),
             next,
-            PageRequest.of(0, size + 1, Sort.by(Sort.Direction.DESC, "id"))
+            PageRequest.of(
+                0, size + 1,
+                Sort.by("createdDate").descending()
+                    .and(Sort.by("id").descending())
+            )
         )
         val existsNext = articles.size == size + 1
 

@@ -33,6 +33,7 @@ class WebScrapperTest {
         https://medium.com/coupang-engineering/kr/home | div > div.u-marginBottom40.js-categoryStream > div > section > div > div > div.u-lineHeightBase.postItem > a
         https://devocean.sk.com/tech | #wrapper > div > section > div > div > div > ul > li > div > div > div > a > h3
         https://techblog.woowahan.com | body > div > div > div > div > div > div:not(.firstpaint) > a > h2
+        https://blog.gangnamunni.com/blog | #content > div > div > ul > li > div.post-info > div.post-title > a
 """
     )
     fun getArticles(blogUrl: String, cssSelector: String) {

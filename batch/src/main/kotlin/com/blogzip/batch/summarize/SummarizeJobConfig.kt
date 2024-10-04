@@ -22,6 +22,7 @@ class SummarizeJobConfig(
 
     companion object {
         private const val JOB_NAME = "summarize"
+        const val PARAMETER_NAME = "target-date"
     }
 
     @Bean
