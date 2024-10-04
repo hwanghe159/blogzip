@@ -2,15 +2,16 @@ package com.blogzip.api.controller
 
 import com.blogzip.api.common.logger
 import com.blogzip.crawler.service.RssFeedFetcher
+import com.blogzip.crawler.service.WebScrapper
 import com.blogzip.notification.common.SlackSender
 import org.springframework.web.bind.annotation.*
-import org.springframework.web.reactive.function.client.WebClient
 import java.lang.RuntimeException
 
 @RestController
 class TestController(
     private val slackSender: SlackSender,
     private val rssFeedFetcher: RssFeedFetcher,
+    private val webScrapper: WebScrapper,
 ) {
 
     val log = logger()
@@ -34,5 +35,10 @@ class TestController(
     @PostMapping("/api/v1/test/xml")
     fun fetchXmlTest(@RequestBody rss: String): String {
         return rssFeedFetcher.fetchXmlString(rss)
+    }
+
+    @PostMapping("/api/v1/test/crawler")
+    fun crawlerTest(@RequestBody url: String) {
+        return webScrapper.test(url)
     }
 }

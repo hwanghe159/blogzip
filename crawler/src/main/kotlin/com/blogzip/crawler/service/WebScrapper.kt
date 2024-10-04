@@ -165,6 +165,16 @@ class WebScrapper(
         }
     }
 
+    fun test(url: String) {
+        val webDriver = createWebDriver()
+        try {
+            webDriver.get(url)
+        } catch (_: Exception) {
+        } finally {
+            webDriver.quit()
+        }
+    }
+
     // todo webDriver 주입 고려
     private fun createWebDriver(): WebDriver {
         val chromeOptions = ChromeOptions()
