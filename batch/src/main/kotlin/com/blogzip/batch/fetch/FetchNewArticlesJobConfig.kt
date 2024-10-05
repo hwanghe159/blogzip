@@ -16,7 +16,6 @@ import com.blogzip.service.BlogService
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
 import org.springframework.batch.core.job.builder.JobBuilder
-import org.springframework.batch.core.launch.support.RunIdIncrementer
 import org.springframework.batch.core.repository.JobRepository
 import org.springframework.batch.core.step.builder.StepBuilder
 import org.springframework.batch.repeat.RepeatStatus
@@ -51,7 +50,7 @@ class FetchNewArticlesJobConfig(
         platformTransactionManager: PlatformTransactionManager
     ): Job {
         return JobBuilder(JOB_NAME, jobRepository)
-            .incrementer(RunIdIncrementer())
+//            .incrementer(RunIdIncrementer())
             .start(fetchNewArticlesStep(jobRepository, platformTransactionManager))
             .listener(jobResultListener)
             .build()
@@ -81,6 +80,7 @@ class FetchNewArticlesJobConfig(
                 }
                 RepeatStatus.FINISHED
             }, platformTransactionManager)
+            .allowStartIfComplete(true) // COMPLETED 상태로 끝났어도 재실행 가능
             .build()
     }
 
