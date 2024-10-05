@@ -35,7 +35,7 @@ class RomeTest {
             "https://medium.com/feed/zigbang",
             "https://meetup.nhncloud.com/rss",
             "https://netmarble.engineering/feed/",
-            "https://news.hada.io/rss/news", // 실패
+            "https://news.hada.io/rss/news",
             "https://saramin.github.io/feed.xml",
             "https://smilegate.ai/feed/",
             "https://spoqa.github.io/atom.xml",

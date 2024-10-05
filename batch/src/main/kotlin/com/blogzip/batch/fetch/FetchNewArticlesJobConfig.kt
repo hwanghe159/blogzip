@@ -72,7 +72,7 @@ class FetchNewArticlesJobConfig(
                 } else {
                     targetDate = LocalDate.parse(parameter)
                 }
-                val blogs = blogService.findAll()
+                val blogs = blogService.findAll().shuffled() // 동일 시간 요청에 의한 IP 차단 방지
                 for (blog in blogs) {
                     val articles = fetchArticles(blog, from = targetDate)
                     for (article in articles) {

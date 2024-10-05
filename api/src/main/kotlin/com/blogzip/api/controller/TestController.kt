@@ -38,7 +38,7 @@ class TestController(
     }
 
     @PostMapping("/api/v1/test/crawler")
-    fun crawlerTest(@RequestBody url: String) {
+    fun crawlerTest(@RequestBody url: String): String? {
         return webScrapper.test(url)
     }
 }

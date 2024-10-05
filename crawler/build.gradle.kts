@@ -13,7 +13,8 @@ dependencies {
 
     // 동적 웹페이지 크롤링
     implementation("org.seleniumhq.selenium:selenium-java:4.19.1")
-    implementation("io.github.bonigarcia:webdrivermanager:5.7.0")
+    implementation("io.github.bonigarcia:webdrivermanager:5.9.2")
+    implementation("com.alibaba:fastjson:2.0.53")
 
     // HTML -> markdown 변환
     implementation("com.vladsch.flexmark:flexmark-all:0.64.8")

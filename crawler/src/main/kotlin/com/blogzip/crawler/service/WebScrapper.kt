@@ -1,10 +1,14 @@
 package com.blogzip.crawler.service
 
+import com.blogzip.crawler.undetectedchromedriver.ChromeDriverBuilder
 import com.blogzip.crawler.common.logger
 import com.blogzip.crawler.config.SeleniumProperties
 import com.blogzip.crawler.vo.VelogUrl
-import org.openqa.selenium.*
-import org.openqa.selenium.chrome.ChromeDriver
+import io.github.bonigarcia.wdm.WebDriverManager
+import org.openqa.selenium.By
+import org.openqa.selenium.Keys
+import org.openqa.selenium.WebDriver
+import org.openqa.selenium.WebElement
 import org.openqa.selenium.chrome.ChromeOptions
 import org.openqa.selenium.interactions.Actions
 import org.openqa.selenium.support.ui.ExpectedCondition
@@ -14,11 +18,13 @@ import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.client.WebClient
 import java.time.Duration
 
+
 @Component
 class WebScrapper(
     private val defaultWebClient: WebClient,
     private val htmlCompressor: HtmlCompressor,
     private val seleniumProperties: SeleniumProperties,
+    private val webDriverManager: WebDriverManager,
 ) {
 
     val log = logger()
@@ -165,23 +171,33 @@ class WebScrapper(
         }
     }
 
-    fun test(url: String) {
+    fun test(url: String): String? {
         val webDriver = createWebDriver()
         try {
             webDriver.get(url)
+            return webDriver.pageSource
         } catch (_: Exception) {
         } finally {
             webDriver.quit()
         }
+        return null
     }
 
     // todo webDriver 주입 고려
     private fun createWebDriver(): WebDriver {
+//        val chromeOptions = ChromeOptions()
+//        chromeOptions.addArguments(seleniumProperties.chromeOptions)
+//        chromeOptions.addArguments()
+//        val driver = ChromeDriver(chromeOptions)
+//        driver.manage().timeouts().pageLoadTimeout(TIMEOUT)
+//        return driver
+
+        val driverHome = webDriverManager.downloadedDriverPath
         val chromeOptions = ChromeOptions()
-        chromeOptions.addArguments(seleniumProperties.chromeOptions)
-        val driver = ChromeDriver(chromeOptions)
-        driver.manage().timeouts().pageLoadTimeout(TIMEOUT)
-        return driver
+        chromeOptions.addArguments("--window-size=1920,1080")
+        chromeOptions.addArguments("--headless=new")
+        return ChromeDriverBuilder()
+            .build(chromeOptions, driverHome)
     }
 
     data class Article(
