@@ -42,8 +42,8 @@ class EmailSendJobConfig(
         platformTransactionManager: PlatformTransactionManager
     ): Job {
         return JobBuilder(JOB_NAME, jobRepository)
+//            .incrementer(RunIdIncrementer())
             .start(emailSendStep(jobRepository, platformTransactionManager))
-            .incrementer(RunIdIncrementer())
             .listener(jobResultListener)
             .build()
     }

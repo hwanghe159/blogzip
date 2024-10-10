@@ -5,8 +5,7 @@ spring:
       on-profile: local
 selenium:
   chrome-options:
-    - "--headless" # 크롬창 노출 x
-    - "--no-sandbox"
+    - "--window-size=1920,1080"
 
 ---
 spring:
@@ -15,5 +14,5 @@ spring:
       on-profile: prod
 selenium:
   chrome-options:
-    - "--headless" # 크롬창 노출 x
-    - "--no-sandbox"
+    - "--headless=new" # 크롬창 노출 x
+    - "--window-size=1920,1080"

@@ -1,15 +1,8 @@
 package com.blogzip.crawler.service
 
-import com.blogzip.crawler.undetectedchromedriver.ChromeDriverBuilder
 import com.blogzip.crawler.common.logger
-import com.blogzip.crawler.config.SeleniumProperties
 import com.blogzip.crawler.vo.VelogUrl
-import io.github.bonigarcia.wdm.WebDriverManager
-import org.openqa.selenium.By
-import org.openqa.selenium.Keys
-import org.openqa.selenium.WebDriver
-import org.openqa.selenium.WebElement
-import org.openqa.selenium.chrome.ChromeOptions
+import org.openqa.selenium.*
 import org.openqa.selenium.interactions.Actions
 import org.openqa.selenium.support.ui.ExpectedCondition
 import org.openqa.selenium.support.ui.ExpectedConditions
@@ -19,13 +12,11 @@ import org.springframework.web.reactive.function.client.WebClient
 import java.time.Duration
 import kotlin.random.Random
 
-
 @Component
 class WebScrapper(
     private val defaultWebClient: WebClient,
     private val htmlCompressor: HtmlCompressor,
-    private val seleniumProperties: SeleniumProperties,
-    private val webDriverManager: WebDriverManager,
+    private val webDriver: WebDriver,
 ) {
 
     val log = logger()
@@ -38,7 +29,6 @@ class WebScrapper(
     }
 
     fun getTitle(url: String): String {
-        val webDriver = createWebDriver()
         try {
             webDriver.get(url)
             val wait = WebDriverWait(webDriver, TIMEOUT)
@@ -47,13 +37,10 @@ class WebScrapper(
             return pageTitle
         } catch (e: Exception) {
             throw RuntimeException("웹페이지의 타이틀 조회 실패. url=$url", e)
-        } finally {
-            webDriver.quit()
         }
     }
 
     fun getImageUrl(url: String): String {
-        val webDriver = createWebDriver()
         try {
             webDriver.get(url)
             val wait = WebDriverWait(webDriver, TIMEOUT)
@@ -66,13 +53,10 @@ class WebScrapper(
             return imageUrl
         } catch (e: Exception) {
             throw RuntimeException("웹페이지의 이미지 조회 실패. url=$url", e)
-        } finally {
-            webDriver.quit()
         }
     }
 
     fun convertToRss(url: String): List<String> {
-        val webDriver = createWebDriver()
         webDriver.get(url)
         val wait = WebDriverWait(webDriver, TIMEOUT)
         wait.until(ExpectedConditions.jsReturnsValue("return document.readyState == 'complete';"))
@@ -114,7 +98,6 @@ class WebScrapper(
 
 
     fun getContent(url: String): String? {
-        val webDriver = createWebDriver()
         try {
             webDriver.get(url)
             val wait = WebDriverWait(webDriver, TIMEOUT)
@@ -125,21 +108,18 @@ class WebScrapper(
         } catch (e: Exception) {
             log.error("글 크롤링 실패. article.url=${url}", e)
             return null
-        } finally {
-            webDriver.quit()
         }
     }
 
     /**
      * 아래는 모든 title 정보를 가져오는 js 코드
      * const articles = document.querySelectorAll('...');
-     * const titles = Array.from(articles)
-     *     .map(article => article.textContent.trim())
+     * const titles = Array.from(articles).map(article => article.textContent.trim())
      */
     fun getArticles(blogUrl: String, cssSelector: String): ScrapResult {
-        val webDriver = createWebDriver()
         try {
             webDriver.get(blogUrl)
+            scrollToBottom()
             val wait = WebDriverWait(webDriver, TIMEOUT)
             wait.until(
                 ExpectedCondition { driver ->
@@ -171,40 +151,29 @@ class WebScrapper(
             log.error("블로그 크롤링 실패. blog.url=${blogUrl}", e)
             return ScrapResult(emptyList(), e)
         } finally {
-            webDriver.quit()
+            initializeWebDriver()
         }
     }
 
     fun test(url: String): String? {
-        val webDriver = createWebDriver()
         try {
             webDriver.get(url)
-            return webDriver.pageSource
-        } catch (_: Exception) {
-        } finally {
-            webDriver.quit()
+            val pageSource = webDriver.pageSource
+            initializeWebDriver()
+            return pageSource
+        } catch (e: Exception) {
+            log.error(e.message, e)
         }
         return null
     }
 
-    // todo webDriver 주입 고려
-    private fun createWebDriver(): WebDriver {
-//        val chromeOptions = ChromeOptions()
-//        chromeOptions.addArguments(seleniumProperties.chromeOptions)
-//        chromeOptions.addArguments()
-//        val driver = ChromeDriver(chromeOptions)
-//        driver.manage().timeouts().pageLoadTimeout(TIMEOUT)
-//        return driver
+    fun scrollToBottom() {
+        val jsExecutor = webDriver as JavascriptExecutor
+        jsExecutor.executeScript("window.scrollTo(0, document.body.scrollHeight);")
+    }
 
-//        val driver = ChromeDriver(ChromeOptions())
-//        driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(10))
-
-        val driverHome = webDriverManager.downloadedDriverPath
-        val chromeOptions = ChromeOptions()
-        chromeOptions.addArguments("--window-size=1920,1080")
-        chromeOptions.addArguments("--headless=new")
-        return ChromeDriverBuilder()
-            .build(chromeOptions, driverHome)
+    fun initializeWebDriver() {
+        webDriver.get("chrome://newtab")
     }
 
     data class Article(
