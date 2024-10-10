@@ -17,6 +17,7 @@ import org.openqa.selenium.support.ui.WebDriverWait
 import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.client.WebClient
 import java.time.Duration
+import kotlin.random.Random
 
 
 @Component
@@ -135,7 +136,7 @@ class WebScrapper(
      * const titles = Array.from(articles)
      *     .map(article => article.textContent.trim())
      */
-    fun getArticles(blogUrl: String, cssSelector: String): List<Article> {
+    fun getArticles(blogUrl: String, cssSelector: String): ScrapResult {
         val webDriver = createWebDriver()
         try {
             webDriver.get(blogUrl)
@@ -147,9 +148,10 @@ class WebScrapper(
                     elements.isNotEmpty() && elements.all { it.text.isNotBlank() }
                 }
             )
-            return webDriver.findElements(By.cssSelector(cssSelector))
+            val articles = webDriver.findElements(By.cssSelector(cssSelector))
                 .map { element ->
                     // todo 실패 시 블로그 내 모든 글 실패가 아닌 하나만 실패하도록
+                    Thread.sleep(Random.nextLong(1000, 3001)) // 1~3초 sleep
                     val title = element.text.trim()
                     val currentWindow = webDriver.windowHandle
                     element.openNewTab(webDriver)
@@ -158,14 +160,16 @@ class WebScrapper(
                     val url = webDriver.currentUrl
                     webDriver.close()
                     webDriver.switchTo().window(currentWindow)
+                    log.info("- 제목 : ${title}, url : ${url}")
                     Article(
                         title = title,
                         url = url
                     )
                 }
+            return ScrapResult(articles, null)
         } catch (e: Exception) {
             log.error("블로그 크롤링 실패. blog.url=${blogUrl}", e)
-            return emptyList()
+            return ScrapResult(emptyList(), e)
         } finally {
             webDriver.quit()
         }
@@ -192,6 +196,9 @@ class WebScrapper(
 //        driver.manage().timeouts().pageLoadTimeout(TIMEOUT)
 //        return driver
 
+//        val driver = ChromeDriver(ChromeOptions())
+//        driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(10))
+
         val driverHome = webDriverManager.downloadedDriverPath
         val chromeOptions = ChromeOptions()
         chromeOptions.addArguments("--window-size=1920,1080")
@@ -203,6 +210,11 @@ class WebScrapper(
     data class Article(
         val title: String,
         val url: String,
+    )
+
+    data class ScrapResult(
+        val articles: List<Article>,
+        val failCause: Exception?,
     )
 }
 

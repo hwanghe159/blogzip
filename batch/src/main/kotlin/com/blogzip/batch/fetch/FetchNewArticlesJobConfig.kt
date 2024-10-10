@@ -73,6 +73,9 @@ class FetchNewArticlesJobConfig(
                 }
                 val blogs = blogService.findAll().shuffled() // 동일 시간 요청에 의한 IP 차단 방지
                 for (blog in blogs) {
+                    val processCount = blogs.indexOf(blog) + 1
+                    val totalCount = blogs.size
+                    log.info("${blog.url} 의 새 글 가져오는중. (${processCount}/${totalCount})")
                     val articles = fetchArticles(blog, from = targetDate)
                     for (article in articles) {
                         articleService.save(article)
@@ -194,10 +197,11 @@ class FetchNewArticlesJobConfig(
                     slackSender.sendMessageAsync(channel = ERROR_LOG, errorMessage)
                     return emptyList()
                 }
-                val articles = webScrapper.getArticles(blog.url, blog.urlCssSelector!!)
-                    .distinctBy { it.url }
+                val scrapResult = webScrapper.getArticles(blog.url, blog.urlCssSelector!!)
+                val articles = scrapResult.articles.distinctBy { it.url }
                 if (articles.isEmpty()) {
-                    slackSender.sendMessageAsync(MONITORING, "${blog.url} 크롤링 실패")
+                    slackSender.sendMessageAsync(ERROR_LOG, "${blog.url} 크롤링 실패")
+                    slackSender.sendStackTraceAsync(ERROR_LOG, scrapResult.failCause!!)
                 }
                 return articles
                     .filterNot { articleService.existsByUrl(it.url) }

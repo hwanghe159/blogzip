@@ -136,6 +136,7 @@ public class ChromeDriverBuilder {
       _keepUserDataDir = false;
       try {
         //create temp dir
+        // todo 이거땜에 용량부족.. 왜 필요한지?
         _userDataDir = Files.createTempDirectory("undetected_chrome_driver").toString();
       } catch (Exception e) {
         e.printStackTrace();
