@@ -99,14 +99,12 @@ class FetchNewArticlesJobConfig(
                 }
 
                 var articles: List<com.blogzip.crawler.dto.Article> = emptyList()
-                val xmlString = rssFeedFetcher.fetchXmlString(blog.rss!!)
                 try {
+                    val xmlString = rssFeedFetcher.fetchXmlString(blog.rss!!)
                     articles = xmlParser.convertToArticles(xmlString)
                 } catch (e: Exception) {
-                    val errorMessage = "xml 파싱 실패. rss=${blog.rss}, xml=${xmlString}"
-                    val exception = RuntimeException(errorMessage, e)
-                    log.error(exception.message, exception)
-                    slackSender.sendMessageAsync(channel = ERROR_LOG, errorMessage)
+                    log.error("${blog.rss}의 글 가져오기 실패.", e)
+                    slackSender.sendStackTraceAsync(channel = ERROR_LOG, e)
                 }
 
                 articles.filter {
