@@ -40,4 +40,4 @@ spring:
         - classpath:schema.sql
 logging:
   level:
-    root: warn
+    root: info

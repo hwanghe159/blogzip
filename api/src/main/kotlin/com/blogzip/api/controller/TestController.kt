@@ -4,6 +4,7 @@ import com.blogzip.api.common.logger
 import com.blogzip.crawler.service.RssFeedFetcher
 import com.blogzip.crawler.service.WebScrapper
 import com.blogzip.notification.common.SlackSender
+import com.blogzip.notification.email.EmailSender
 import org.springframework.web.bind.annotation.*
 import java.lang.RuntimeException
 
@@ -12,6 +13,7 @@ class TestController(
     private val slackSender: SlackSender,
     private val rssFeedFetcher: RssFeedFetcher,
     private val webScrapper: WebScrapper,
+    private val emailSender: EmailSender,
 ) {
 
     val log = logger()
@@ -40,5 +42,14 @@ class TestController(
     @PostMapping("/api/v1/test/crawler")
     fun crawlerTest(@RequestBody url: String): String? {
         return webScrapper.test(url)
+    }
+
+    @PostMapping("/api/v1/test/email")
+    fun emailTest(@RequestBody request: Map<String, String>) {
+        return emailSender.sendEmailUsingSES(
+            request["to"]!!,
+            request["subject"]!!,
+            request["content"]!!
+        )
     }
 }

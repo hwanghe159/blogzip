@@ -1,18 +1,16 @@
 package com.blogzip.batch.email
 
-import com.blogzip.batch.common.JobResultListener
+import com.blogzip.batch.common.JobResultNotifier
 import com.blogzip.batch.common.logger
 import com.blogzip.notification.common.SlackSender
 import com.blogzip.notification.common.SlackSender.SlackChannel.ERROR_LOG
 import com.blogzip.notification.email.Article
 import com.blogzip.notification.email.EmailSender
 import com.blogzip.notification.email.User
-import com.blogzip.service.ArticleService
 import com.blogzip.service.UserService
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
 import org.springframework.batch.core.job.builder.JobBuilder
-import org.springframework.batch.core.launch.support.RunIdIncrementer
 import org.springframework.batch.core.repository.JobRepository
 import org.springframework.batch.core.step.builder.StepBuilder
 import org.springframework.batch.repeat.RepeatStatus
@@ -24,8 +22,7 @@ import java.time.LocalDate
 @Configuration
 class EmailSendJobConfig(
     private val userService: UserService,
-    private val articleService: ArticleService,
-    private val jobResultListener: JobResultListener,
+    private val jobResultNotifier: JobResultNotifier,
     private val emailSender: EmailSender,
     private val slackSender: SlackSender,
 ) {
@@ -44,7 +41,7 @@ class EmailSendJobConfig(
         return JobBuilder(JOB_NAME, jobRepository)
 //            .incrementer(RunIdIncrementer())
             .start(emailSendStep(jobRepository, platformTransactionManager))
-            .listener(jobResultListener)
+            .listener(jobResultNotifier)
             .build()
     }
 
@@ -87,6 +84,7 @@ class EmailSendJobConfig(
                 }
                 RepeatStatus.FINISHED
             }, platformTransactionManager)
+            .allowStartIfComplete(true) // COMPLETED 상태로 끝났어도 재실행 가능
             .build()
     }
 }

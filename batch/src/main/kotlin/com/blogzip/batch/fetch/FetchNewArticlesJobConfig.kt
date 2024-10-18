@@ -1,6 +1,6 @@
 package com.blogzip.batch.fetch
 
-import com.blogzip.batch.common.JobResultListener
+import com.blogzip.batch.common.JobResultNotifier
 import com.blogzip.batch.common.getParameter
 import com.blogzip.batch.common.logger
 import com.blogzip.crawler.service.RssFeedFetcher
@@ -10,7 +10,6 @@ import com.blogzip.domain.Blog
 import com.blogzip.domain.Blog.RssStatus.*
 import com.blogzip.notification.common.SlackSender
 import com.blogzip.notification.common.SlackSender.SlackChannel.ERROR_LOG
-import com.blogzip.notification.common.SlackSender.SlackChannel.MONITORING
 import com.blogzip.service.ArticleService
 import com.blogzip.service.BlogService
 import org.springframework.batch.core.Job
@@ -23,14 +22,13 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.transaction.PlatformTransactionManager
 import java.lang.Exception
-import java.lang.RuntimeException
 import java.time.LocalDate
 
 @Configuration
 class FetchNewArticlesJobConfig(
     private val blogService: BlogService,
     private val articleService: ArticleService,
-    private val jobResultListener: JobResultListener,
+    private val jobResultNotifier: JobResultNotifier,
     private val rssFeedFetcher: RssFeedFetcher,
     private val webScrapper: WebScrapper,
     private val slackSender: SlackSender,
@@ -52,7 +50,7 @@ class FetchNewArticlesJobConfig(
         return JobBuilder(JOB_NAME, jobRepository)
 //            .incrementer(RunIdIncrementer())
             .start(fetchNewArticlesStep(jobRepository, platformTransactionManager))
-            .listener(jobResultListener)
+            .listener(jobResultNotifier)
             .build()
     }
 

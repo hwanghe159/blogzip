@@ -26,13 +26,6 @@ class EmailTemplateParser(private val templateEngine: TemplateEngine) {
         return templateEngine.process("email/new-articles", context)
     }
 
-    fun parseVerification(address: String, code: String): String {
-        val context = Context()
-        context.setVariable("address", address)
-        context.setVariable("code", code)
-        return templateEngine.process("email/email-address-verification", context)
-    }
-
     private fun createDateRangeString(dates: List<LocalDate>): String {
         if (dates.isEmpty()) {
             return ""

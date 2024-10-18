@@ -1,5 +1,7 @@
 package com.blogzip.notification.email
 
+import com.blogzip.notification.common.SlackSender
+import com.blogzip.notification.common.SlackSender.SlackChannel.ERROR_LOG
 import com.blogzip.notification.common.logger
 import com.blogzip.notification.config.AwsSesProperties
 import org.springframework.stereotype.Component
@@ -14,6 +16,7 @@ import software.amazon.awssdk.services.ses.model.*
 class EmailSender(
     private val awsSesProperties: AwsSesProperties,
     private val emailTemplateParser: EmailTemplateParser,
+    private val slackSender: SlackSender,
 ) {
     companion object {
         private const val SENDER_NAME = "blogzip"
@@ -27,12 +30,7 @@ class EmailSender(
         sendEmailUsingSES(to.email, "구독한 블로그의 새 글", content)
     }
 
-    fun sendVerification(to: String, code: String) {
-        val content = emailTemplateParser.parseVerification(to, code)
-        sendEmailUsingSES(to, "이메일 주소 인증", content)
-    }
-
-    private fun sendEmailUsingSES(to: String, subject: String, content: String) {
+    fun sendEmailUsingSES(to: String, subject: String, content: String) {
         val sesClient = SesClient.builder()
             .credentialsProvider(
                 StaticCredentialsProvider.create(
@@ -75,7 +73,8 @@ class EmailSender(
                 )
             }
         } catch (e: Exception) {
-            log.error("이메일 발송 실패. to=${to}")
+            log.error("이메일 발송 실패. to=${to}", e)
+            slackSender.sendStackTraceAsync(ERROR_LOG, e)
         }
     }
 }

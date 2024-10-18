@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component
 
 @JobScope
 @Component
-class JobResultListener(
+class JobResultNotifier(
     private val slackSender: SlackSender,
     private val environment: Environment,
 ) : JobExecutionListener {
@@ -29,7 +29,7 @@ class JobResultListener(
         slackSender.sendMessageAsync(
             channel = MONITORING,
             message = """
-                batch(${jobExecution.jobInstance.jobName}) 종료. 상태 = ${jobExecution.status}
+                batch(${jobExecution.jobInstance.jobName}) 종료. 코드 = ${jobExecution.exitStatus.exitCode}
                 profile = ${environment.activeProfiles.joinToString(",")}
             """.trimIndent()
         )
