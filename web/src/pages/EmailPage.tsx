@@ -3,10 +3,12 @@ import {Api} from "../utils/Api";
 import {useNavigate} from "react-router-dom";
 import {getLoginUser} from "../utils/LoginUserHelper";
 import {
+  Card,
+  CardActions,
+  CardContent,
   Checkbox,
-  Container,
-  FormControlLabel, FormGroup,
-  Grid,
+  FormControlLabel,
+  FormGroup,
   TextField
 } from "@mui/material";
 import Box from "@mui/material/Box";
@@ -26,18 +28,19 @@ function EmailPage() {
 
   const [user, setUser] = useState<User | null>(null);
   const [daysOfWeek, setDaysOfWeek] = useState([
-    {kor: '월', eng: 'MONDAY', isChecked: false},
-    {kor: '화', eng: 'TUESDAY', isChecked: false},
-    {kor: '수', eng: 'WEDNESDAY', isChecked: false},
-    {kor: '목', eng: 'THURSDAY', isChecked: false},
-    {kor: '금', eng: 'FRIDAY', isChecked: false},
-    {kor: '토', eng: 'SATURDAY', isChecked: false},
-    {kor: '일', eng: 'SUNDAY', isChecked: false},
+    {kor: '월요일', eng: 'MONDAY', isChecked: false},
+    {kor: '화요일', eng: 'TUESDAY', isChecked: false},
+    {kor: '수요일', eng: 'WEDNESDAY', isChecked: false},
+    {kor: '목요일', eng: 'THURSDAY', isChecked: false},
+    {kor: '금요일', eng: 'FRIDAY', isChecked: false},
+    {kor: '토요일', eng: 'SATURDAY', isChecked: false},
+    {kor: '일요일', eng: 'SUNDAY', isChecked: false},
   ]);
   const navigate = useNavigate();
 
   useEffect(() => {
         const accessToken = getLoginUser()?.accessToken
+
         if (accessToken) {
           Api.get(`/api/v1/me`, {
             headers: {
@@ -56,20 +59,11 @@ function EmailPage() {
           handleLogin()
           return
         }
-      }
-      ,
-      [navigate]
+      }, [navigate]
   )
 
-  function handleCheckboxChange(eng: string) {
-    setDaysOfWeek((prevDaysOfWeek) =>
-        prevDaysOfWeek.map((day) =>
-            day.eng === eng ? {...day, isChecked: !day.isChecked} : day
-        )
-    );
-  }
 
-  function updateSettings() {
+  function handleSubmit() {
     const receiveDays = daysOfWeek
     .filter(d => d.isChecked)
     const accessToken = getLoginUser()?.accessToken
@@ -88,7 +82,7 @@ function EmailPage() {
         } else if (receiveDays.length === 7) {
           alert(`수정되었습니다.\n매일 아침 보내드릴게요!`);
         } else {
-          alert(`수정되었습니다.\n${receiveDays.map(d => d.kor).join(', ')}요일 아침에만 메일을 보내드릴게요!`);
+          alert(`수정되었습니다.\n${receiveDays.map(d => d.kor).join(', ')} 아침에만 메일을 보내드릴게요!`);
         }
       });
     } else {
@@ -98,65 +92,66 @@ function EmailPage() {
     }
   }
 
+  function handleDayChange(eng: string) {
+    setDaysOfWeek((prevDaysOfWeek) =>
+        prevDaysOfWeek.map((day) =>
+            day.eng === eng ? {...day, isChecked: !day.isChecked} : day
+        )
+    );
+  }
 
   return (
-      <Container component="main">
-        <Box
-            sx={{
-              marginTop: 8,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-            }}
-        >
-          <Typography component="h3" variant="h3">
-            이메일 설정
-          </Typography>
-          <Typography component="h5" variant="h5">
-            이메일 주소
-          </Typography>
-          <Box component="form" noValidate sx={{mt: 3}}>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                    disabled
-                    fullWidth
-                    id="email"
-                    name="email"
-                    autoComplete="email"
-                    value={user?.email || ''}
-                />
-              </Grid>
-            </Grid>
-            <Grid container justifyContent="flex-end">
-              <Grid item>
-              </Grid>
-            </Grid>
-          </Box>
-          <Typography component="h5" variant="h5">
-            요일 선택
-          </Typography>
-          <FormGroup aria-label="position" row>
-            {daysOfWeek.map((dayOfWeek) => (
-                <FormControlLabel
-                    key={dayOfWeek.kor}
-                    control={<Checkbox checked={dayOfWeek.isChecked}
-                                       onChange={() => handleCheckboxChange(dayOfWeek.eng)}/>}
-                    label={dayOfWeek.kor}
-                />
-            ))}
-          </FormGroup>
-        </Box>
-        <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            sx={{mt: 3, mb: 2}}
-            onClick={updateSettings}
-        >
-          수정
-        </Button>
-      </Container>
+      <Box sx={{maxWidth: 300, mx: 'auto', pt: 10}}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          이메일 설정
+        </Typography>
+        <Card sx={{p: 2}}>
+          <CardContent>
+            <form onSubmit={handleSubmit}>
+              <Box sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
+                <Box>
+                  <TextField
+                      id="email"
+                      type="email"
+                      value={user?.email || ''}
+                      fullWidth
+                      disabled
+                      InputProps={{
+                        readOnly: true,
+                      }}
+                  />
+                </Box>
+
+                <Box sx={{mt: 3}}>
+                  <Typography variant="subtitle1">이메일을 받고 싶은 요일을 선택해주세요.</Typography>
+                  <FormGroup sx={{mt: 0, display: 'grid', gridTemplateColumns: '1fr 1fr'}}>
+                    {daysOfWeek.map((day) => (
+                        <FormControlLabel
+                            key={day.kor}
+                            control={
+                              <Checkbox
+                                  id={day.kor}
+                                  checked={day.isChecked}
+                                  onChange={() => handleDayChange(day.eng)}
+                              />
+                            }
+                            label={day.kor}
+                        />
+                    ))}
+                  </FormGroup>
+                </Box>
+
+              </Box>
+            </form>
+          </CardContent>
+
+          <CardActions>
+            <Button type="submit" variant="contained" fullWidth onClick={handleSubmit}>
+              수정
+            </Button>
+          </CardActions>
+        </Card>
+      </Box>
   )
 }
 

@@ -1,56 +1,31 @@
-import {Fragment, useEffect, useState} from "react";
-import {Api} from "../utils/Api";
-import {useNavigate} from "react-router-dom";
+import React, {Fragment, useEffect, useState} from 'react'
+import {Button, Box, TextField, Card, CardContent, Typography, Dialog} from '@mui/material'
+import {Add, Search} from '@mui/icons-material'
 import {getLoginUser} from "../utils/LoginUserHelper";
 import {handleLogin} from "../components/GoogleLoginButton";
-import {BlogList} from "../components/BlogList";
-import {BlogResponse} from "./MainPage";
-import Typography from "@mui/material/Typography";
-import styled from "styled-components";
-import Box from "@mui/material/Box";
-import {
-  CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid,
-  List,
-  ListItem,
-  ListItemText,
-  TextField, useMediaQuery, useTheme
-} from "@mui/material";
-import SearchIcon from '@mui/icons-material/Search';
-import * as React from "react";
-import Button from "@mui/material/Button";
+import {Api} from "../utils/Api";
+import {useNavigate} from "react-router-dom";
+import BlogAddDialog from "../components/BlogAddDialog";
 
-interface Subscription {
-  id: number;
-  blog: BlogResponse;
+interface Blog {
+  id: number
+  name: string
+  url: string
+  isSubscribed: boolean
 }
 
-function SubscriptionPage() {
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
-  const navigate = useNavigate();
+export default function SubscriptionPage() {
+  const [query, setQuery] = useState('')
+  const [searchedBlogs, setSearchedBlogs] = useState<Blog[]>([])
+  const [subscribedBlogs, setSubscribedBlogs] = useState<Blog[]>([])
+  const [showAddButton, setShowAddButton] = useState<boolean>(false)
+  const [open, setOpen] = useState(false);
+
+  const navigate = useNavigate()
 
   useEffect(() => {
     getMySubscriptions()
   }, [navigate])
-
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [open, setOpen] = useState(false);
-
-  function handleClickOpen() {
-    // todo 제거
-    alert("준비중이에요!")
-    return
-    setOpen(true);
-  };
-
-  const handleClose = () => {
-    setOpen(false);
-  };
-
-  const [query, setQuery] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [blogs, setBlogs] = useState<BlogResponse[]>([]);
 
   function getMySubscriptions() {
     const loginUser = getLoginUser()
@@ -66,7 +41,14 @@ function SubscriptionPage() {
       }
     })
     .onSuccess((response) => {
-      setSubscriptions(response.data)
+      setSubscribedBlogs(
+          response.data.map((subscription: { blog: any }) => ({
+            id: subscription.blog.id,
+            name: subscription.blog.name,
+            url: subscription.blog.url,
+            isSubscribed: true
+          }))
+      )
     })
     .on4XX((response) => {
       if (response.code === 'LOGIN_FAILED') {
@@ -78,206 +60,245 @@ function SubscriptionPage() {
     })
   }
 
-  function handleSearch() {
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+
     const minLength = 2
     if (query.trim().length < minLength) {
-      setErrorMessage(`${minLength}글자 이상 입력해주세요.`)
+      alert(`${minLength}글자 이상 입력해주세요.`)
       return
     }
-    setErrorMessage('')
-    setLoading(true);
 
+    const subscribedBlogIds = new Set(subscribedBlogs.map(blog => blog.id))
     Api.get(`/api/v1/blog/search?query=${query}`)
     .onSuccess((response) => {
-      setBlogs(response.data)
-      setLoading(false);
+      setSearchedBlogs(
+          response.data.map((searchedBlog: { id: number; name: string; url: string; }) => ({
+            id: searchedBlog.id,
+            name: searchedBlog.name,
+            url: searchedBlog.url,
+            isSubscribed: subscribedBlogIds.has(searchedBlog.id)
+          }))
+      )
     })
     .on4XX((response) => {
-      setLoading(false);
     })
     .on5XX((response) => {
-      setLoading(false);
     })
+    setShowAddButton(true)
   }
 
-  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setQuery(event.target.value);
-  };
-
-  const handleKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
-      handleSearch();
-    }
-  };
-
-  function addBlog(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== 'Enter') {
-      return;
-    }
-
-    console.log(event)
-
-    // Api.post(`/api/v1/blog`, {
-    //       url: urlll
-    //     },
-    //     {
-    //       headers: {
-    //         Authorization: `Bearer ${getLoginUser()?.accessToken}`,
-    //       }
-    //     })
-    // .onSuccess((response) => {
-    //   handleClose();
-    // })
-    // .on4XX((response) => {
-    //   handleClose();
-    // })
-    // .on5XX((response) => {
-    //   handleClose();
-    // })
-
-  }
-
-  function addSubscription(blogId: number) {
-    Api.post(`/api/v1/subscription`, {
-          blogId: blogId
+  const handleSubscribe = (blog: Blog) => {
+    if (blog.isSubscribed) {
+      // 구독 해지
+      Api.delete(`/api/v1/subscription`, {
+        headers: {
+          Authorization: `Bearer ${getLoginUser()?.accessToken}`,
         },
-        {
-          headers: {
-            Authorization: `Bearer ${getLoginUser()?.accessToken}`,
+        data: {
+          blogId: blog.id
+        }
+      })
+      .onSuccess((response) => {
+        setSearchedBlogs(
+            searchedBlogs.map(searchedBlog =>
+                searchedBlog.id === blog.id
+                    ? {...searchedBlog, isSubscribed: false}
+                    : searchedBlog
+            )
+        )
+        setSubscribedBlogs(
+            subscribedBlogs.map((subscribedBlog) =>
+                subscribedBlog.id === blog.id
+                    ? {...subscribedBlog, isSubscribed: false}
+                    : subscribedBlog
+            )
+        )
+      })
+      .on4XX((response) => {
+      })
+      .on5XX((response) => {
+      })
+    } else {
+      // 구독 추가
+      Api.post(`/api/v1/subscription`, {
+            blogId: blog.id
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${getLoginUser()?.accessToken}`,
+            }
+          })
+      .onSuccess((response) => {
+        const newBlog: Blog = {
+          id: blog.id,
+          name: blog.name,
+          url: blog.url,
+          isSubscribed: true,
+        }
+        setSubscribedBlogs((prevBlogs) => {
+          const blogExists = prevBlogs.some((blog) => blog.id === newBlog.id);
+          if (blogExists) {
+            return prevBlogs.map((blog) =>
+                blog.id === newBlog.id ? {...blog, isSubscribed: true} : blog
+            );
+          } else {
+            return [...prevBlogs, {...newBlog, isSubscribed: true}];
           }
         })
-    .onSuccess((response) => {
-      getMySubscriptions();
-    })
-    .on4XX((response) => {
-    })
-    .on5XX((response) => {
-    })
+        setSearchedBlogs(searchedBlogs => searchedBlogs.map(searchedBlog =>
+            searchedBlog.id === blog.id
+                ? {...searchedBlog, isSubscribed: true}
+                : searchedBlog
+        ))
+      })
+      .on4XX((response) => {
+      })
+      .on5XX((response) => {
+      })
+    }
   }
 
-  function cancelSubscription(blogId: number) {
-    Api.delete(`/api/v1/subscription`, {
-      headers: {
-        Authorization: `Bearer ${getLoginUser()?.accessToken}`,
-      },
-      data: {
-        blogId: blogId
-      }
-    })
-    .onSuccess((response) => {
-      setSubscriptions(subscriptions.filter(s => s.blog.id !== blogId));
-    })
-    .on4XX((response) => {
-    })
-    .on5XX((response) => {
-    })
+  function addBlog() {
+
   }
 
   return (
-      <Box
-          sx={{
-            width: '100%',
-            maxWidth: isMobile ? 'none' : '1500px',
-            marginTop: '50px',
-            marginLeft: 'auto',
-            marginRight: 'auto',
-            display: 'flex',
-            flexDirection: {md: 'row', xs: 'column'},
-          }}>
-        <Box
-            sx={{
-              m: 1
-            }}>
-          <Typography variant="h4">내가 구독한 블로그</Typography>
-          <BlogList blogs={subscriptions.map(s => s.blog)}/>
-        </Box>
-
-        <Box sx={{
-          width: {md: 100, xs: 0},
-          height: {md: 0, xs: 100},
-        }}/>
-
-        <Box
-            sx={{
-              m: 1,
-              width: {md: 600, xs: 'auto'}
-            }}
-        >
-          <Typography variant="h4">구독 추가하기</Typography>
-          <Box sx={{width: '100%', margin: 'auto', textAlign: 'center', mt: 4}}>
-            <Box sx={{display: 'flex', alignItems: 'center', mb: 2}}>
-              <TextField
-                  error={errorMessage !== ''}
-                  helperText={errorMessage}
-                  fullWidth
-                  label="블로그 이름 또는 URL"
-                  value={query}
-                  onChange={handleInputChange}
-                  onKeyPress={handleKeyPress}
-              />
-              <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleSearch}
-                  sx={{ml: 2, height: '56px'}}
-              >
-                {loading ? <CircularProgress size={24} color="inherit"/> : <SearchIcon/>}
-              </Button>
-            </Box>
-            <List>
-              {blogs.map((blog) => (
-                  <ListItem key={blog.id} divider>
-                    <Grid container alignItems="center">
-                      <Grid item xs={10}>
-                        <ListItemText primary={blog.name} secondary={blog.url}/>
-                      </Grid>
-                      <Grid>
-                        {subscriptions.map(s => s.blog.id).includes(blog.id) ?
-                            <Button variant="outlined" size={'small'} sx={{height: 40}}
-                                    onClick={() => cancelSubscription(blog.id)}>구독중</Button> :
-                            <Button variant="contained" size={'small'} sx={{height: 40}}
-                                    onClick={() => addSubscription(blog.id)}>구독하기</Button>
-                        }
-                      </Grid>
-                    </Grid>
-                  </ListItem>
-              ))}
-            </List>
-          </Box>
-          <Fragment>
-            <Button variant="outlined" onClick={handleClickOpen}>
-              직접 추가하기
-            </Button>
-            <Dialog
-                open={open}
-                onClose={handleClose}
-                fullWidth={true}
-                PaperProps={{
-                  component: 'form'
-                }}
-            >
-              <DialogTitle>URL로 직접 추가</DialogTitle>
-              <DialogContent>
+      <Box sx={{maxWidth: 800, mx: 'auto', p: 4}}>
+        <Box sx={{py: 4}}>
+          <Typography variant="h4" component="h1" gutterBottom>
+            구독하고 싶은 블로그를 검색해보세요.
+          </Typography>
+          <Card>
+            <CardContent>
+              <Box component="form" onSubmit={handleSearch} sx={{display: 'flex', gap: 2}}>
                 <TextField
-                    autoFocus
-                    required
-                    margin="dense"
-                    name="url"
                     fullWidth
-                    variant="standard"
-                    placeholder="https://blogzip.co.kr/posts"
-                    onKeyPress={addBlog}
+                    size={"small"}
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="블로그 주소 또는 이름"
                 />
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={handleClose}>취소</Button>
-                <Button type="submit">추가</Button>
-              </DialogActions>
-            </Dialog>
-          </Fragment>
+                <Button
+                    type="submit" variant="contained" startIcon={<Search/>}
+                ></Button>
+              </Box>
+
+              {searchedBlogs.length > 0 ? (
+                  <Box component="ul" sx={{mt: 2, listStyle: 'none', p: 0}}>
+                    {searchedBlogs.map(blog => (
+                        <Box
+                            key={blog.id}
+                            component="li"
+                            sx={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              p: 1,
+                              bgcolor: 'background.paper',
+                              borderRadius: 2,
+                              mb: 1
+                            }}
+                        >
+                          <Box sx={{display: 'flex', flexDirection: 'column'}}>
+                            <Typography variant="body1" color="textPrimary">
+                              {blog.name}
+                            </Typography>
+                            <Typography variant="caption" color="textSecondary">
+                              {blog.url}
+                            </Typography>
+                          </Box>
+                          <Button
+                              variant={blog.isSubscribed ? 'outlined' : 'contained'}
+                              onClick={() => handleSubscribe(blog)}
+                          >
+                            {blog.isSubscribed ? '구독중' : '구독하기'}
+                          </Button>
+                        </Box>
+                    ))}
+                  </Box>
+              ) : (
+                  <></>
+              )}
+              {showAddButton ? (<Box sx={{
+                mt: 4,
+                pt: 4,
+                borderTop: 1,
+                borderColor: 'divider',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: 2
+              }}>
+                <Typography variant="body2" color="textSecondary">
+                  원하는 블로그가 없으신가요?
+                </Typography>
+                <Fragment>
+                  <Button onClick={() =>
+                      // setOpen(true)
+                      alert("준비 중이에요!")
+                  } variant="outlined" startIcon={<Add/>}>
+                    직접 추가하기
+                  </Button>
+                  <Dialog
+                      open={open}
+                      onClose={() => setOpen(false)}
+                      fullWidth={true}
+                  >
+                    <BlogAddDialog onClose={() => setOpen(false)}/>
+                  </Dialog>
+                </Fragment>
+              </Box>) : (<div></div>)}
+            </CardContent>
+          </Card>
+        </Box>
+        <Box sx={{py: 4}}>
+          <Typography variant="h4" component="h1" gutterBottom>
+            내가 구독중인 블로그
+          </Typography>
+          <Card sx={{mt: 4}}>
+            <CardContent>
+              {subscribedBlogs.length > 0 ? (
+                  <Box component="ul" sx={{listStyle: 'none', p: 0}}>
+                    {subscribedBlogs.map(blog => (
+                        <Box
+                            key={blog.id}
+                            component="li"
+                            sx={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              p: 1,
+                              bgcolor: 'background.paper',
+                              borderRadius: 2,
+                              mb: 1
+                            }}
+                        >
+                          <Box sx={{display: 'flex', flexDirection: 'column'}}>
+                            <Typography variant="body1" color="textPrimary">
+                              {blog.name}
+                            </Typography>
+                            <Typography variant="caption" color="textSecondary">
+                              {blog.url}
+                            </Typography>
+                          </Box>
+                          <Button
+                              variant={blog.isSubscribed ? 'outlined' : 'contained'}
+                              onClick={() => handleSubscribe(blog)}
+                          >
+                            {blog.isSubscribed ? '구독중' : '구독하기'}
+                          </Button>
+                        </Box>
+                    ))}
+                  </Box>
+              ) : (
+                  <Typography align="center" color="textSecondary">
+                    아직 구독 중인 블로그가 없습니다.
+                  </Typography>
+              )}
+            </CardContent>
+          </Card>
         </Box>
       </Box>
   )
 }
-
-export default SubscriptionPage;
