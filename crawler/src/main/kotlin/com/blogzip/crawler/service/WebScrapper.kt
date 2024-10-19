@@ -172,8 +172,17 @@ class WebScrapper(
         jsExecutor.executeScript("window.scrollTo(0, document.body.scrollHeight);")
     }
 
+    // 새 탭만 남기고 모두 닫는다
     fun initializeWebDriver() {
-        webDriver.get("chrome://newtab")
+        webDriver.switchTo().newWindow(WindowType.TAB)
+        val newTab = webDriver.windowHandle
+        webDriver.windowHandles
+            .filter { tab -> tab != newTab }
+            .forEach { tab ->
+                webDriver.switchTo().window(tab)
+                webDriver.close()
+            }
+        webDriver.switchTo().window(newTab)
     }
 
     data class Article(
