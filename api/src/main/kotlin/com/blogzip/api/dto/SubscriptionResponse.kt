@@ -12,7 +12,7 @@ data class SubscriptionResponse private constructor(
         fun from(subscription: Subscription): SubscriptionResponse {
             return SubscriptionResponse(
                 id = subscription.id!!,
-                blog = BlogResponse.from(subscription.blog),
+                blog = BlogResponse.from(subscription.blog!!),
                 createdAt = subscription.createdAt,
             )
         }

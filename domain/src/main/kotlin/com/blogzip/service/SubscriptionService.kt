@@ -18,7 +18,7 @@ class SubscriptionService(
     fun findByUserId(userId: Long): List<Subscription> {
         val user = userRepository.findByIdWithSubscriptions(userId)
             ?: throw DomainException(ErrorCode.USER_NOT_FOUND)
-        return user.subscriptions
+        return user.subscriptions.filter { it.blog != null }
     }
 
     @Transactional

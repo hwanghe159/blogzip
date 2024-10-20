@@ -9,6 +9,7 @@ import org.openqa.selenium.support.ui.ExpectedConditions
 import org.openqa.selenium.support.ui.WebDriverWait
 import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.client.WebClient
+import java.net.URI
 import java.time.Duration
 import kotlin.random.Random
 
@@ -28,74 +29,63 @@ class WebScrapper(
             setOf("application/xml", "application/rss+xml", "application/atom+xml", "text/xml")
     }
 
-    fun getTitle(url: String): String {
+    fun getMetadata(url: String): BlogMetadata {
         try {
+            // title
             webDriver.get(url)
             val wait = WebDriverWait(webDriver, TIMEOUT)
-            wait.until(ExpectedConditions.textToBePresentInElementLocated(By.tagName("title"), ""))
-            val pageTitle: String = webDriver.title
-            return pageTitle
-        } catch (e: Exception) {
-            throw RuntimeException("웹페이지의 타이틀 조회 실패. url=$url", e)
-        }
-    }
 
-    fun getImageUrl(url: String): String {
-        try {
-            webDriver.get(url)
-            val wait = WebDriverWait(webDriver, TIMEOUT)
+            wait.until(
+                ExpectedConditions.textToBePresentInElementLocated(By.tagName("title"), "")
+            )
+            val pageTitle: String = webDriver.title
+
+            // imageUrl
             val element =
                 wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("meta[property='og:image']")))
-            val imageUrl = element.getAttribute("content")
+            var imageUrl = element.getAttribute("content")
             if (imageUrl.isBlank()) {
                 throw RuntimeException("head 태그 내 image가 공백임.")
             }
-            return imageUrl
-        } catch (e: Exception) {
-            throw RuntimeException("웹페이지의 이미지 조회 실패. url=$url", e)
-        }
-    }
 
-    fun convertToRss(url: String): List<String> {
-        webDriver.get(url)
-        val wait = WebDriverWait(webDriver, TIMEOUT)
-        wait.until(ExpectedConditions.jsReturnsValue("return document.readyState == 'complete';"))
-        val links: List<WebElement> = webDriver.findElements(
-            By.cssSelector("link[type='application/rss+xml'], link[type='application/atom+xml']")
-        )
-        val result = links.map { it.getAttribute("href") }
-        webDriver.quit()
-        if (result.isNotEmpty()) {
-            return result
-        }
-
-        if (VelogUrl.isVelogUrl(url)) {
-            return listOf(VelogUrl(url).rssUrl())
-        }
-
-        var rssUrl: String? = null
-        for (postfix in RSS_POSTFIX) {
-            val containsRssUrl = defaultWebClient.get()
-                .uri(url + postfix)
-                .retrieve()
-                .toEntity(String::class.java)
-                .map { response ->
-                    RSS_CONTENT_TYPE.contains(response.headers.contentType.toString())
-                }
-                .onErrorReturn(false)
-                .block() ?: false
-            if (containsRssUrl) {
-                rssUrl = url + postfix
-                break
+            // 상대경로인 경우 절대경로로 변경
+            if (!imageUrl.startsWith("http")) {
+                imageUrl = URI(webDriver.currentUrl).resolve(imageUrl).toString()
             }
-        }
-        return if (rssUrl != null) {
-            listOf(rssUrl)
-        } else {
-            emptyList()
+
+            // rss
+            wait.until(ExpectedConditions.jsReturnsValue("return document.readyState == 'complete';"))
+            val links: List<WebElement> = webDriver.findElements(
+                By.cssSelector("link[type='application/rss+xml'], link[type='application/atom+xml']")
+            )
+            val result = links.map { it.getAttribute("href") }
+            var rss: String? = null
+            if (result.isNotEmpty()) {
+                rss = result[0]
+            } else if (VelogUrl.isVelogUrl(url)) {
+                rss = VelogUrl(url).rssUrl()
+            } else {
+                for (postfix in RSS_POSTFIX) {
+                    val containsRssUrl = defaultWebClient.get()
+                        .uri(url + postfix)
+                        .retrieve()
+                        .toEntity(String::class.java)
+                        .map { response ->
+                            RSS_CONTENT_TYPE.contains(response.headers.contentType.toString())
+                        }
+                        .onErrorReturn(false)
+                        .block() ?: false
+                    if (containsRssUrl) {
+                        rss = url + postfix
+                        break
+                    }
+                }
+            }
+            return BlogMetadata(title = pageTitle, imageUrl = imageUrl, rss = rss)
+        } finally {
+            initializeWebDriver()
         }
     }
-
 
     fun getContent(url: String): String? {
         try {
@@ -193,6 +183,12 @@ class WebScrapper(
     data class ScrapResult(
         val articles: List<Article>,
         val failCause: Exception?,
+    )
+
+    data class BlogMetadata(
+        val title: String,
+        val imageUrl: String?,
+        val rss: String?,
     )
 }
 

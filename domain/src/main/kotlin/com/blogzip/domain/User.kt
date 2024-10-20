@@ -40,13 +40,18 @@ class User(
 ) {
 
     fun addSubscription(blog: Blog): Subscription {
-        val subscription = Subscription(user = this, blog = blog)
-        this.subscriptions.add(subscription)
-        return subscription
+        val existingSubscription = this.subscriptions.firstOrNull { it.blog == blog }
+        if (existingSubscription == null) {
+            val subscription = Subscription(user = this, blog = blog)
+            this.subscriptions.add(subscription)
+            return subscription
+        } else {
+            return existingSubscription
+        }
     }
 
     fun deleteSubscription(blogId: Long): Boolean {
-        return this.subscriptions.removeIf { it.blog.id == blogId }
+        return this.subscriptions.removeIf { it.blog?.id == blogId }
     }
 
     fun getAccumulatedDates(emailDate: LocalDate): List<LocalDate> {

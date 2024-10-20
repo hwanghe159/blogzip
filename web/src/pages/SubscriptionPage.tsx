@@ -164,7 +164,7 @@ export default function SubscriptionPage() {
   }
 
   return (
-      <Box sx={{maxWidth: 800, mx: 'auto', p: 4}}>
+      <Box sx={{width: '90%', maxWidth: 800, mx: 'auto', p: 3}}>
         <Box sx={{py: 4}}>
           <Typography variant="h4" component="h1" gutterBottom>
             구독하고 싶은 블로그를 검색해보세요.
@@ -209,6 +209,7 @@ export default function SubscriptionPage() {
                             </Typography>
                           </Box>
                           <Button
+                              size={"small"}
                               variant={blog.isSubscribed ? 'outlined' : 'contained'}
                               onClick={() => handleSubscribe(blog)}
                           >
@@ -234,10 +235,12 @@ export default function SubscriptionPage() {
                   원하는 블로그가 없으신가요?
                 </Typography>
                 <Fragment>
-                  <Button onClick={() =>
-                      // setOpen(true)
-                      alert("준비 중이에요!")
-                  } variant="outlined" startIcon={<Add/>}>
+                  <Button
+                      size={"small"}
+                      onClick={() => setOpen(true)}
+                      variant="outlined"
+                      startIcon={<Add/>}
+                  >
                     직접 추가하기
                   </Button>
                   <Dialog
@@ -275,14 +278,27 @@ export default function SubscriptionPage() {
                             }}
                         >
                           <Box sx={{display: 'flex', flexDirection: 'column'}}>
-                            <Typography variant="body1" color="textPrimary">
+                            <Typography
+                                variant="body1"
+                                color="textPrimary"
+                                sx={{
+                                  wordBreak: 'break-word', // 줄바꿈 허용
+                                }}
+                            >
                               {blog.name}
                             </Typography>
-                            <Typography variant="caption" color="textSecondary">
+                            <Typography
+                                variant="caption"
+                                color="textSecondary"
+                                sx={{
+                                  wordBreak: 'break-word', // 줄바꿈 허용
+                                }}
+                            >
                               {blog.url}
                             </Typography>
                           </Box>
                           <Button
+                              size={"small"}
                               variant={blog.isSubscribed ? 'outlined' : 'contained'}
                               onClick={() => handleSubscribe(blog)}
                           >

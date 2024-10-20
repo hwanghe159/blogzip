@@ -20,6 +20,7 @@ class SubscriptionController(
     fun getMySubscriptions(@Parameter(hidden = true) @Authenticated user: AuthenticatedUser)
             : ResponseEntity<List<SubscriptionResponse>> {
         val response = subscriptionService.findByUserId(user.id)
+            .filter { it.blog != null }
             .map { SubscriptionResponse.from(it) }
         return ResponseEntity.ok(response)
     }

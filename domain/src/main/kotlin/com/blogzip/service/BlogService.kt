@@ -4,6 +4,7 @@ import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
 import com.blogzip.domain.Blog
 import com.blogzip.domain.BlogRepository
+import com.blogzip.domain.BlogUrl
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -17,8 +18,8 @@ class BlogService(private val repository: BlogRepository) {
     }
 
     @Transactional(readOnly = true)
-    fun existsByUrl(url: String): Boolean {
-        return repository.existsByUrl(url)
+    fun existsByUrl(url: BlogUrl): Boolean {
+        return repository.existsByUrl(url.toString())
     }
 
     @Transactional(readOnly = true)
