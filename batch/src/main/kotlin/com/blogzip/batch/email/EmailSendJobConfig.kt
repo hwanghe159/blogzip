@@ -57,7 +57,8 @@ class EmailSendJobConfig(
                 for (user in users) {
                     val accumulatedDates = user.getAccumulatedDates(today)
                     val newArticles = user.subscriptions
-                        .flatMap { it.blog.articles.filter { accumulatedDates.contains(it.createdDate) } }
+                        .filter { it.blog != null }
+                        .flatMap { it.blog!!.articles.filter { accumulatedDates.contains(it.createdDate) } }
                     emailSender.sendNewArticles(
                         User(
                             email = user.email,

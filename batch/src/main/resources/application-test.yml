@@ -5,3 +5,7 @@ spring:
   batch:
     job:
       enabled: false
+      summarize:
+        retry:
+          max-attempts: 3
+          backoff-seconds: 60 # 1분

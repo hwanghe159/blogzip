@@ -96,21 +96,15 @@ class ArticleService(private val repository: ArticleRepository) {
     }
 
     @Transactional(readOnly = true)
-    fun findAllByUserAndCreatedDate(user: User, createdDate: LocalDate): List<Article> {
-        return repository.findAllByUserAndCreatedDate(user, createdDate)
-    }
-
-    @Transactional(readOnly = true)
-    fun findAllByCreatedDate(createdDate: LocalDate): List<Article> {
-        return repository.findAllByCreatedDate(createdDate)
-    }
-
-    fun findAllByCreatedDates(createdDates: List<LocalDate>): List<Article> {
-        return repository.findAllByCreatedDateIn(createdDates)
+    fun findAllSummarizeTarget(startDate: LocalDate): List<Article> {
+        return repository.findAllByCreatedDateGreaterThanEqualAndSummaryIsNull(startDate)
     }
 
     @Transactional
-    fun findAllSummarizeTarget(startDate: LocalDate): List<Article> {
-        return repository.findAllByCreatedDateGreaterThanEqualAndSummaryIsNull(startDate)
+    fun updateSummary(id: Long, summary: String, summarizedBy: String) {
+        val article = repository.findByIdOrNull(id)
+            ?: throw DomainException(ErrorCode.ARTICLE_NOT_FOUND)
+        article.summary = summary
+        article.summarizedBy = summarizedBy
     }
 }

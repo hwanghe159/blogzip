@@ -201,10 +201,22 @@ export default function SubscriptionPage() {
                             }}
                         >
                           <Box sx={{display: 'flex', flexDirection: 'column'}}>
-                            <Typography variant="body1" color="textPrimary">
+                            <Typography
+                                variant="body1"
+                                color="textPrimary"
+                                sx={{
+                                  wordBreak: 'break-word', // 줄바꿈 허용
+                                }}
+                            >
                               {blog.name}
                             </Typography>
-                            <Typography variant="caption" color="textSecondary">
+                            <Typography
+                                variant="caption"
+                                color="textSecondary"
+                                sx={{
+                                  wordBreak: 'break-word', // 줄바꿈 허용
+                                }}
+                            >
                               {blog.url}
                             </Typography>
                           </Box>

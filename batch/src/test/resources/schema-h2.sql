@@ -43,8 +43,8 @@ create table article
     unique (url)
 );
 
-insert into `user`(email, password, verification_code, is_verified, receive_days)
-values ('hwanghe159@gmail.com', null, '', true,
+insert into `user`(email, receive_days)
+values ('hwanghe159@gmail.com',
         'MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY,SATURDAY,SUNDAY');
 insert into blog (name, url, rss, url_css_selector, rss_status, created_by)
 values ('우아한형제들 기술블로그', 'https://techblog.woowahan.com', 'https://techblog.woowahan.com/feed/',
