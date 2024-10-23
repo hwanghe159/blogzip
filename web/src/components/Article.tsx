@@ -1,16 +1,75 @@
 import * as React from 'react';
-import {Card, CardContent, CardMedia, Divider} from "@mui/material";
+import {Card, CardContent, CardMedia, Divider, IconButton} from "@mui/material";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import Tooltip from '@mui/material/Tooltip';
 import {ArticleResponse} from "../pages/MainPage";
+import {Api} from "../utils/Api";
+import {getLoginUser} from "../utils/LoginUserHelper";
+import {handleLogin} from "./GoogleLoginButton";
 
 interface ArticleProps {
   article: ArticleResponse
 }
 
-function Article({article}: ArticleProps) {
+function Article({article: initialArticle}: ArticleProps) {
+  const [article, setArticle] = React.useState(initialArticle);
+
+
   function toOriginalUrl() {
     window.open(article.url, '_blank');
+  }
+
+  const addReadLater = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    Api.post(`/api/v1/read-later`, {
+          articleId: article.id
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${getLoginUser()?.accessToken}`,
+          }
+        })
+    .onSuccess((response) => {
+      setArticle(prevArticle => ({...prevArticle, isReadLater: true}));
+    })
+    .on4XX((response) => {
+      if (response.code === 'LOGIN_FAILED') {
+        alert("로그인이 필요한 서비스입니다.")
+        handleLogin()
+      }
+    })
+    .on5XX((response) => {
+
+    })
+  }
+
+  const deleteReadLater = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    Api.delete(`/api/v1/read-later`, {
+      headers: {
+        Authorization: `Bearer ${getLoginUser()?.accessToken}`,
+      },
+      data: {
+        articleId: article.id
+      }
+    })
+    .onSuccess((response) => {
+      setArticle(prevArticle => ({...prevArticle, isReadLater: false}));
+    })
+    .on4XX((response) => {
+      if (response.code === 'LOGIN_FAILED') {
+        alert("로그인이 필요한 서비스입니다.")
+        handleLogin()
+      }
+    })
+    .on5XX((response) => {
+
+    })
   }
 
   const blogImageUrl = article.blog.image ?? "/default_blog_image.png";
@@ -25,6 +84,7 @@ function Article({article}: ArticleProps) {
               margin: 2,
               maxWidth: 800,
               cursor: 'pointer',
+              position: 'relative'
             }}
             onClick={toOriginalUrl}
         >
@@ -61,13 +121,35 @@ function Article({article}: ArticleProps) {
             </Typography>
           </Box>
           <Box sx={{display: 'flex', flexDirection: 'column', flex: 1}}>
-            <CardContent>
+            <CardContent sx={{
+              p: 2,
+            }}>
               <Typography component="div" variant="h5">
                 {article.title}
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{fontSize: '15px'}}>
                 {article.summary}
               </Typography>
+              <Box
+                  sx={{
+                    marginTop: 1,
+                    textAlign: 'left'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+              >
+                {article.isReadLater ?
+                    <Tooltip title="나중에 읽기 제거" arrow={true}>
+                      <IconButton onClick={deleteReadLater} sx={{p: 0}}>
+                        <BookmarkIcon/>
+                      </IconButton>
+                    </Tooltip> :
+                    <Tooltip title="나중에 읽기" arrow={true}>
+                      <IconButton onClick={addReadLater} sx={{p: 0}}>
+                        <BookmarkBorderIcon/>
+                      </IconButton>
+                    </Tooltip>
+                }
+              </Box>
             </CardContent>
           </Box>
         </Card>

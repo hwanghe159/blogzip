@@ -11,6 +11,11 @@ function Profile() {
 
   const menus = [
     {
+      name: '나중에 읽기', onClick: () => {
+        navigate('/bookmark')
+      }
+    },
+    {
       name: '구독 설정', onClick: () => {
         navigate('/subscription')
       }

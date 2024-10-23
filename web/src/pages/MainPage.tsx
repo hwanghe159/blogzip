@@ -8,6 +8,8 @@ import ArticlesWithDate from "../components/ArticlesWithDate";
 import {CircularProgress} from "@mui/material";
 import Box from "@mui/material/Box";
 import {getLoginUser, isLogined, removeLoginUser} from "../utils/LoginUserHelper";
+import Tooltip from "@mui/material/Tooltip";
+import InfoIcon from '@mui/icons-material/Info';
 
 export interface ArticleResponse {
   id: number;
@@ -15,6 +17,7 @@ export interface ArticleResponse {
   title: string;
   url: string;
   summary: string;
+  isReadLater: boolean;
   createdDate: string;
 }
 
@@ -44,6 +47,7 @@ const Container = styled.nav`
 
 function MainPage() {
 
+  const [openTooltip, setOpenTooltip] = useState<boolean>(false);
   const [articles, setArticles] = useState<ArticleResponse[]>([]);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const past = new Date(new Date().setDate(new Date().getDate() - 7));
@@ -103,9 +107,19 @@ function MainPage() {
   }
 
   return (
-      <Container>
-        <Typography variant="h4" component="h4">최근 일주일간 올라온 새 글</Typography>
-        <Typography variant="h6" component="h6">ChatGPT 요약</Typography>
+      <Box sx={{
+        width: {xs: 'calc(100% - 20px)', md: '100%'},
+        maxWidth: 900,
+        marginTop: 5,
+        marginLeft: 'auto',
+        marginRight: 'auto'
+      }}>
+        <Box display={"flex"} alignItems="center">
+          <Typography variant="h5" component="h5">최근 일주일간 올라온 새 글</Typography>
+          <Tooltip open={openTooltip} onClick={() => setOpenTooltip(!openTooltip)} title="ChatGPT4.0을 사용하여 요약하였습니다." sx={{ml: 1}}>
+            <InfoIcon color={"action"}/>
+          </Tooltip>
+        </Box>
         <InfiniteScroll
             dataLength={articles.length}
             next={fetchData}
@@ -134,7 +148,7 @@ function MainPage() {
               />
           )}
         </InfiniteScroll>
-      </Container>
+      </Box>
   );
 }
 

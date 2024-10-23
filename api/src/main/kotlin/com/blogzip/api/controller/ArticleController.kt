@@ -47,7 +47,7 @@ class ArticleController(
         // fetch join과 페이지네이션을 같이 사용하면 데이터를 전부 가져와 메모리에서 거른다.
         // 이를 방지하기 위해 2개의 쿼리로 나눔.
         val blogs = blogService.getSubscribedBlogs(user.id)
-        val searchedArticles = articleService.searchMy(blogs, from, to, next, size)
+        val searchedArticles = articleService.searchMy(blogs, from, to, next, size, user.id)
         return ResponseEntity.ok(
             PaginationResponse(
                 items = searchedArticles.articles.map { ArticleResponse.from(it) },

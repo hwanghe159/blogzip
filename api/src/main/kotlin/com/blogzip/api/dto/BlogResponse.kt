@@ -14,9 +14,22 @@ data class BlogResponse private constructor(
     val createdAt: LocalDateTime,
 ) {
     companion object {
-        fun from(blog: Blog): BlogResponse {
+        fun from(blog: com.blogzip.domain.Blog): BlogResponse {
             return BlogResponse(
                 id = blog.id!!,
+                name = blog.name,
+                url = blog.url,
+                image = blog.image,
+                rss = blog.rss,
+                rssStatus = blog.rssStatus,
+                createdBy = blog.createdBy,
+                createdAt = blog.createdAt,
+            )
+        }
+
+        fun from(blog: com.blogzip.dto.SearchedArticles.Article.Blog): BlogResponse {
+            return BlogResponse(
+                id = blog.id,
                 name = blog.name,
                 url = blog.url,
                 image = blog.image,

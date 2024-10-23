@@ -7,6 +7,7 @@ import MainPage from "./pages/MainPage";
 import SubscriptionPage from "./pages/SubscriptionPage";
 import {GoogleLoginPage} from "./pages/GoogleLoginPage";
 import EmailPage from "./pages/EmailPage";
+import BookmarkPage from "./pages/ReadLaterPage";
 
 function App() {
 
@@ -17,6 +18,7 @@ function App() {
           <Route path="/" element={<MainPage/>}/>
           <Route path="/email" element={<EmailPage/>}/>
           <Route path="/subscription" element={<SubscriptionPage/>}/>
+          <Route path="/bookmark" element={<BookmarkPage/>}/>
 
           <Route path="/login/google" element={<GoogleLoginPage/>}/>
           <Route path="*" element={<NotFoundPage/>}/>
