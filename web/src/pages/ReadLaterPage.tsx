@@ -14,6 +14,8 @@ import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import {getLoginUser} from "../utils/LoginUserHelper";
 import {handleLogin} from "../components/GoogleLoginButton";
+import {Link} from "react-router-dom";
+import Button from "@mui/material/Button";
 
 interface ReadLater {
   id: number
@@ -187,93 +189,117 @@ export default function ReadLaterPage() {
             </FormControl>
           </Box>
         </Box>
-        {readLaters.map(readLater => (
+        {readLaters.length > 0 ? (
             <Box>
-              <Card
-                  sx={{
-                    boxShadow: 0,
-                    display: 'flex',
-                    flexDirection: {xs: 'column', md: 'row'},
-                    margin: 2,
-                    maxWidth: 800,
-                    cursor: 'pointer',
-                    position: 'relative'
-                  }}
-                  onClick={() => {
-                    window.open(readLater.article.url, '_blank');
-                  }}
-              >
-                <Box sx={{
-                  position: 'relative',
-                  width: {xs: '100%', md: 200},
-                  height: {xs: '150px', md: 'auto'}
-                }}>
-                  <CardMedia
-                      component="img"
-                      sx={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                      }}
-                      image={blogs.get(readLater.article.blogId)?.image ?? "/default_blog_image.png"}
-                      alt={readLater.article.title}
-                  />
-                  <Typography
-                      component="div"
-                      sx={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        width: '100%',
-                        color: 'white',
-                        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                        paddingTop: '8px',
-                        paddingBottom: '8px',
-                        textAlign: 'center',
-                      }}
-                  >
-                    {blogs.get(readLater.article.blogId)?.name}
-                  </Typography>
-                </Box>
-                <Box sx={{display: 'flex', flexDirection: 'column', flex: 1}}>
-                  <CardContent sx={{
-                    p: 2,
-                  }}>
-                    <Typography component="div" variant="h5">
-                      {readLater.article.title}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{fontSize: '15px'}}>
-                      {readLater.article.summary}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{mt: 1}}>
-                      {readLater.article.createdDate}
-                    </Typography>
-                    <Box
+              {readLaters.map(readLater => (
+                  <Box>
+                    <Card
                         sx={{
-                          marginTop: 1,
-                          textAlign: 'left'
+                          boxShadow: 0,
+                          display: 'flex',
+                          flexDirection: {xs: 'column', md: 'row'},
+                          margin: 2,
+                          maxWidth: 800,
+                          cursor: 'pointer',
+                          position: 'relative'
                         }}
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={() => {
+                          window.open(readLater.article.url, '_blank');
+                        }}
                     >
-                      {readLater.isReadLater ?
-                          <Tooltip title="나중에 읽기 제거" arrow={true}>
-                            <IconButton onClick={() => deleteReadLater(readLater)} sx={{p: 0}}>
-                              <BookmarkIcon/>
-                            </IconButton>
-                          </Tooltip> :
-                          <Tooltip title="나중에 읽기" arrow={true}>
-                            <IconButton onClick={() => addReadLater(readLater)} sx={{p: 0}}>
-                              <BookmarkBorderIcon/>
-                            </IconButton>
-                          </Tooltip>
-                      }
-                    </Box>
-                  </CardContent>
-                </Box>
-              </Card>
-              <Divider/>
+                      <Box sx={{
+                        position: 'relative',
+                        width: {xs: '100%', md: 200},
+                        height: {xs: '150px', md: 'auto'}
+                      }}>
+                        <CardMedia
+                            component="img"
+                            sx={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
+                            image={blogs.get(readLater.article.blogId)?.image ?? "/default_blog_image.png"}
+                            alt={readLater.article.title}
+                        />
+                        <Typography
+                            component="div"
+                            sx={{
+                              position: 'absolute',
+                              bottom: 0,
+                              left: 0,
+                              width: '100%',
+                              color: 'white',
+                              backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                              paddingTop: '8px',
+                              paddingBottom: '8px',
+                              textAlign: 'center',
+                            }}
+                        >
+                          {blogs.get(readLater.article.blogId)?.name}
+                        </Typography>
+                      </Box>
+                      <Box sx={{display: 'flex', flexDirection: 'column', flex: 1}}>
+                        <CardContent sx={{
+                          p: 2,
+                        }}>
+                          <Typography component="div" variant="h5">
+                            {readLater.article.title}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary"
+                                      sx={{fontSize: '15px'}}>
+                            {readLater.article.summary}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{mt: 1}}>
+                            {readLater.article.createdDate}
+                          </Typography>
+                          <Box
+                              sx={{
+                                marginTop: 1,
+                                textAlign: 'left'
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                          >
+                            {readLater.isReadLater ?
+                                <Tooltip title="나중에 읽기 제거" arrow={true}>
+                                  <IconButton onClick={() => deleteReadLater(readLater)}
+                                              sx={{p: 0}}>
+                                    <BookmarkIcon/>
+                                  </IconButton>
+                                </Tooltip> :
+                                <Tooltip title="나중에 읽기" arrow={true}>
+                                  <IconButton onClick={() => addReadLater(readLater)} sx={{p: 0}}>
+                                    <BookmarkBorderIcon/>
+                                  </IconButton>
+                                </Tooltip>
+                            }
+                          </Box>
+                        </CardContent>
+                      </Box>
+                    </Card>
+                    <Divider/>
+                  </Box>
+              ))}
             </Box>
-        ))}
+        ) : (
+            <Box
+                display="flex"
+                flexDirection="column"
+                justifyContent="center"
+                alignItems="center"
+                minHeight="50vh"
+            >
+              <Typography variant="subtitle1" gutterBottom>나중에 읽을 글이 없습니다. 홈에서 추가해 보세요.</Typography>
+              <Button
+                  component={Link}
+                  to="/"
+                  variant="contained"
+                  color="primary"
+              >
+                홈으로 돌아가기
+              </Button>
+            </Box>
+        )}
       </Box>
   );
 }
