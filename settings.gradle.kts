@@ -1,5 +1,5 @@
 rootProject.name = "blogzip"
 
 include(
-    "api", "batch", "domain", "crawler", "notification", "web"
+    "api", "batch", "domain", "crawler", "notification"
 )
