@@ -10,7 +10,8 @@ import com.blogzip.domain.Blog
 import com.blogzip.domain.Blog.RssStatus.*
 import com.blogzip.notification.common.SlackSender
 import com.blogzip.notification.common.SlackSender.SlackChannel.ERROR_LOG
-import com.blogzip.service.ArticleService
+import com.blogzip.service.ArticleCommandService
+import com.blogzip.service.ArticleQueryService
 import com.blogzip.service.BlogService
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
@@ -27,7 +28,8 @@ import java.time.LocalDate
 @Configuration
 class FetchNewArticlesJobConfig(
     private val blogService: BlogService,
-    private val articleService: ArticleService,
+    private val articleQueryService: ArticleQueryService,
+    private val articleCommandService: ArticleCommandService,
     private val jobResultNotifier: JobResultNotifier,
     private val rssFeedFetcher: RssFeedFetcher,
     private val webScrapper: WebScrapper,
@@ -76,7 +78,7 @@ class FetchNewArticlesJobConfig(
                     log.info("${blog.url} 의 새 글 가져오는중. (${processCount}/${totalCount})")
                     val articles = fetchArticles(blog, from = targetDate)
                     for (article in articles) {
-                        articleService.save(article)
+                        articleCommandService.save(article)
                     }
                 }
                 RepeatStatus.FINISHED
@@ -114,7 +116,7 @@ class FetchNewArticlesJobConfig(
                 }
                     .map {
                         com.blogzip.domain.Article(
-                            blog = blog,
+                            blogId = blog.id!!,
                             title = it.title,
                             content = it.content!!,
                             url = it.url,
@@ -150,7 +152,7 @@ class FetchNewArticlesJobConfig(
                     slackSender.sendStackTraceAsync(channel = ERROR_LOG, e)
                 }
 
-                articles.filterNot { articleService.existsByUrl(it.url) }
+                articles.filterNot { articleQueryService.existsByUrl(it.url) }
                     .filter {
                         if (it.createdDate == null) {
                             true
@@ -168,7 +170,7 @@ class FetchNewArticlesJobConfig(
                             null
                         } else
                             com.blogzip.domain.Article(
-                                blog = blog,
+                                blogId = blog.id!!,
                                 title = it.title,
                                 content = content,
                                 url = it.url,
@@ -200,14 +202,14 @@ class FetchNewArticlesJobConfig(
                     slackSender.sendStackTraceAsync(ERROR_LOG, scrapResult.failCause!!)
                 }
                 return articles
-                    .filterNot { articleService.existsByUrl(it.url) }
+                    .filterNot { articleQueryService.existsByUrl(it.url) }
                     .mapNotNull {
                         val content = webScrapper.getContent(it.url)
                         if (content == null) {
                             null
                         } else {
                             com.blogzip.domain.Article(
-                                blog = blog,
+                                blogId = blog.id!!,
                                 title = it.title,
                                 content = content,
                                 url = it.url,

@@ -18,8 +18,7 @@ class ReadLaterController(
     fun getReadLater(@Parameter(hidden = true) @Authenticated user: AuthenticatedUser)
             : ResponseEntity<List<ReadLaterResponse>> {
         val response = readLaterService.findAllByUserId(user.id)
-            .filter { it.article != null }
-            .map { ReadLaterResponse.from(it) }
+            .map { ReadLaterResponse.of(it.readLater, it.article) }
         return ResponseEntity.ok(response)
     }
 
@@ -28,8 +27,13 @@ class ReadLaterController(
         @Parameter(hidden = true) @Authenticated user: AuthenticatedUser,
         @RequestBody request: ReadLaterCreateRequest,
     ): ResponseEntity<ReadLaterResponse> {
-        val readLater = readLaterService.save(user.id, request.articleId)
-        return ResponseEntity.ok(ReadLaterResponse.from(readLater))
+        val readLaterAndArticle = readLaterService.save(user.id, request.articleId)
+        return ResponseEntity.ok(
+            ReadLaterResponse.of(
+                readLaterAndArticle.readLater,
+                readLaterAndArticle.article
+            )
+        )
     }
 
     @DeleteMapping("/api/v1/read-later")

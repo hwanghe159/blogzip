@@ -13,11 +13,10 @@ class Blog(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
 
-    @OneToMany(mappedBy = "blog", fetch = FetchType.LAZY)
-    val subscriptions: MutableList<Subscription> = mutableListOf(),
-
-    @OneToMany(mappedBy = "blog", fetch = FetchType.LAZY)
-    val articles: MutableList<Article> = mutableListOf(),
+    @ElementCollection
+    @CollectionTable(name = "article", joinColumns = [JoinColumn(name = "blog_id")])
+    @Column(name = "id")
+    val articleIds: Set<Long> = emptySet(),
 
     val name: String,
 
@@ -41,7 +40,7 @@ class Blog(
 ) {
 
     fun isNew(): Boolean {
-        return this.articles.isEmpty()
+        return this.articleIds.isEmpty()
     }
 
     enum class RssStatus {

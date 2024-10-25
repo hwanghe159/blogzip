@@ -1,6 +1,6 @@
 package com.blogzip.api.dto
 
-import com.blogzip.domain.Subscription
+import com.blogzip.dto.SubscriptionAndBlog
 import java.time.LocalDateTime
 
 data class SubscriptionResponse private constructor(
@@ -9,11 +9,11 @@ data class SubscriptionResponse private constructor(
     val createdAt: LocalDateTime,
 ) {
     companion object {
-        fun from(subscription: Subscription): SubscriptionResponse {
+        fun from(subscriptionAndBlog: SubscriptionAndBlog): SubscriptionResponse {
             return SubscriptionResponse(
-                id = subscription.id!!,
-                blog = BlogResponse.from(subscription.blog!!),
-                createdAt = subscription.createdAt,
+                id = subscriptionAndBlog.subscription.id!!,
+                blog = BlogResponse.from(subscriptionAndBlog.blog),
+                createdAt = subscriptionAndBlog.subscription.createdAt,
             )
         }
     }

@@ -39,21 +39,6 @@ class User(
     var updatedAt: LocalDateTime = LocalDateTime.MIN,
 ) {
 
-    fun addSubscription(blog: Blog): Subscription {
-        val existingSubscription = this.subscriptions.firstOrNull { it.blog == blog }
-        if (existingSubscription == null) {
-            val subscription = Subscription(user = this, blog = blog)
-            this.subscriptions.add(subscription)
-            return subscription
-        } else {
-            return existingSubscription
-        }
-    }
-
-    fun deleteSubscription(blogId: Long): Boolean {
-        return this.subscriptions.removeIf { it.blog?.id == blogId }
-    }
-
     fun getAccumulatedDates(emailDate: LocalDate): List<LocalDate> {
         val receiveDays = ReceiveDaysConverter.toList(this.receiveDays)
         if (!receiveDays.contains(emailDate.dayOfWeek)) {
@@ -70,6 +55,25 @@ class User(
             result.add(date)
         }
         return result.reversed()
+    }
+
+    fun getAllSubscribingBlogIds(): Set<Long> {
+        return this.subscriptions.map { it.blogId }.toSet()
+    }
+
+    fun addSubscription(blogId: Long): Subscription {
+        val existingSubscription = this.subscriptions.firstOrNull { it.blogId == blogId }
+        if (existingSubscription == null) {
+            val subscription = Subscription(user = this, blogId = blogId)
+            this.subscriptions.add(subscription)
+            return subscription
+        } else {
+            return existingSubscription
+        }
+    }
+
+    fun deleteSubscription(blogId: Long): Boolean {
+        return this.subscriptions.removeIf { it.blogId == blogId }
     }
 
     fun updateReceiveDays(receiveDays: String): User {

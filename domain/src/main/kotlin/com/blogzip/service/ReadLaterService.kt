@@ -6,6 +6,7 @@ import com.blogzip.domain.ArticleRepository
 import com.blogzip.domain.ReadLater
 import com.blogzip.domain.ReadLaterRepository
 import com.blogzip.domain.UserRepository
+import com.blogzip.dto.ReadLaterAndArticle
 import org.springframework.data.domain.Sort
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
@@ -19,19 +20,26 @@ class ReadLaterService(
 ) {
 
     @Transactional(readOnly = true)
-    fun findAllByUserId(userId: Long): List<ReadLater> {
-        return readLaterRepository.findAllByUserId(userId, Sort.by(Sort.Direction.DESC, "id"))
+    fun findAllByUserId(userId: Long): List<ReadLaterAndArticle> {
+        val readLaters =
+            readLaterRepository.findAllByUserId(userId, Sort.by(Sort.Direction.DESC, "id"))
+        val articleIds = readLaters.map { it.articleId }.toSet()
+        val articles = articleRepository.findAllById(articleIds).map { it.id to it }.toMap()
+        return readLaters
+            .filter { articles[it.articleId] != null }
+            .map { ReadLaterAndArticle(it, articles[it.articleId]!!) }
     }
 
     @Transactional
-    fun save(userId: Long, articleId: Long): ReadLater {
-        val user = userRepository.findByIdOrNull(userId)
+    fun save(userId: Long, articleId: Long): ReadLaterAndArticle {
+        userRepository.findByIdOrNull(userId)
             ?: throw DomainException(ErrorCode.USER_NOT_FOUND)
-        val article = articleRepository.findByIdOrNull(articleId)
-            ?: throw DomainException(ErrorCode.ARTICLE_NOT_FOUND)
+        val article = (articleRepository.findByIdOrNull(articleId)
+            ?: throw DomainException(ErrorCode.ARTICLE_NOT_FOUND))
 
-        return readLaterRepository.findByUserIdAndArticleId(userId, articleId)
-            ?: readLaterRepository.save(ReadLater(user = user, article = article))
+        val readLater = (readLaterRepository.findByUserIdAndArticleId(userId, articleId)
+            ?: readLaterRepository.save(ReadLater(userId = userId, articleId = articleId)))
+        return ReadLaterAndArticle(readLater, article)
     }
 
     @Transactional

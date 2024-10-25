@@ -9,60 +9,29 @@ interface ArticleRepository : JpaRepository<Article, Long> {
 
     fun existsByUrl(url: String): Boolean
 
-    @Query(
-        """
-        select article 
-        from Article article 
-        join article.blog blog 
-        join blog.subscriptions subscriptions 
-        where subscriptions.user = :user 
-        and article.createdDate = :createdDate
-    """
-    )
-    fun findAllByUserAndCreatedDate(user: User, createdDate: LocalDate): List<Article>
-
-    fun findAllByCreatedDate(createdDate: LocalDate): List<Article>
-
-    fun findAllByCreatedDateIn(createdDates: List<LocalDate>): List<Article>
-
     fun findAllByCreatedDateGreaterThanEqualAndSummaryIsNull(createdDate: LocalDate): List<Article>
 
     @Query(
         """
             select article
-            from Article article 
-            join fetch article.blog blog
-            where article.createdDate >= :from
-            and article.createdDate <= :to
-            and (:next is null or article.id <= :next)
-            and article.summary is not null
-            and blog.isShowOnMain = true
-        """
-    )
-    fun search(
-        from: LocalDate,
-        to: LocalDate,
-        next: Long?,
-        pageable: Pageable
-    ): List<Article>
-
-    @Query(
-        """
-            select article
-            from Article article 
-            join fetch article.blog blog
-            where article.blog in :blogs
+            from Article article
+            where article.blogId in :blogIds
             and article.createdDate >= :from
             and article.createdDate <= :to
             and (:next is null or article.id <= :next)
             and article.summary is not null
         """
     )
-    fun searchMy(
-        blogs: Collection<Blog>,
+    fun search(
+        blogIds: Collection<Long>,
         from: LocalDate,
         to: LocalDate,
         next: Long?,
         pageable: Pageable
+    ): List<Article>
+
+    fun findAllByBlogIdInAndCreatedDateIn(
+        blogIds: Collection<Long>,
+        createdDates: Collection<LocalDate>
     ): List<Article>
 }

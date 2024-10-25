@@ -15,11 +15,9 @@ class Subscription(
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    val user: User?,
+    val user: User,
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "blog_id")
-    val blog: Blog?,
+    val blogId: Long,
 
     @CreatedDate
     var createdAt: LocalDateTime = LocalDateTime.MIN,

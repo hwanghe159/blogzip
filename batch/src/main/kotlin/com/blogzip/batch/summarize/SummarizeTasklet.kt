@@ -3,9 +3,6 @@ package com.blogzip.batch.summarize
 import com.blogzip.batch.common.getParameter
 import com.blogzip.batch.summarize.SummarizeJobConfig.Companion.PARAMETER_NAME
 import com.blogzip.crawler.common.logger
-import com.blogzip.notification.common.SlackSender
-import com.blogzip.service.ArticleService
-import kotlinx.coroutines.runBlocking
 import org.springframework.batch.core.StepContribution
 import org.springframework.batch.core.scope.context.ChunkContext
 import org.springframework.batch.core.step.tasklet.Tasklet

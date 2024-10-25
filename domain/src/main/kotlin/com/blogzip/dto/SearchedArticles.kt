@@ -45,10 +45,14 @@ data class SearchedArticles private constructor(
         }
 
         companion object {
-            fun of(article: com.blogzip.domain.Article, isReadLater: Boolean): Article {
+            fun of(
+                article: com.blogzip.domain.Article,
+                blog: com.blogzip.domain.Blog,
+                isReadLater: Boolean,
+            ): Article {
                 return Article(
                     id = article.id!!,
-                    blog = Blog.from(article.blog),
+                    blog = Blog.from(blog),
                     title = article.title,
                     content = article.content,
                     url = article.url,
@@ -63,15 +67,16 @@ data class SearchedArticles private constructor(
 
     companion object {
         fun of(
-            articles: List<com.blogzip.domain.Article>,
+            articleAndBlogs: List<ArticleAndBlog>,
             next: Long?,
             readLaterArticleIds: Set<Long>,
         ): SearchedArticles {
             return SearchedArticles(
-                articles = articles.map {
+                articles = articleAndBlogs.map {
                     Article.of(
-                        it,
-                        readLaterArticleIds.contains(it.id)
+                        article = it.article,
+                        blog = it.blog,
+                        readLaterArticleIds.contains(it.article.id)
                     )
                 }, next = next
             )

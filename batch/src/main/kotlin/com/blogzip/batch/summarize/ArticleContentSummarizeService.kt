@@ -2,7 +2,8 @@ package com.blogzip.batch.summarize
 
 import com.blogzip.batch.common.logger
 import com.blogzip.notification.common.SlackSender
-import com.blogzip.service.ArticleService
+import com.blogzip.service.ArticleCommandService
+import com.blogzip.service.ArticleQueryService
 import kotlinx.coroutines.runBlocking
 import org.springframework.retry.RetryException
 import org.springframework.retry.annotation.Backoff
@@ -12,7 +13,8 @@ import java.time.LocalDate
 
 @Component
 class ArticleContentSummarizeService(
-    private val articleService: ArticleService,
+    private val articleQueryService: ArticleQueryService,
+    private val articleCommandService: ArticleCommandService,
     private val articleContentSummarizer: ArticleContentSummarizer,
     private val slackSender: SlackSender,
 ) {
@@ -25,13 +27,13 @@ class ArticleContentSummarizeService(
         backoff = Backoff(delay = 1 * 1000)
     )
     fun summarize(startDate: LocalDate) {
-        val articles = articleService.findAllSummarizeTarget(startDate = startDate)
+        val articles = articleQueryService.findAllSummarizeTarget(startDate = startDate)
         var failCount = 0
         for (article in articles) {
             runBlocking {
                 val summarizeResult = articleContentSummarizer.summarize(article.content)
                 if (summarizeResult != null) {
-                    articleService.updateSummary(
+                    articleCommandService.updateSummary(
                         article.id!!,
                         summarizeResult.summary,
                         summarizeResult.summarizedBy

@@ -9,7 +9,7 @@ interface FineTuningRepository : JpaRepository<FineTuning, Long> {
         """
             select fineTuning
             from FineTuning fineTuning
-            where fineTuning.article.id = :articleId
+            where fineTuning.articleId = :articleId
     """
     )
     fun findByArticleId(articleId: Long): FineTuning?

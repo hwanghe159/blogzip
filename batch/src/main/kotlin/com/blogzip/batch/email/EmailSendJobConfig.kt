@@ -7,6 +7,8 @@ import com.blogzip.notification.common.SlackSender.SlackChannel.ERROR_LOG
 import com.blogzip.notification.email.Article
 import com.blogzip.notification.email.EmailSender
 import com.blogzip.notification.email.User
+import com.blogzip.service.ArticleQueryService
+import com.blogzip.service.BlogService
 import com.blogzip.service.UserService
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
@@ -22,6 +24,8 @@ import java.time.LocalDate
 @Configuration
 class EmailSendJobConfig(
     private val userService: UserService,
+    private val articleQueryService: ArticleQueryService,
+    private val blogService: BlogService,
     private val jobResultNotifier: JobResultNotifier,
     private val emailSender: EmailSender,
     private val slackSender: SlackSender,
@@ -54,17 +58,22 @@ class EmailSendJobConfig(
             .tasklet({ _, _ ->
                 val today = LocalDate.now()
                 val users = userService.findAllByDayOfWeek(today.dayOfWeek)
+                val blogs = blogService.findAll().map { it.id to it }.toMap()
+
                 for (user in users) {
                     val accumulatedDates = user.getAccumulatedDates(today)
-                    val newArticles = user.subscriptions
-                        .filter { it.blog != null }
-                        .flatMap { it.blog!!.articles.filter { accumulatedDates.contains(it.createdDate) } }
+                    val blogIds = user.getAllSubscribingBlogIds()
+                    val newArticles =
+                        articleQueryService.findAllByBlogIdsAndCreatedDates(
+                            blogIds,
+                            accumulatedDates
+                        )
                     emailSender.sendNewArticles(
-                        User(
+                        to = User(
                             email = user.email,
                             receiveDates = accumulatedDates,
                         ),
-                        newArticles
+                        articles = newArticles
                             .filter {
                                 if (it.summary == null) {
                                     val errorMessage = "요약되지 않아 전송 과정에서 걸러짐. article.id=${it.id}"
@@ -78,7 +87,7 @@ class EmailSendJobConfig(
                                     title = it.title,
                                     url = it.url,
                                     summary = it.summary!!,
-                                    blogName = it.blog.name,
+                                    blogName = blogs[it.blogId]?.name!!,
                                     createdDate = it.createdDate!!,
                                 )
                             })

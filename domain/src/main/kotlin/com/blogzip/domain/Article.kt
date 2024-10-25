@@ -10,9 +10,8 @@ class Article(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "blog_id")
-    val blog: Blog,
+    @Column(name = "blog_id")
+    val blogId: Long,
 
     val title: String,
 
@@ -34,6 +33,6 @@ class Article(
     }
 
     override fun toString(): String {
-        return "Article(id=$id, blog=$blog, title='$title', content='$content', url='$url', summary=$summary, summarizedBy=$summarizedBy, createdDate=$createdDate)"
+        return "Article(id=$id, blogId=$blogId, title='$title', content='$content', url='$url', summary=$summary, summarizedBy=$summarizedBy, createdDate=$createdDate)"
     }
 }

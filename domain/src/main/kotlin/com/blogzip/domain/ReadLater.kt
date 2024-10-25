@@ -13,13 +13,9 @@ class ReadLater(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "article_id")
-    val article: Article?,
+    val articleId: Long,
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    val user: User?,
+    val userId: Long,
 
     @CreatedDate
     var createdAt: LocalDateTime = LocalDateTime.MIN,

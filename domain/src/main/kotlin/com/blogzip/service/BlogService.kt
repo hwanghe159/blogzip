@@ -53,9 +53,4 @@ class BlogService(private val repository: BlogRepository) {
     fun search(query: String): List<Blog> {
         return repository.search(query)
     }
-
-    @Transactional(readOnly = true)
-    fun getSubscribedBlogs(userId: Long): List<Blog> {
-        return repository.getSubscribedBlogs(userId)
-    }
 }

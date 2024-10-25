@@ -9,10 +9,10 @@ data class ReadLaterResponse private constructor(
     val article: ArticleResponse,
 ) {
     companion object {
-        fun from(readLater: ReadLater): ReadLaterResponse {
+        fun of(readLater: ReadLater, article: Article): ReadLaterResponse {
             return ReadLaterResponse(
                 id = readLater.id!!,
-                article = ArticleResponse.from(readLater.article!!)
+                article = ArticleResponse.from(article)
             )
         }
     }
@@ -29,7 +29,7 @@ data class ReadLaterResponse private constructor(
             fun from(article: Article): ArticleResponse {
                 return ArticleResponse(
                     id = article.id!!,
-                    blogId = article.blog.id!!,
+                    blogId = article.blogId,
                     title = article.title,
                     url = article.url,
                     summary = article.summary!!,
