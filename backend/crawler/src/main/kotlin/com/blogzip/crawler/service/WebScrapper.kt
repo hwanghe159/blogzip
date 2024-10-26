@@ -29,12 +29,8 @@ open class WebScrapper private constructor(
         private val RSS_CONTENT_TYPE =
             setOf("application/xml", "application/rss+xml", "application/atom+xml", "text/xml")
 
-        fun create(): WebScrapper {
-            val config = WebDriverConfig(
-                SeleniumProperties(
-                    listOf("--window-size=1920,1080") // todo profile 별로 다르게
-                )
-            )
+        fun create(properties: SeleniumProperties): WebScrapper {
+            val config = WebDriverConfig(properties)
             return WebScrapper(
                 WebClient.builder()
                     .exchangeStrategies(

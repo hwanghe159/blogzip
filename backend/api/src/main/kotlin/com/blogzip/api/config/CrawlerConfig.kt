@@ -8,11 +8,14 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class CrawlerConfig(
+    private val seleniumProperties: SeleniumProperties
 ) {
 
     @Bean
     fun webScrapper(): WebScrapper {
-        return WebScrapper.create()
+        return WebScrapper.create(
+            com.blogzip.crawler.config.SeleniumProperties(seleniumProperties.chromeOptions)
+        )
     }
 
     @PreDestroy

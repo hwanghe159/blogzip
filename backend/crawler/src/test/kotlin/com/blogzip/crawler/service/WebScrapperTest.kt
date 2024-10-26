@@ -1,5 +1,6 @@
 package com.blogzip.crawler.service
 
+import com.blogzip.crawler.config.SeleniumProperties
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -13,7 +14,7 @@ class WebScrapperTest {
 
     @BeforeEach
     fun setUp() {
-        this.webScrapper = WebScrapper.create()
+        this.webScrapper = WebScrapper.create(SeleniumProperties(listOf("--window-size=1920,1080")))
     }
 
     @AfterEach

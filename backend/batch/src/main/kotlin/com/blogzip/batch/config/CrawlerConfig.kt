@@ -10,13 +10,16 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class CrawlerConfig(
+    private val seleniumProperties: SeleniumProperties
 ) {
 
     // 주입받는 잡만 webdriver 초기화
     @JobScope
     @Bean
     fun webScrapper(): WebScrapper {
-        return WebScrapper.create()
+        return WebScrapper.create(
+            com.blogzip.crawler.config.SeleniumProperties(seleniumProperties.chromeOptions)
+        )
     }
 
     @PreDestroy
