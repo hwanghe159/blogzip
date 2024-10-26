@@ -1,20 +1,21 @@
 package com.blogzip.crawler.service
 
-import com.blogzip.crawler.common.logger
+import com.blogzip.crawler.config.SeleniumProperties
+import com.blogzip.crawler.config.WebDriverConfig
+import com.blogzip.logger
 import com.blogzip.crawler.vo.VelogUrl
 import org.openqa.selenium.*
 import org.openqa.selenium.interactions.Actions
 import org.openqa.selenium.support.ui.ExpectedCondition
 import org.openqa.selenium.support.ui.ExpectedConditions
 import org.openqa.selenium.support.ui.WebDriverWait
-import org.springframework.stereotype.Component
+import org.springframework.web.reactive.function.client.ExchangeStrategies
 import org.springframework.web.reactive.function.client.WebClient
 import java.net.URI
 import java.time.Duration
 import kotlin.random.Random
 
-@Component
-class WebScrapper(
+open class WebScrapper private constructor(
     private val defaultWebClient: WebClient,
     private val htmlCompressor: HtmlCompressor,
     private val webDriver: WebDriver,
@@ -27,6 +28,24 @@ class WebScrapper(
         private val RSS_POSTFIX = listOf("/rss", "/feed", "/rss.xml", "/feed.xml")
         private val RSS_CONTENT_TYPE =
             setOf("application/xml", "application/rss+xml", "application/atom+xml", "text/xml")
+
+        fun create(): WebScrapper {
+            val config = WebDriverConfig(
+                SeleniumProperties(
+                    listOf("--window-size=1920,1080") // todo profile 별로 다르게
+                )
+            )
+            return WebScrapper(
+                WebClient.builder()
+                    .exchangeStrategies(
+                        ExchangeStrategies.builder()
+                            .codecs { it.defaultCodecs().maxInMemorySize(-1) }
+                            .build()
+                    ).build(),
+                HtmlCompressor(),
+                config.webDriver()
+            )
+        }
     }
 
     fun getMetadata(url: String): BlogMetadata {
@@ -106,7 +125,8 @@ class WebScrapper(
      * const articles = document.querySelectorAll('...');
      * const titles = Array.from(articles).map(article => article.textContent.trim())
      */
-    fun getArticles(blogUrl: String, cssSelector: String): ScrapResult {
+    fun getArticles(blogUrl: String, cssSelector: String, articleUrls: Set<String>): ScrapResult {
+        val articles = mutableListOf<Article>()
         try {
             webDriver.get(blogUrl)
             scrollToBottom()
@@ -118,28 +138,32 @@ class WebScrapper(
                     elements.isNotEmpty() && elements.all { it.text.isNotBlank() }
                 }
             )
-            val articles = webDriver.findElements(By.cssSelector(cssSelector))
-                .map { element ->
-                    // todo 실패 시 블로그 내 모든 글 실패가 아닌 하나만 실패하도록
-                    Thread.sleep(Random.nextLong(1000, 3001)) // 1~3초 sleep
-                    val title = element.text.trim()
-                    val currentWindow = webDriver.windowHandle
-                    element.openNewTab(webDriver)
-                    val newWindow = webDriver.windowHandles.lastOrNull { it != currentWindow }
-                    webDriver.switchTo().window(newWindow)
-                    val url = webDriver.currentUrl
-                    webDriver.close()
-                    webDriver.switchTo().window(currentWindow)
-                    log.info("- 제목 : ${title}, url : ${url}")
-                    Article(
-                        title = title,
-                        url = url
-                    )
+
+            for (element in webDriver.findElements(By.cssSelector(cssSelector))) {
+                // todo 실패 시 블로그 내 모든 글 실패가 아닌 하나만 실패하도록
+                Thread.sleep(Random.nextLong(1000, 3001)) // 1~3초 sleep
+                val title = element.text.trim()
+                val currentWindow = webDriver.windowHandle
+                element.openNewTab(webDriver)
+                val newWindow = webDriver.windowHandles.lastOrNull { it != currentWindow }
+                webDriver.switchTo().window(newWindow)
+                val url = webDriver.currentUrl
+                val content = webDriver.pageSource
+                webDriver.close()
+                webDriver.switchTo().window(currentWindow)
+
+                // 이미 있는 글을 만나면 더이상 탐색하지 않는다
+                if (articleUrls.contains(url)) {
+                    break
                 }
+
+                log.info("- 제목 : ${title}, url : ${url}")
+                articles.add(Article(title = title, url = url, content = content))
+            }
             return ScrapResult(articles, null)
         } catch (e: Exception) {
             log.error("블로그 크롤링 실패. blog.url=${blogUrl}", e)
-            return ScrapResult(emptyList(), e)
+            return ScrapResult(articles, e)
         } finally {
             initializeWebDriver()
         }
@@ -175,15 +199,24 @@ class WebScrapper(
         webDriver.switchTo().window(newTab)
     }
 
+    fun endUse() {
+        webDriver.quit()
+    }
+
     data class Article(
         val title: String,
         val url: String,
+        val content: String,
     )
 
     data class ScrapResult(
         val articles: List<Article>,
         val failCause: Exception?,
-    )
+    ) {
+        fun isFailed(): Boolean {
+            return failCause != null
+        }
+    }
 
     data class BlogMetadata(
         val title: String,

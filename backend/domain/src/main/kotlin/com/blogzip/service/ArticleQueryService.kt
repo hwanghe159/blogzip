@@ -1,8 +1,8 @@
 package com.blogzip.service
 
+import com.blogzip.logger
 import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
-import com.blogzip.common.logger
 import com.blogzip.domain.*
 import com.blogzip.dto.ArticleAndBlog
 import com.blogzip.dto.SearchedArticles
@@ -115,5 +115,10 @@ class ArticleQueryService(
         createdDates: Collection<LocalDate>,
     ): List<Article> {
         return articleRepository.findAllByBlogIdInAndCreatedDateIn(blogIds, createdDates)
+    }
+
+    @Transactional(readOnly = true)
+    fun findAllByBlogId(blogId: Long): List<Article> {
+        return articleRepository.findAllByBlogId(blogId)
     }
 }

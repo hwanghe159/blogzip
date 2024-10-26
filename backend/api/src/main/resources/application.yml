@@ -4,7 +4,6 @@ spring:
   config:
     import:
       - application-domain.yml
-      - application-crawler.yml
       - application-notification.yml
 jwt:
   secret-key: "${JWT_SECRET_KEY}"
@@ -28,6 +27,9 @@ oauth2:
 logging:
   level:
     root: info
+selenium:
+  chrome-options:
+    - "--window-size=1920,1080"
 
 ---
 spring:
@@ -40,3 +42,7 @@ logging:
 oauth2:
   google:
     redirect-uri: https://blogzip.co.kr/login/google
+selenium:
+  chrome-options:
+    - "--headless=new" # 크롬창 노출 x
+    - "--window-size=1920,1080"

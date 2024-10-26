@@ -2,5 +2,3 @@ aws:
   ses:
     access-key: access-key
     secret-key: secret-key
-slack:
-  webhook-url: slack-webhook-url

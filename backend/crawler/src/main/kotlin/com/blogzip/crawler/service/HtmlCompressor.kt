@@ -1,15 +1,14 @@
 package com.blogzip.crawler.service
 
-import com.blogzip.crawler.common.logger
+import com.blogzip.logger
 import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter
 import org.jsoup.Jsoup
-import org.springframework.stereotype.Component
 
-@Component
 class HtmlCompressor {
 
     val log = logger()
 
+    // 불필요한 정보 제거 후 MD로 변환
     fun compress(html: String): String {
         val body = Jsoup.parse(html).body()
         for (element in body.allElements) {

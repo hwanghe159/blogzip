@@ -1,8 +1,9 @@
-package com.blogzip.notification.config
+package com.blogzip.api.config
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-@EnableConfigurationProperties(SlackProperties::class)
-class SlackConfig
+@EnableConfigurationProperties(SeleniumProperties::class)
+class SeleniumConfig {
+}

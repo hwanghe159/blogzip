@@ -9,9 +9,9 @@ import com.aallam.openai.api.message.MessageRequest
 import com.aallam.openai.api.run.RunRequest
 import com.aallam.openai.api.thread.ThreadId
 import com.aallam.openai.client.OpenAI
-import com.blogzip.batch.common.logger
+import com.blogzip.slack.SlackSender
+import com.blogzip.logger
 import com.blogzip.batch.config.OpenAiProperties
-import com.blogzip.notification.common.SlackSender
 import kotlinx.coroutines.delay
 import org.springframework.stereotype.Component
 

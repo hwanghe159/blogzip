@@ -1,8 +1,6 @@
 spring:
   profiles:
     active: local
-slack:
-  webhook-url: ${SLACK_WEBHOOK_URL}
 
 ---
 spring:

@@ -3,7 +3,7 @@
 //import com.blogzip.batch.summarize.ArticleContentSummarizer.SummarizeResult
 //import com.blogzip.domain.Article
 //import com.blogzip.domain.ArticleRepository
-//import com.blogzip.notification.common.SlackSender
+//import com.blogzip.slack.SlackSender
 //import com.blogzip.service.ArticleService
 //import io.mockk.coEvery
 //import io.mockk.every

@@ -1,7 +1,7 @@
 package com.blogzip.batch.summarize
 
 import com.blogzip.batch.common.JobResultNotifier
-import com.blogzip.crawler.common.logger
+import com.blogzip.logger
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
 import org.springframework.batch.core.job.builder.JobBuilder

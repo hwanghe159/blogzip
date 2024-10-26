@@ -1,7 +1,7 @@
 package com.blogzip.batch.common
 
-import com.blogzip.notification.common.SlackSender
-import com.blogzip.notification.common.SlackSender.SlackChannel.MONITORING
+import com.blogzip.slack.SlackSender
+import com.blogzip.slack.SlackSender.SlackChannel.MONITORING
 import org.springframework.batch.core.JobExecution
 import org.springframework.batch.core.JobExecutionListener
 import org.springframework.batch.core.configuration.annotation.JobScope

@@ -1,25 +1,76 @@
 package com.blogzip.crawler.service
 
-import com.blogzip.crawler.common.logger
+import com.blogzip.logger
 import com.blogzip.crawler.dto.Article
-import org.springframework.stereotype.Component
+import com.rometools.rome.feed.synd.SyndEntry
+import com.rometools.rome.io.SyndFeedInput
+import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
+import org.springframework.web.reactive.function.client.ExchangeStrategies
 import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
+import java.io.BufferedReader
+import java.io.StringReader
+import java.time.ZoneId
 
-@Component
-class RssFeedFetcher(
+// contents 또는 description 이 500자 이하인 경우, 요약본으로 판단.
+private val SyndEntry.content: String?
+    get() {
+        var result: String
+        if (this.contents.isEmpty()) {
+            if (this.description.value.length <= 500) {
+                return null
+            }
+            result = this.description.value
+        } else {
+            val content = this.contents[0].value
+            if (content.length <= 500) {
+                return null
+            }
+            result = content
+        }
+
+        val cDataRegex = "<!\\[CDATA\\[(.*?)]]>".toRegex(setOf(RegexOption.DOT_MATCHES_ALL))
+        result = cDataRegex.find(result)?.groups?.get(1)?.value ?: result
+        return result
+    }
+
+class RssFeedFetcher private constructor(
     private val xmlWebClient: WebClient,
-    private val xmlParser: XmlParser
 ) {
 
     val log = logger()
+
+    companion object {
+        fun create(): RssFeedFetcher {
+            return RssFeedFetcher(
+                xmlWebClient(),
+            )
+        }
+
+        private fun xmlWebClient(): WebClient {
+            return WebClient.builder()
+                .defaultHeaders { headers ->
+                    headers.setAll(
+                        mapOf(
+                            HttpHeaders.CONTENT_TYPE to MediaType.APPLICATION_RSS_XML_VALUE,
+                            HttpHeaders.USER_AGENT to "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+                        )
+                    )
+                }
+                .exchangeStrategies(
+                    ExchangeStrategies.builder()
+                        .codecs { it.defaultCodecs().maxInMemorySize(-1) }
+                        .build()
+                ).build()
+        }
+    }
 
     fun isContentContainsInRss(rss: String): Boolean {
         val articles: List<Article>
 
         try {
-            val validXmlString = fetchXmlString(rss)
-            articles = xmlParser.convertToArticles(validXmlString)
+            articles = getArticles(rss)
         } catch (e: Exception) {
             return false
         }
@@ -33,7 +84,7 @@ class RssFeedFetcher(
         return true
     }
 
-    fun fetchXmlString(rss: String): String {
+    fun getArticles(rss: String): List<Article> {
         val xmlString = xmlWebClient
             .get()
             .uri(rss)
@@ -59,6 +110,23 @@ class RssFeedFetcher(
             "[^\\u0009\\r\\n\\u0020-\\uD7FF\\uE000-\\uFFFD\\u10000-\\u10FFFF]".toRegex(),
             ""
         )
-        return validXmlString
+
+        return convertToArticles(validXmlString)
+    }
+
+    private fun convertToArticles(xml: String): List<Article> {
+        val input = SyndFeedInput()
+        val entries = input.build(BufferedReader(StringReader(xml))).entries
+        val articles = entries.map {
+            Article(
+                title = it.title,
+                content = it.content,
+                url = it.link,
+                createdDate = it.publishedDate?.toInstant()
+                    ?.atZone(ZoneId.systemDefault())
+                    ?.toLocalDate()
+            )
+        }
+        return articles
     }
 }

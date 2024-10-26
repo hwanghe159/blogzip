@@ -1,9 +1,9 @@
 package com.blogzip.batch.email
 
 import com.blogzip.batch.common.JobResultNotifier
-import com.blogzip.batch.common.logger
-import com.blogzip.notification.common.SlackSender
-import com.blogzip.notification.common.SlackSender.SlackChannel.ERROR_LOG
+import com.blogzip.logger
+import com.blogzip.slack.SlackSender
+import com.blogzip.slack.SlackSender.SlackChannel.ERROR_LOG
 import com.blogzip.notification.email.Article
 import com.blogzip.notification.email.EmailSender
 import com.blogzip.notification.email.User

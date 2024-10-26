@@ -1,4 +1,4 @@
-package com.blogzip.notification.config
+package com.blogzip.slack
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 

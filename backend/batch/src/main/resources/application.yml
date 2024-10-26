@@ -4,7 +4,6 @@ spring:
   config:
     import:
       - application-domain.yml
-      - application-crawler.yml
       - application-notification.yml
 open-ai:
   api-key: "${OPEN_AI_API_KEY}"
@@ -34,6 +33,10 @@ logging:
   level:
     root: info
 
+selenium:
+  chrome-options:
+    - "--window-size=1920,1080"
+
 ---
 spring:
   config:
@@ -53,3 +56,7 @@ spring:
 logging:
   level:
     root: info
+
+selenium:
+  chrome-options:
+    - "--window-size=1920,1080"

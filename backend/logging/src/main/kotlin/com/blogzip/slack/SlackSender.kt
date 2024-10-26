@@ -1,6 +1,5 @@
-package com.blogzip.notification.common
+package com.blogzip.slack
 
-import com.blogzip.notification.config.SlackProperties
 import com.slack.api.Slack
 import com.slack.api.model.block.SectionBlock
 import com.slack.api.model.block.composition.MarkdownTextObject

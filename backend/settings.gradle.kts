@@ -1,5 +1,5 @@
 rootProject.name = "backend"
 
 include(
-    "api", "batch", "domain", "crawler", "notification"
+    "api", "batch", "domain", "crawler", "notification", "logging"
 )

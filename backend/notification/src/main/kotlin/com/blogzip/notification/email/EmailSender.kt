@@ -1,8 +1,8 @@
 package com.blogzip.notification.email
 
-import com.blogzip.notification.common.SlackSender
-import com.blogzip.notification.common.SlackSender.SlackChannel.ERROR_LOG
-import com.blogzip.notification.common.logger
+import com.blogzip.logger
+import com.blogzip.slack.SlackSender
+import com.blogzip.slack.SlackSender.SlackChannel.ERROR_LOG
 import com.blogzip.notification.config.AwsSesProperties
 import org.springframework.stereotype.Component
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials

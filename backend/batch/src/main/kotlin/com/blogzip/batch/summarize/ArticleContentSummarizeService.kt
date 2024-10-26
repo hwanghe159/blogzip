@@ -1,7 +1,7 @@
 package com.blogzip.batch.summarize
 
-import com.blogzip.batch.common.logger
-import com.blogzip.notification.common.SlackSender
+import com.blogzip.slack.SlackSender
+import com.blogzip.logger
 import com.blogzip.service.ArticleCommandService
 import com.blogzip.service.ArticleQueryService
 import kotlinx.coroutines.runBlocking

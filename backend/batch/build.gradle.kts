@@ -6,6 +6,7 @@ dependencies {
     implementation(project(":domain"))
     implementation(project(":crawler"))
     implementation(project(":notification"))
+    implementation(project(":logging"))
 
     implementation("org.springframework.boot:spring-boot-starter-batch")
 

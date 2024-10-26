@@ -1,9 +1,10 @@
 package com.blogzip.api.controller
 
-import com.blogzip.api.common.logger
+import com.blogzip.crawler.dto.Article
 import com.blogzip.crawler.service.RssFeedFetcher
 import com.blogzip.crawler.service.WebScrapper
-import com.blogzip.notification.common.SlackSender
+import com.blogzip.logger
+import com.blogzip.slack.SlackSender
 import com.blogzip.notification.email.EmailSender
 import org.springframework.web.bind.annotation.*
 import java.lang.RuntimeException
@@ -35,8 +36,8 @@ class TestController(
     }
 
     @PostMapping("/api/v1/test/xml")
-    fun fetchXmlTest(@RequestBody rss: String): String {
-        return rssFeedFetcher.fetchXmlString(rss)
+    fun fetchXmlTest(@RequestBody rss: String): List<Article> {
+        return rssFeedFetcher.getArticles(rss)
     }
 
     @PostMapping("/api/v1/test/crawler")

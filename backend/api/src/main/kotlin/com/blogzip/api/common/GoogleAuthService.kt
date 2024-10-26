@@ -7,8 +7,8 @@ import com.blogzip.common.ErrorCode
 import com.blogzip.domain.ReceiveDaysConverter
 import com.blogzip.domain.SocialType
 import com.blogzip.domain.User
-import com.blogzip.notification.common.SlackSender
-import com.blogzip.notification.common.SlackSender.SlackChannel.*
+import com.blogzip.slack.SlackSender
+import com.blogzip.slack.SlackSender.SlackChannel.*
 import com.blogzip.service.UserService
 import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.client.WebClient

@@ -1,9 +1,10 @@
 package com.blogzip.api.common
 
+import com.blogzip.slack.SlackSender
+import com.blogzip.slack.SlackSender.SlackChannel.ERROR_LOG
 import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
-import com.blogzip.notification.common.SlackSender
-import com.blogzip.notification.common.SlackSender.SlackChannel.ERROR_LOG
+import com.blogzip.logger
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException

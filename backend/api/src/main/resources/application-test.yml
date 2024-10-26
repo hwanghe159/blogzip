@@ -11,3 +11,8 @@ oauth2:
     client-id: client-id
     client-secret: client-secret
     redirect-uri: redirect-uri
+
+selenium:
+  chrome-options:
+    - "--headless=new" # 크롬창 노출 x
+    - "--window-size=1920,1080"

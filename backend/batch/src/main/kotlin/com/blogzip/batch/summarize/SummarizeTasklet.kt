@@ -2,7 +2,7 @@ package com.blogzip.batch.summarize
 
 import com.blogzip.batch.common.getParameter
 import com.blogzip.batch.summarize.SummarizeJobConfig.Companion.PARAMETER_NAME
-import com.blogzip.crawler.common.logger
+import com.blogzip.logger
 import org.springframework.batch.core.StepContribution
 import org.springframework.batch.core.scope.context.ChunkContext
 import org.springframework.batch.core.step.tasklet.Tasklet

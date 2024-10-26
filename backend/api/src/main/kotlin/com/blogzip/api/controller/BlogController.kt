@@ -11,8 +11,8 @@ import com.blogzip.crawler.service.RssFeedFetcher
 import com.blogzip.crawler.service.WebScrapper
 import com.blogzip.domain.Blog
 import com.blogzip.domain.BlogUrl
-import com.blogzip.notification.common.SlackSender
-import com.blogzip.notification.common.SlackSender.SlackChannel.*
+import com.blogzip.slack.SlackSender
+import com.blogzip.slack.SlackSender.SlackChannel.*
 import com.blogzip.service.BlogService
 import io.swagger.v3.oas.annotations.Parameter
 import org.springframework.http.ResponseEntity

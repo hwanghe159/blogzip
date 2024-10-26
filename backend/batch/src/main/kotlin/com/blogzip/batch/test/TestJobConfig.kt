@@ -1,8 +1,8 @@
 package com.blogzip.batch.test
 
-import com.blogzip.batch.common.logger
-import com.blogzip.notification.common.SlackSender
-import com.blogzip.notification.common.SlackSender.SlackChannel.MONITORING
+import com.blogzip.logger
+import com.blogzip.slack.SlackSender
+import com.blogzip.slack.SlackSender.SlackChannel.MONITORING
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
 import org.springframework.batch.core.job.builder.JobBuilder

@@ -3,7 +3,10 @@ java {
 }
 
 dependencies {
-    implementation("org.springframework.boot:spring-boot-starter-webflux")
+    implementation(project(":logging"))
+
+//    implementation("org.springframework:spring-webflux:6.1.5")
+    implementation("org.springframework.boot:spring-boot-starter-webflux") // todo 의존성을 더 줄이는 방법은 없을지
 
     // rss XML 파싱
     implementation("com.rometools:rome:2.1.0")

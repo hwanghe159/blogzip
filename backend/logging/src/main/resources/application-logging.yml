@@ -1,0 +1,17 @@
+spring:
+  profiles:
+    active: local
+slack:
+  webhook-url: ${SLACK_WEBHOOK_URL}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod

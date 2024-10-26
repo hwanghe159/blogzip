@@ -34,4 +34,6 @@ interface ArticleRepository : JpaRepository<Article, Long> {
         blogIds: Collection<Long>,
         createdDates: Collection<LocalDate>
     ): List<Article>
+
+    fun findAllByBlogId(blogId: Long): List<Article>
 }

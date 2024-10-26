@@ -1,6 +1,5 @@
 package com.blogzip.crawler.service
 
-import com.blogzip.crawler.config.WebClientConfig
 import org.junit.jupiter.api.BeforeEach
 
 import org.junit.jupiter.api.assertDoesNotThrow
@@ -55,7 +54,7 @@ class RomeTest {
     )
     fun fetch(url: String) {
         assertDoesNotThrow {
-            val xml = rssFeedFetcher.fetchXmlString(url)
+            val xml = rssFeedFetcher.getArticles(url)
             xmlParser.convertToArticles(xml)
         }
     }
