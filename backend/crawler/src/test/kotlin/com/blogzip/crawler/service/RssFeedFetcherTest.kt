@@ -6,16 +6,13 @@ import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 
-class RomeTest {
+class RssFeedFetcherTest {
 
     private lateinit var rssFeedFetcher: RssFeedFetcher
-    private lateinit var xmlParser: XmlParser
 
     @BeforeEach
     fun setUp() {
-        val webClientConfig = WebClientConfig()
-        this.xmlParser = XmlParser(HtmlCompressor())
-        this.rssFeedFetcher = RssFeedFetcher(webClientConfig.xmlWebClient(), this.xmlParser)
+        this.rssFeedFetcher = RssFeedFetcher.create()
     }
 
     @ParameterizedTest
@@ -54,8 +51,7 @@ class RomeTest {
     )
     fun fetch(url: String) {
         assertDoesNotThrow {
-            val xml = rssFeedFetcher.getArticles(url)
-            xmlParser.convertToArticles(xml)
+            rssFeedFetcher.getArticles(url)
         }
     }
 }

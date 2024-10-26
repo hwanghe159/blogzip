@@ -1,33 +1,24 @@
 package com.blogzip.crawler.service
 
-import com.blogzip.crawler.config.SeleniumProperties
-import com.blogzip.crawler.config.WebDriverConfig
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
-import org.springframework.web.reactive.function.client.WebClient
 
 class WebScrapperTest {
 
     private lateinit var webScrapper: WebScrapper
-    private val webDriver = WebDriverConfig(SeleniumProperties(emptyList())).webDriver()
 
     @BeforeEach
     fun setUp() {
-        this.webScrapper = WebScrapper(
-            WebClient.create(),
-            HtmlCompressor(),
-            webDriver,
-        )
+        this.webScrapper = WebScrapper.create()
     }
 
     @AfterEach
     fun tearDown() {
-        webDriver.quit()
+        webScrapper.endUse()
     }
 
     @DisplayName("blog url과 css selector로 글의 제목과 링크를 추출한다.")
@@ -46,7 +37,7 @@ class WebScrapperTest {
 """
     )
     fun getArticles(blogUrl: String, cssSelector: String) {
-        val articles = webScrapper.getArticles(blogUrl, cssSelector).articles
+        val articles = webScrapper.getArticles(blogUrl, cssSelector, emptySet()).articles
         articles.forEach { a ->
             println("- ${a.title}(${a.url})")
         }
