@@ -16,6 +16,7 @@ import org.springframework.transaction.PlatformTransactionManager
 class FetchNewArticlesJobConfig(
     private val fetchNewArticlesTasklet: FetchNewArticlesTasklet,
     private val jobResultNotifier: JobResultNotifier,
+    private val webScrapperDestroyer: WebScrapperDestroyer,
 ) {
 
     val log = logger()
@@ -45,6 +46,7 @@ class FetchNewArticlesJobConfig(
     ): Step {
         return StepBuilder("fetch-new-articles", jobRepository)
             .tasklet(fetchNewArticlesTasklet, platformTransactionManager)
+            .listener(webScrapperDestroyer)
             .allowStartIfComplete(true) // COMPLETED 상태로 끝났어도 재실행 가능
             .build()
     }

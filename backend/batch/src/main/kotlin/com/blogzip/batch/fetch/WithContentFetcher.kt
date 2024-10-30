@@ -44,18 +44,19 @@ class WithContentFetcher(
             }
         }
             .map {
-                com.blogzip.domain.Article(
+                Article(
                     blogId = blog.id!!,
                     title = it.title,
                     content = htmlCompressor.compress(it.content!!),
                     url = it.url,
+
                     // RSS 안에 글 작성 날짜가 주어지지 않는 경우도 있음
                     createdDate =
                     if (it.createdDate == null) {
                         if (blog.isNew()) {
                             LocalDate.EPOCH
                         } else {
-                            LocalDate.now()
+                            LocalDate.now().minusDays(1)
                         }
                     } else {
                         it.createdDate

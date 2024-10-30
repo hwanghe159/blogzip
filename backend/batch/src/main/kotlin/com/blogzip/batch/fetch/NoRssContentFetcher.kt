@@ -41,7 +41,7 @@ class NoRssContentFetcher(
             .distinctBy { it.url }
             .filterNot { articleUrls.contains(it.url) }
             .map {
-                com.blogzip.domain.Article(
+                Article(
                     blogId = blog.id!!,
                     title = it.title,
                     content = htmlCompressor.compress(it.content),
