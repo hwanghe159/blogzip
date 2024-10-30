@@ -8,18 +8,18 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 
-class WebScrapperTest {
+class ChromeWebScrapperTest {
 
-    private lateinit var webScrapper: WebScrapper
+    private lateinit var chromeWebScrapper: ChromeWebScrapper
 
     @BeforeEach
     fun setUp() {
-        this.webScrapper = WebScrapper.create(SeleniumProperties(listOf("--window-size=1920,1080")))
+        this.chromeWebScrapper = ChromeWebScrapper.create(SeleniumProperties(listOf("--window-size=1920,1080")))
     }
 
     @AfterEach
     fun tearDown() {
-        webScrapper.endUse()
+        chromeWebScrapper.endUse()
     }
 
     @DisplayName("blog url과 css selector로 글의 제목과 링크를 추출한다.")
@@ -38,7 +38,7 @@ class WebScrapperTest {
 """
     )
     fun getArticles(blogUrl: String, cssSelector: String) {
-        val articles = webScrapper.getArticles(blogUrl, cssSelector, emptySet()).articles
+        val articles = chromeWebScrapper.getArticles(blogUrl, cssSelector, emptySet()).articles
         articles.forEach { a ->
             println("- ${a.title}(${a.url})")
         }

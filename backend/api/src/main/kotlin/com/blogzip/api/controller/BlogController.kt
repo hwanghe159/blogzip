@@ -8,6 +8,7 @@ import com.blogzip.api.dto.BlogResponse
 import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
 import com.blogzip.crawler.service.RssFeedFetcher
+import com.blogzip.crawler.service.ChromeWebScrapper
 import com.blogzip.crawler.service.WebScrapper
 import com.blogzip.domain.Blog
 import com.blogzip.domain.BlogUrl
@@ -23,7 +24,7 @@ import org.springframework.web.bind.annotation.*
 class BlogController(
     private val blogService: BlogService,
     private val rssFeedFetcher: RssFeedFetcher,
-    private val webScrapper: WebScrapper,
+    private val chromeWebScrapper: WebScrapper,
     private val slackSender: SlackSender,
 ) {
 
@@ -59,7 +60,7 @@ class BlogController(
         if (blogService.existsByUrl(blogUrl)) {
             throw DomainException(ErrorCode.BLOG_URL_DUPLICATED)
         }
-        val metadata = webScrapper.getMetadata(blogUrl.toString())
+        val metadata = chromeWebScrapper.getMetadata(blogUrl.toString())
         // todo rss 가 있어도 cloudflare에 의해 차단되는 경우가 있음. 이 경우엔 NO_RSS 가 되어야 함
         val rssStatus =
             if (metadata.rss == null) Blog.RssStatus.NO_RSS

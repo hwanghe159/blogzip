@@ -1,7 +1,7 @@
 package com.blogzip.api.config
 
 import com.blogzip.crawler.service.RssFeedFetcher
-import com.blogzip.crawler.service.WebScrapper
+import com.blogzip.crawler.service.ChromeWebScrapper
 import jakarta.annotation.PreDestroy
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -12,8 +12,8 @@ class CrawlerConfig(
 ) {
 
     @Bean
-    fun webScrapper(): WebScrapper {
-        return WebScrapper.create(
+    fun webScrapper(): ChromeWebScrapper {
+        return ChromeWebScrapper.create(
             com.blogzip.crawler.config.SeleniumProperties(seleniumProperties.chromeOptions)
         )
     }

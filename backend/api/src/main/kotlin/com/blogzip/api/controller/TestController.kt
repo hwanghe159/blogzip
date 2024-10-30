@@ -13,7 +13,7 @@ import java.lang.RuntimeException
 class TestController(
     private val slackSender: SlackSender,
     private val rssFeedFetcher: RssFeedFetcher,
-    private val webScrapper: WebScrapper,
+    private val chromeWebScrapper: WebScrapper,
     private val emailSender: EmailSender,
 ) {
 
@@ -42,7 +42,7 @@ class TestController(
 
     @PostMapping("/api/v1/test/crawler")
     fun crawlerTest(@RequestBody url: String): String? {
-        return webScrapper.test(url)
+        return chromeWebScrapper.test(url)
     }
 
     @PostMapping("/api/v1/test/email")

@@ -12,6 +12,7 @@ import com.blogzip.service.BlogService
 import com.blogzip.service.UserService
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
+import org.springframework.batch.core.configuration.annotation.JobScope
 import org.springframework.batch.core.job.builder.JobBuilder
 import org.springframework.batch.core.repository.JobRepository
 import org.springframework.batch.core.step.builder.StepBuilder
@@ -49,6 +50,7 @@ class EmailSendJobConfig(
             .build()
     }
 
+    @JobScope
     @Bean
     fun emailSendStep(
         jobRepository: JobRepository,

@@ -4,6 +4,7 @@ import com.blogzip.batch.common.JobResultNotifier
 import com.blogzip.logger
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
+import org.springframework.batch.core.configuration.annotation.JobScope
 import org.springframework.batch.core.job.builder.JobBuilder
 import org.springframework.batch.core.repository.JobRepository
 import org.springframework.batch.core.step.builder.StepBuilder
@@ -36,6 +37,7 @@ class SummarizeJobConfig(
             .build()
     }
 
+    @JobScope
     @Bean
     fun summarizeStep(
         jobRepository: JobRepository,
