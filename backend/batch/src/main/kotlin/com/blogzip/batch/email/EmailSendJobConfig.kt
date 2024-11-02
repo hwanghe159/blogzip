@@ -72,6 +72,7 @@ class EmailSendJobConfig(
                         )
                     emailSender.sendNewArticles(
                         to = User(
+                            id = user.id!!,
                             email = user.email,
                             receiveDates = accumulatedDates,
                         ),

@@ -19,6 +19,18 @@ function Article({article: initialArticle}: ArticleProps) {
 
 
   function toOriginalUrl() {
+    Api.post(`/api/v1/article/${article.id}/read`, {},
+        {
+          headers: {
+            Authorization: `Bearer ${getLoginUser()?.accessToken}`,
+          }
+        })
+    .onSuccess(response => {
+    })
+    .on4XX((response) => {
+    })
+    .on5XX((response) => {
+    })
     window.open(article.url, '_blank');
   }
 

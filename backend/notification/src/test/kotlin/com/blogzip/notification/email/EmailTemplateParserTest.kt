@@ -21,6 +21,7 @@ class EmailTemplateParserTest {
     @Test
     fun `타임리프 동작 학습테스트`() {
         val user = User(
+            id = 1,
             email = "",
             receiveDates = listOf(LocalDate.EPOCH),
         )
@@ -39,7 +40,14 @@ class EmailTemplateParserTest {
                 createdDate = LocalDate.EPOCH,
             )
         )
-        assertDoesNotThrow { emailTemplateParser.parseArticles(user = user, articles = articles) }
+        assertDoesNotThrow {
+            println(
+                emailTemplateParser.parseArticles(
+                    user = user,
+                    articles = articles
+                )
+            )
+        }
     }
 
     @Configuration

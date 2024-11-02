@@ -19,6 +19,7 @@ class EmailTemplateParser(private val templateEngine: TemplateEngine) {
         val context = Context()
         context.setVariables(
             mapOf(
+                "user" to user,
                 "articles" to articles,
                 "dateRange" to createDateRangeString(user.receiveDates),
             )

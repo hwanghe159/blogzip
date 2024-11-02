@@ -57,7 +57,7 @@ class WithoutContentFetcher(
                     )
                     null
                 } else
-                    com.blogzip.domain.Article(
+                    Article(
                         blogId = blog.id!!,
                         title = it.title,
                         content = htmlCompressor.compress(content),

@@ -204,7 +204,19 @@ export default function ReadLaterPage() {
                           position: 'relative'
                         }}
                         onClick={() => {
-                          window.open(readLater.article.url, '_blank');
+                          Api.post(`/api/v1/article/${readLater.article.id}/read`, {},
+                              {
+                                headers: {
+                                  Authorization: `Bearer ${getLoginUser()?.accessToken}`,
+                                }
+                              })
+                          .onSuccess(response => {
+                          })
+                          .on4XX((response) => {
+                          })
+                          .on5XX((response) => {
+                          })
+                          window.open(readLater.article.url);
                         }}
                     >
                       <Box sx={{

@@ -9,6 +9,8 @@ interface ArticleRepository : JpaRepository<Article, Long> {
 
     fun existsByUrl(url: String): Boolean
 
+    fun findByUrl(url: String): Article?
+
     fun findAllByCreatedDateGreaterThanEqualAndSummaryIsNull(createdDate: LocalDate): List<Article>
 
     @Query(

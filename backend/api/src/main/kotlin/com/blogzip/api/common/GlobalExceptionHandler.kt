@@ -34,8 +34,10 @@ class GlobalExceptionHandler(
     @ExceptionHandler(value = [DomainException::class])
     fun handleDomainException(ex: DomainException): ResponseEntity<ErrorResponse> {
         log.warn(ex.message, ex)
-        slackSender.sendStackTraceAsync(ERROR_LOG, ex)
         val errorCode: ErrorCode = ex.errorCode
+        if (errorCode.toHttpStatus != HttpStatus.UNAUTHORIZED) {
+            slackSender.sendStackTraceAsync(ERROR_LOG, ex)
+        }
         val response = ErrorResponse(code = errorCode.name, message = errorCode.message)
         return ResponseEntity
             .status(errorCode.toHttpStatus)

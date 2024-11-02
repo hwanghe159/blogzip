@@ -39,6 +39,7 @@ class NoRssContentFetcher(
         }
         return scrapResult.articles
             .distinctBy { it.url }
+            .filterNot { it.url.startsWith("chrome-extension://") }
             .filterNot { articleUrls.contains(it.url) }
             .map {
                 Article(

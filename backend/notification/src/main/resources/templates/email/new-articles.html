@@ -7,7 +7,7 @@
 <body>
 <div th:if="${articles.isEmpty()}">
   <p>새로 올라온 글이 없어요. 블로그를 더 구독해 보세요!</p>
-  <a href="https://blogzip.co.kr">구독하러 가기</a>
+  <a href="https://blogzip.co.kr/subscription">구독하러 가기</a>
 </div>
 <div th:unless="${articles.isEmpty()}">
   <h1><span th:text="|${dateRange}에 올라온 새 글|">5/8(수)에 올라온 새 글</span></h1>
@@ -18,8 +18,8 @@
             style="font-size: 0.8em;color: grey;">블로그 이름</span>
     </h2>
     <span th:text="${article.summary}">글 내용</span>
-    <a href="#" th:href="@{${article.url}}" th:text="'(원문보기)'"
-       style="font-size: 0.9em;text-decoration: none;margin-left: 5px;">(원문보기)</a>
+    <a th:href="'https://blogzip.co.kr/redirect?url=' + ${article.url} + '&userId=' + ${user.id}" th:text="'(원문보기)'"
+       style="font-size: 0.9em; text-decoration: none; margin-left: 5px;">(원문보기)</a>
   </div>
 </div>
 <p>
