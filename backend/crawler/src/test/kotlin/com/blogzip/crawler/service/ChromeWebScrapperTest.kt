@@ -5,6 +5,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 
@@ -14,7 +15,8 @@ class ChromeWebScrapperTest {
 
     @BeforeEach
     fun setUp() {
-        this.chromeWebScrapper = ChromeWebScrapper.create(SeleniumProperties(listOf("--window-size=1920,1080")))
+        this.chromeWebScrapper =
+            ChromeWebScrapper.create(SeleniumProperties(listOf("--window-size=1920,1080")))
     }
 
     @AfterEach
@@ -48,5 +50,23 @@ class ChromeWebScrapperTest {
             assertThat(article.title).isNotBlank()
             assertThat(article.url).isNotBlank()
         }
+    }
+
+    @DisplayName("thread safe 테스트")
+    @Test
+    fun getMetadata() {
+        val datas: MutableList<WebScrapper.BlogMetadata> = mutableListOf()
+        val threads = listOf(
+            "https://techblog.woowahan.com",
+            "https://d2.naver.com/helloworld",
+            "https://techblog.lycorp.co.jp/ko",
+            "https://hyperconnect.github.io",
+        ).map { url -> Thread { datas.add(chromeWebScrapper.getMetadata(url)) } }
+
+        threads.forEach { it.start() }
+        threads.forEach { it.join() }
+
+        assertThat(datas).hasSize(threads.size)
+        assertThat(datas.map { it.title }.distinct()).hasSize(threads.size)
     }
 }

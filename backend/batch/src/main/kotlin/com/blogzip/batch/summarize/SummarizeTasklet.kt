@@ -1,7 +1,7 @@
 package com.blogzip.batch.summarize
 
 import com.blogzip.batch.common.getParameter
-import com.blogzip.batch.summarize.SummarizeJobConfig.Companion.PARAMETER_NAME
+import com.blogzip.batch.fetch.FetchNewArticlesJobConfig.Companion.PARAMETER_NAME
 import com.blogzip.logger
 import org.springframework.batch.core.StepContribution
 import org.springframework.batch.core.scope.context.ChunkContext

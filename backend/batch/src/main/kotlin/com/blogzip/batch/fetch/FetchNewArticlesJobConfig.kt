@@ -1,6 +1,7 @@
 package com.blogzip.batch.fetch
 
 import com.blogzip.batch.common.JobResultNotifier
+import com.blogzip.batch.summarize.SummarizeTasklet
 import com.blogzip.logger
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
@@ -15,6 +16,7 @@ import org.springframework.transaction.PlatformTransactionManager
 @Configuration
 class FetchNewArticlesJobConfig(
     private val fetchNewArticlesTasklet: FetchNewArticlesTasklet,
+    private val summarizeTasklet: SummarizeTasklet,
     private val jobResultNotifier: JobResultNotifier,
     private val webScrapperDestroyer: WebScrapperDestroyer,
 ) {
@@ -34,6 +36,7 @@ class FetchNewArticlesJobConfig(
         return JobBuilder(JOB_NAME, jobRepository)
 //            .incrementer(RunIdIncrementer())
             .start(fetchNewArticlesStep(jobRepository, platformTransactionManager))
+            .next(summarizeStep(jobRepository, platformTransactionManager))
             .listener(jobResultNotifier)
             .build()
     }
@@ -47,6 +50,18 @@ class FetchNewArticlesJobConfig(
         return StepBuilder("fetch-new-articles", jobRepository)
             .tasklet(fetchNewArticlesTasklet, platformTransactionManager)
             .listener(webScrapperDestroyer)
+            .allowStartIfComplete(true) // COMPLETED 상태로 끝났어도 재실행 가능
+            .build()
+    }
+
+    @JobScope
+    @Bean
+    fun summarizeStep(
+        jobRepository: JobRepository,
+        platformTransactionManager: PlatformTransactionManager
+    ): Step {
+        return StepBuilder("summarize", jobRepository)
+            .tasklet(summarizeTasklet, platformTransactionManager)
             .allowStartIfComplete(true) // COMPLETED 상태로 끝났어도 재실행 가능
             .build()
     }
