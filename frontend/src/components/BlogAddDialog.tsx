@@ -15,11 +15,11 @@ import {Api} from "../utils/Api";
 import {getLoginUser} from "../utils/LoginUserHelper";
 import {handleLogin} from "./GoogleLoginButton";
 
-interface SiteData {
-  blogId: number;
-  title: string;
+interface Blog {
+  id: number;
+  name: string;
   url: string;
-  rssLink: string | null;
+  rss: string | null;
   imageUrl: string | null;
 }
 
@@ -27,12 +27,23 @@ interface BlogAddDialogProps {
   onClose: () => void; // 다이얼로그를 닫는 함수 prop
 }
 
+enum Status {
+  INITIAL,
+
+  MANUAL_ADD_REQUIRED,
+
+  BLOG_DUPLICATED,
+  UNEXPECTED_ERROR,
+
+  SUCCESS,
+}
+
 export default function BlogAddDialog({onClose}: BlogAddDialogProps) {
   const [url, setUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [siteData, setSiteData] = useState<SiteData | null>(null);
-  const [urlAddSuccess, setUrlAddSuccess] = useState<boolean | null>(null);
+  const [blog, setBlog] = useState<Blog | null>(null);
+  const [status, setStatus] = useState<Status>(Status.INITIAL)
 
   useEffect(() => {
     if (isLoading) {
@@ -56,8 +67,7 @@ export default function BlogAddDialog({onClose}: BlogAddDialogProps) {
     e.preventDefault();
     setIsLoading(true);
     setProgress(0);
-    setSiteData(null);
-    setUrlAddSuccess(null);
+    setBlog(null);
 
     Api.post(`/api/v1/blog`, {
           url: url
@@ -68,12 +78,16 @@ export default function BlogAddDialog({onClose}: BlogAddDialogProps) {
           }
         })
     .onSuccess((response) => {
-      setUrlAddSuccess(true)
-      setSiteData({
-        blogId: response.data.id,
-        title: response.data.name,
+      if (response.data.rss === null) {
+        setStatus(Status.MANUAL_ADD_REQUIRED)
+      } else {
+        setStatus(Status.SUCCESS)
+      }
+      setBlog({
+        id: response.data.id,
+        name: response.data.name,
         url: response.data.url,
-        rssLink: response.data.rss,
+        rss: response.data.rss,
         imageUrl: response.data.image
       })
       setIsLoading(false);
@@ -84,13 +98,13 @@ export default function BlogAddDialog({onClose}: BlogAddDialogProps) {
         handleLogin()
       }
       if (response.code === 'BLOG_URL_DUPLICATED') {
+        setStatus(Status.BLOG_DUPLICATED)
       }
-      setUrlAddSuccess(false)
       setIsLoading(false);
     })
     .on5XX((response) => {
-      setUrlAddSuccess(false)
       setIsLoading(false);
+      setStatus(Status.UNEXPECTED_ERROR)
     })
   };
 
@@ -98,7 +112,7 @@ export default function BlogAddDialog({onClose}: BlogAddDialogProps) {
     e.preventDefault();
 
     Api.post(`/api/v1/subscription`, {
-          blogId: siteData!!.blogId
+          blogId: blog!!.id
         },
         {
           headers: {
@@ -124,7 +138,7 @@ export default function BlogAddDialog({onClose}: BlogAddDialogProps) {
         </Typography>
         <Card>
           <CardContent>
-            {urlAddSuccess === null && (
+            {status === Status.INITIAL && (
                 <form onSubmit={handleSubmit}>
                   <Box sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
                     <TextField
@@ -144,19 +158,19 @@ export default function BlogAddDialog({onClose}: BlogAddDialogProps) {
                   </Box>
                 </form>
             )}
-            {urlAddSuccess === true && siteData && siteData.rssLink !== null && (
+            {status === Status.SUCCESS && blog && (
                 <Box sx={{mt: 2}}>
                   <Alert severity="success">
                     <AlertTitle>블로그가 추가되었습니다!</AlertTitle>
                   </Alert>
                   <Box sx={{mt: 2}}>
-                    <Typography><strong>제목:</strong> {siteData.title}</Typography>
-                    <Typography><strong>URL:</strong> {siteData.url}</Typography>
-                    <Typography><strong>RSS 링크:</strong> {siteData.rssLink}</Typography>
-                    {siteData.imageUrl && (
+                    <Typography><strong>제목:</strong> {blog.name}</Typography>
+                    <Typography><strong>URL:</strong> {blog.url}</Typography>
+                    <Typography><strong>RSS 링크:</strong> {blog.rss}</Typography>
+                    {blog.imageUrl && (
                         <>
                           <Typography><strong>대표 이미지:</strong></Typography>
-                          <img src={siteData.imageUrl} alt="사이트 대표 이미지"
+                          <img src={blog.imageUrl} alt="사이트 대표 이미지"
                                style={{marginTop: '8px', maxWidth: '100%', height: 'auto'}}/>
                         </>
                     )}
@@ -168,12 +182,26 @@ export default function BlogAddDialog({onClose}: BlogAddDialogProps) {
                   </CardActions>
                 </Box>
             )}
-            {urlAddSuccess === true && siteData && siteData.rssLink === null && (
+            {status === Status.MANUAL_ADD_REQUIRED && (
                 <Box>
                   <Alert severity="warning" sx={{my: 2}}>
                     <AlertTitle>
                       RSS 정보가 없어 수동으로 등록이 필요합니다.
                       운영자에게 요청이 전송되었으니 조금만 기다려주시면 추가해 드릴게요!
+                    </AlertTitle>
+                  </Alert>
+                  <CardActions>
+                    <Button onClick={handleSubscribe} variant="contained" fullWidth>
+                      확인
+                    </Button>
+                  </CardActions>
+                </Box>
+            )}
+            {status === Status.BLOG_DUPLICATED && (
+                <Box>
+                  <Alert severity="warning" sx={{my: 2}}>
+                    <AlertTitle>
+                      해당하는 블로그가 이미 등록되어 있어요!
                     </AlertTitle>
                   </Alert>
                   <CardActions>
@@ -185,11 +213,11 @@ export default function BlogAddDialog({onClose}: BlogAddDialogProps) {
                   </CardActions>
                 </Box>
             )}
-            {urlAddSuccess === false && !siteData && (
+            {status === Status.UNEXPECTED_ERROR && (
                 <Box>
-                  <Alert severity="warning" sx={{my: 2}}>
+                  <Alert severity="error" sx={{my: 2}}>
                     <AlertTitle>
-                      해당하는 블로그가 이미 등록되어 있어요!
+                      예상치 못한 오류가 발생했습니다. 다시 시도해주세요.
                     </AlertTitle>
                   </Alert>
                   <CardActions>
