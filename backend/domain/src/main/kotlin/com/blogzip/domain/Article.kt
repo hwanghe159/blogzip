@@ -25,6 +25,7 @@ class Article(
 
     var createdDate: LocalDate? = null,
 ) {
+
     @PrePersist
     fun prePersist() {
         if (createdDate == null) {

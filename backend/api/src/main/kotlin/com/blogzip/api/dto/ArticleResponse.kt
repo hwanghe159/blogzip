@@ -1,5 +1,6 @@
 package com.blogzip.api.dto
 
+import com.blogzip.domain.Article
 import com.blogzip.dto.SearchedArticles
 import com.fasterxml.jackson.annotation.JsonProperty
 import java.time.LocalDate

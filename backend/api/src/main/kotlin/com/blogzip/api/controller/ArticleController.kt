@@ -2,20 +2,21 @@ package com.blogzip.api.controller
 
 import com.blogzip.api.auth.Authenticated
 import com.blogzip.api.auth.AuthenticatedUser
+import com.blogzip.api.dto.admin.ArticleKeywordsAddRequest
 import com.blogzip.api.dto.ArticleResponse
 import com.blogzip.api.dto.PaginationResponse
 import com.blogzip.service.ArticleQueryService
+import com.blogzip.service.KeywordService
 import io.swagger.v3.oas.annotations.Parameter
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.time.LocalDate
 
 
 @RestController
 class ArticleController(
     private val articleQueryService: ArticleQueryService,
+    private val keywordService: KeywordService,
 ) {
 
     @GetMapping("/api/v1/article")
@@ -49,5 +50,16 @@ class ArticleController(
                 next = searchedArticles.next
             )
         )
+    }
+
+    @PostMapping("/api/admin/article/{articleId}/keyword")
+    fun addKeywords(
+        @PathVariable articleId: Long,
+        @RequestBody request: ArticleKeywordsAddRequest,
+    ): ResponseEntity<com.blogzip.api.dto.admin.ArticleResponse> {
+        val article = articleQueryService.findById(articleId)
+        keywordService.addArticleKeywords(articleId, request.values)
+        val keywords = keywordService.getKeywordDetails(articleId)
+        return ResponseEntity.ok(com.blogzip.api.dto.admin.ArticleResponse.from(article, keywords))
     }
 }

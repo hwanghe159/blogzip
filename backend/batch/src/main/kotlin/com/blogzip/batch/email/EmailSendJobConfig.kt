@@ -10,6 +10,7 @@ import com.blogzip.notification.email.User
 import com.blogzip.service.ArticleQueryService
 import com.blogzip.service.BlogService
 import com.blogzip.service.UserService
+import com.blogzip.slack.SlackSender.SlackChannel.MONITORING
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
 import org.springframework.batch.core.configuration.annotation.JobScope
@@ -70,13 +71,6 @@ class EmailSendJobConfig(
                             blogIds,
                             accumulatedDates
                         )
-                    emailSender.sendNewArticles(
-                        to = User(
-                            id = user.id!!,
-                            email = user.email,
-                            receiveDates = accumulatedDates,
-                        ),
-                        articles = newArticles
                             .filter {
                                 if (it.summary == null) {
                                     val errorMessage = "요약되지 않아 전송 과정에서 걸러짐. article.id=${it.id}"
@@ -93,7 +87,22 @@ class EmailSendJobConfig(
                                     blogName = blogs[it.blogId]?.name!!,
                                     createdDate = it.createdDate!!,
                                 )
-                            })
+                            }
+                    if (newArticles.isEmpty()) {
+                        slackSender.sendMessageAsync(
+                            MONITORING,
+                            "구독한 블로그에 새 글이 없어 skip. email=${user.email}"
+                        )
+                        continue
+                    }
+                    emailSender.sendNewArticles(
+                        to = User(
+                            id = user.id!!,
+                            email = user.email,
+                            receiveDates = accumulatedDates,
+                        ),
+                        articles = newArticles
+                    )
                 }
                 RepeatStatus.FINISHED
             }, platformTransactionManager)

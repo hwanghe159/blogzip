@@ -5,11 +5,12 @@ import {Api} from "../utils/Api";
 import styled from "styled-components";
 import InfiniteScroll from "react-infinite-scroll-component";
 import ArticlesWithDate from "../components/ArticlesWithDate";
-import {CircularProgress} from "@mui/material";
+import {CircularProgress, Dialog} from "@mui/material";
 import Box from "@mui/material/Box";
 import {getLoginUser, isLogined, removeLoginUser} from "../utils/LoginUserHelper";
 import Tooltip from "@mui/material/Tooltip";
 import InfoIcon from '@mui/icons-material/Info';
+import OnboardingDialog from "../components/OnboardingDialog";
 
 export interface ArticleResponse {
   id: number;
@@ -48,6 +49,8 @@ const Container = styled.nav`
 function MainPage() {
 
   const [openTooltip, setOpenTooltip] = useState<boolean>(false);
+  // todo 구독 수 0개면 노출
+  const [openOnboarding, setOpenOnboarding] = useState<boolean>(false);
   const [articles, setArticles] = useState<ArticleResponse[]>([]);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const past = new Date(new Date().setDate(new Date().getDate() - 7));
@@ -148,6 +151,13 @@ function MainPage() {
               />
           )}
         </InfiniteScroll>
+        <Dialog
+            open={openOnboarding}
+            onClose={() => setOpenOnboarding(false)}
+            fullWidth={true}
+        >
+          <OnboardingDialog onClose={() => setOpenOnboarding(false)}/>
+        </Dialog>
       </Box>
   );
 }
