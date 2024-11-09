@@ -127,7 +127,12 @@ export default function OnboardingDialog({onClose}: OnboardingDialogProps) {
             <>
               <Typography>아직 구독한 블로그가 없네요!</Typography>
               <Typography variant="h4" component="h4" gutterBottom>구독할 블로그를 추가해주세요.</Typography>
-              <DialogContent sx={{p: 1}}>
+              <DialogContent sx={{
+                p: 1,
+                flex: 1,
+                overflow: 'auto'
+              }}
+              >
                 <Box sx={{mb: 2}}>
                   <FormControlLabel
                       control={
@@ -142,8 +147,9 @@ export default function OnboardingDialog({onClose}: OnboardingDialogProps) {
                 </Box>
                 <List sx={{
                   width: '100%',
-                  maxHeight: 400,
-                  overflow: 'auto'
+                  maxHeight: '100%',  // 여유 공간을 채우도록 설정
+                  overflow: 'auto',
+                  flexShrink: 1,
                 }}>
                   {blogs.map((blog) => (
                       <ListItem
@@ -203,7 +209,15 @@ export default function OnboardingDialog({onClose}: OnboardingDialogProps) {
                   ))}
                 </List>
               </DialogContent>
-              <DialogActions>
+              <DialogActions sx={{
+                display: "flex",
+                flexDirection: "row",
+                justifyContent: "flex-end",
+                position: 'sticky',  // 항상 하단에 고정
+                bottom: 0,
+                backgroundColor: 'white',
+                p: 1,
+              }}>
                 <Button
                     onClick={handleSubscribe}
                     color="primary"
@@ -244,7 +258,9 @@ export default function OnboardingDialog({onClose}: OnboardingDialogProps) {
               <DialogActions sx={{
                 display: "flex",
                 flexDirection: "row",
-                justifyContent: "space-between"
+                justifyContent: "space-between",
+                position: 'sticky',  // 항상 하단에 고정
+                bottom: 0,
               }}>
                 <Button onClick={() => handleEmailSetting([])}
                         color="primary">
