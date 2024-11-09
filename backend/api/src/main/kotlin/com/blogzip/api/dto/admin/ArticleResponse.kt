@@ -1,7 +1,7 @@
 package com.blogzip.api.dto.admin
 
 import com.blogzip.domain.Article
-import com.blogzip.domain.Keyword
+import com.blogzip.dto.HeadKeyword
 import java.time.LocalDate
 
 data class ArticleResponse private constructor(
@@ -16,35 +16,15 @@ data class ArticleResponse private constructor(
     val keywords: List<HeadKeywordResponse>,
 ) {
     companion object {
-        fun from(article: Article, keywords: List<Keyword>): ArticleResponse {
-//            val headKeywords = keywords
-//                .filter { it.head != null }
-//                .groupBy { it.head!! }
-//                .map { entry ->
-//                    val head = entry.key
-//                    val followers = entry.value
-//                    HeadKeywordResponse(
-//                        id = head.id!!,
-//                        value = head.value,
-//                        followers = followers.map {
-//                            FollowerKeywordResponse(
-//                                id = it.id!!,
-//                                value = it.value,
-//                                createdAt = it.createdAt,
-//                            )
-//                        },
-//                        createdAt = head.createdAt,
-//                    )
-//                }
-            val headKeywords = keywords
-                .filter { it.isHead() }
+        fun from(article: Article, headKeywords: List<HeadKeyword>): ArticleResponse {
+            val keywords = headKeywords
                 .map {
                     HeadKeywordResponse(
-                        id = it.id!!,
+                        id = it.id,
                         value = it.value,
                         followers = it.followers.map {
                             FollowerKeywordResponse(
-                                id = it.id!!,
+                                id = it.id,
                                 value = it.value,
                                 createdAt = it.createdAt,
                             )
@@ -62,7 +42,7 @@ data class ArticleResponse private constructor(
                 summary = article.summary,
                 summarizedBy = article.summarizedBy,
                 createdDate = article.createdDate,
-                keywords = headKeywords
+                keywords = keywords
             )
         }
     }

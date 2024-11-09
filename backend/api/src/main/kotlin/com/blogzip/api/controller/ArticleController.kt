@@ -60,6 +60,8 @@ class ArticleController(
         val article = articleQueryService.findById(articleId)
         keywordService.addArticleKeywords(articleId, request.values)
         val keywords = keywordService.getKeywordDetails(articleId)
-        return ResponseEntity.ok(com.blogzip.api.dto.admin.ArticleResponse.from(article, keywords))
+        return ResponseEntity.ok(
+            com.blogzip.api.dto.admin.ArticleResponse.from(article, keywords)
+        )
     }
 }

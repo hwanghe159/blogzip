@@ -25,6 +25,7 @@ data class SearchedArticles private constructor(
             val image: String?,
             val rssStatus: com.blogzip.domain.Blog.RssStatus,
             val rss: String?,
+            val isShowOnMain: Boolean,
             val createdBy: Long,
             val createdAt: LocalDateTime,
         ) {
@@ -37,6 +38,7 @@ data class SearchedArticles private constructor(
                         image = blog.image,
                         rssStatus = blog.rssStatus,
                         rss = blog.rss,
+                        isShowOnMain = blog.isShowOnMain,
                         createdBy = blog.createdBy,
                         createdAt = blog.createdAt,
                     )

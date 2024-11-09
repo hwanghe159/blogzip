@@ -49,7 +49,6 @@ const Container = styled.nav`
 function MainPage() {
 
   const [openTooltip, setOpenTooltip] = useState<boolean>(false);
-  // todo 구독 수 0개면 노출
   const [openOnboarding, setOpenOnboarding] = useState<boolean>(false);
   const [articles, setArticles] = useState<ArticleResponse[]>([]);
   const [hasMore, setHasMore] = useState<boolean>(true);
@@ -95,6 +94,23 @@ function MainPage() {
     })
     .on5XX((response) => {
     });
+
+    if (isLogined()) {
+      Api.get(`/api/v1/subscription`, {
+        headers: {
+          Authorization: `Bearer ${getLoginUser()?.accessToken}`,
+        }
+      })
+      .onSuccess((response) => {
+        if (response.data.length === 0) {
+          setOpenOnboarding(true)
+        }
+      })
+      .on4XX((response) => {
+      })
+      .on5XX((response) => {
+      })
+    }
   }
 
   function groupArticlesByDate(articles: ArticleResponse[]): ArticleResponse[][] {
@@ -119,7 +135,8 @@ function MainPage() {
       }}>
         <Box display={"flex"} alignItems="center">
           <Typography variant="h5" component="h5">최근 일주일간 올라온 새 글</Typography>
-          <Tooltip open={openTooltip} onClick={() => setOpenTooltip(!openTooltip)} title="ChatGPT4.0을 사용하여 요약하였습니다." sx={{ml: 1}}>
+          <Tooltip open={openTooltip} onClick={() => setOpenTooltip(!openTooltip)}
+                   title="ChatGPT4.0을 사용하여 요약하였습니다." sx={{ml: 1}}>
             <InfoIcon color={"action"}/>
           </Tooltip>
         </Box>

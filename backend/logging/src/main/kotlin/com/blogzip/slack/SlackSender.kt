@@ -8,14 +8,19 @@ import com.slack.api.webhook.WebhookResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.springframework.core.env.Environment
 import org.springframework.stereotype.Component
 
 @Component
 class SlackSender(
     private val slackProperties: SlackProperties,
+    private val environment: Environment,
 ) {
 
     fun sendStackTraceAsync(channel: SlackChannel, throwable: Throwable) {
+        if (!environment.activeProfiles.contains("prod")) {
+            return
+        }
         CoroutineScope(Dispatchers.Default).launch {
             callApi(
                 slackProperties.webhookUrl,
@@ -47,6 +52,9 @@ class SlackSender(
     }
 
     fun sendMessageAsync(channel: SlackChannel, message: String) {
+        if (!environment.activeProfiles.contains("prod")) {
+            return
+        }
         val maxLength = 3997
         CoroutineScope(Dispatchers.Default).launch {
             callApi(
