@@ -66,6 +66,7 @@ class ChromeWebScrapperTest {
         threads.forEach { it.start() }
         threads.forEach { it.join() }
 
+        datas.forEach { println(it) }
         assertThat(datas).hasSize(threads.size)
         assertThat(datas.map { it.title }.distinct()).hasSize(threads.size)
     }

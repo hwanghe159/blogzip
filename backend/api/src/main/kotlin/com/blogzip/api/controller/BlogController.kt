@@ -8,7 +8,6 @@ import com.blogzip.api.dto.BlogResponse
 import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
 import com.blogzip.crawler.service.RssFeedFetcher
-import com.blogzip.crawler.service.ChromeWebScrapper
 import com.blogzip.crawler.service.WebScrapper
 import com.blogzip.domain.Blog
 import com.blogzip.domain.BlogUrl
@@ -61,6 +60,12 @@ class BlogController(
             throw DomainException(ErrorCode.BLOG_URL_DUPLICATED)
         }
         val metadata = chromeWebScrapper.getMetadata(blogUrl.toString())
+        if (metadata.imageUrl == null || metadata.rss == null) {
+            slackSender.sendMessageAsync(
+                MONITORING,
+                "imageUrl==null 또는 rss==null. url=$blogUrl, metadata=$metadata"
+            )
+        }
         // todo rss 가 있어도 cloudflare에 의해 차단되는 경우가 있음. 이 경우엔 NO_RSS 가 되어야 함
         val rssStatus =
             if (metadata.rss == null) Blog.RssStatus.NO_RSS

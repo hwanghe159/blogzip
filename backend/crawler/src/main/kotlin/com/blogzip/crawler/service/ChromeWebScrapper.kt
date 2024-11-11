@@ -3,6 +3,7 @@ package com.blogzip.crawler.service
 import com.blogzip.crawler.config.SeleniumProperties
 import com.blogzip.crawler.service.WebScrapper.*
 import com.blogzip.crawler.undetectedchromedriver.ChromeDriverBuilder
+import com.blogzip.crawler.vo.MediumUrl
 import com.blogzip.logger
 import com.blogzip.crawler.vo.VelogUrl
 import io.github.bonigarcia.wdm.WebDriverManager
@@ -71,15 +72,16 @@ class ChromeWebScrapper private constructor(
             title = webDriver.title
 
             // imageUrl
-            val element =
-                wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("meta[property='og:image']")))
-            imageUrl = element.getAttribute("content")
-            if (imageUrl.isNullOrBlank()) {
-                throw RuntimeException("head 태그 내 image가 공백임.")
+            try {
+                val element =
+                    wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("meta[property='og:image']")))
+                imageUrl = element.getAttribute("content")
+            } catch (e: Exception) {
+                imageUrl = null
             }
 
             // 상대경로인 경우 절대경로로 변경
-            if (!imageUrl.startsWith("http")) {
+            if (imageUrl != null && !imageUrl.startsWith("http")) {
                 imageUrl = URI(webDriver.currentUrl).resolve(imageUrl).toString()
             }
 
@@ -93,6 +95,8 @@ class ChromeWebScrapper private constructor(
                 rss = result[0]
             } else if (VelogUrl.isVelogUrl(url)) {
                 rss = VelogUrl(url).rssUrl()
+            } else if (MediumUrl.isMediumUrl(url)) {
+                rss = MediumUrl(url).rssUrl()
             } else {
                 for (postfix in RSS_POSTFIX) {
                     val containsRssUrl = webClient.get()

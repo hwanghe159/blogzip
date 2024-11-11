@@ -12,16 +12,19 @@ class CrawlerConfig(
     private val seleniumProperties: SeleniumProperties
 ) {
 
+    private lateinit var chromeWebScrapper: WebScrapper
+
     @Bean
     fun chromeWebScrapper(): WebScrapper {
-        return ChromeWebScrapper.create(
+        chromeWebScrapper = ChromeWebScrapper.create(
             com.blogzip.crawler.config.SeleniumProperties(seleniumProperties.chromeOptions)
         )
+        return chromeWebScrapper
     }
 
     @PreDestroy
     fun quitWebDriver() {
-        chromeWebScrapper().endUse()
+        chromeWebScrapper.endUse()
     }
 
     @Bean
