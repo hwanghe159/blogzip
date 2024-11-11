@@ -1,5 +1,6 @@
 open-ai:
   api-key: "${OPEN_AI_API_KEY}"
+  api-key-new: "${OPEN_AI_API_KEY_NEW}"
   assistant-id: "${OPEN_AI_ASSISTANT_ID}"
   thread-id: "${OPEN_AI_THREAD_ID}"
 spring:

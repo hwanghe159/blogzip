@@ -22,7 +22,9 @@ dependencies {
     implementation(platform("com.aallam.openai:openai-client-bom:3.7.0"))
     implementation("com.aallam.openai:openai-client")
     runtimeOnly("io.ktor:ktor-client-okhttp")
-    implementation("org.springframework.cloud:spring-cloud-starter-openfeign")
+
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
 
     testImplementation("org.springframework.batch:spring-batch-test")
     testImplementation("io.mockk:mockk:1.13.10")

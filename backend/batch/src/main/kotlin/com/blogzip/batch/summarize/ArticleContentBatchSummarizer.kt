@@ -1,15 +1,29 @@
 package com.blogzip.batch.summarize
 
+import com.blogzip.ai.BatchResponse
+import com.blogzip.ai.JsonlConverter
+import com.blogzip.ai.OpenAiApiClient
+import com.blogzip.ai.SingleRequestGenerator
 import com.blogzip.slack.SlackSender
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.core.io.ByteArrayResource
 import org.springframework.stereotype.Component
 
 @Component
 class ArticleContentBatchSummarizer(
+    private val openAiApiClient: OpenAiApiClient,
+    private val jsonlConverter: JsonlConverter,
+    private val objectMapper: ObjectMapper,
+    private val singleRequestGenerator: SingleRequestGenerator,
     private val slackSender: SlackSender,
 ) {
     fun summarizeAndGetKeywordsAll(articles: List<Article>): List<SummarizeAndKeywordsResult> {
         // jsonl 파일 생성
         // {"custom_id": "article.id", "method": "POST", "url": "/v1/chat/completions", "body": {"model": "gpt-3.5-turbo-0125", "messages": [{"role": "system", "content": "You are a helpful assistant."},{"role": "user", "content": "Hello world!"}],"max_tokens": 1000}}
+        val requests = articles.map {
+            singleRequestGenerator.generate(customId = it.id.toString(), content = it.content)
+        }
+        val jsonl = jsonlConverter.objectsToJsonl(requests)
 
         // jsonl 파일 업로드
         // 요청
@@ -28,6 +42,10 @@ class ArticleContentBatchSummarizer(
         //    "status": "processed",
         //    "status_details": null
         //}
+        val fileId = openAiApiClient.uploadFile(
+            file = ByteArrayResource(jsonl.toByteArray()),
+            purpose = "batch"
+        )["id"] as String
 
         // batch 생성
         // 요청
@@ -66,6 +84,13 @@ class ArticleContentBatchSummarizer(
         //    },
         //    "metadata": null
         //}
+        val batchId = openAiApiClient.createBatch(
+            OpenAiApiClient.BatchCreateRequest(
+                inputFileId = fileId,
+                endpoint = "/v1/chat/completions",
+                completionWindow = "24h"
+            )
+        )["id"] as String
 
         // batch 상태 체크
         // curl https://api.openai.com/v1/batches/batch_abc123 \
@@ -99,13 +124,33 @@ class ArticleContentBatchSummarizer(
         //    "metadata": null
         //}
 
+        var outputFileId: String? = null
+        while (true) {
+            val response = openAiApiClient.getBatchStatus(batchId)
+            if (response["status"] as String == "completed") {
+                outputFileId = response["output_file_id"] as String
+                break
+            }
+            Thread.sleep(5000)
+        }
+
         // batch 결과 조회
         // curl https://api.openai.com/v1/files/file-xyz123/content \
         //  -H "Authorization: Bearer $OPENAI_API_KEY"
         // 응답
-
-
-        return emptyList()
+        val resultJsonl = openAiApiClient.getBatchResult(outputFileId!!)
+        return jsonlConverter.jsonlToObjects(resultJsonl.toString(), BatchResponse::class.java)
+            .map {
+                val summaryAndKeywordsJson = objectMapper.readTree(it.response?.body?.choices?.first()?.message?.content)
+                val summary = summaryAndKeywordsJson["summary"].toString()
+                val keywords = summaryAndKeywordsJson["keywords"].map { it.toString() }
+                SummarizeAndKeywordsResult(
+                    id = it.customId?.toLong()!!,
+                    summary = summary,
+                    summarizedBy = it.response?.body?.model!!,
+                    keywords = keywords
+                )
+            }
     }
 
     data class Article(

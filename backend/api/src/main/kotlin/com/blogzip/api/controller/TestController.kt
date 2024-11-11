@@ -1,6 +1,6 @@
 package com.blogzip.api.controller
 
-import com.blogzip.ai.OpenAIApiClient
+import com.blogzip.ai.OpenAiApiClient
 import com.blogzip.crawler.dto.Article
 import com.blogzip.crawler.service.RssFeedFetcher
 import com.blogzip.crawler.service.WebScrapper
@@ -16,7 +16,7 @@ class TestController(
     private val rssFeedFetcher: RssFeedFetcher,
     private val chromeWebScrapper: WebScrapper,
     private val emailSender: EmailSender,
-    private val openAIApiClient: OpenAIApiClient,
+    private val openAIApiClient: OpenAiApiClient,
 ) {
 
     val log = logger()
@@ -57,7 +57,12 @@ class TestController(
     }
 
     @GetMapping("/api/v1/test/batch/{batchId}")
-    fun aaa(@PathVariable batchId: String): Map<String, Any> {
+    fun getBatchStatus(@PathVariable batchId: String): Map<String, Any> {
         return openAIApiClient.getBatchStatus(batchId)
+    }
+
+    @GetMapping("/api/v1/test/file/{fileId}")
+    fun getBatchResult(@PathVariable fileId: String): ByteArray {
+        return openAIApiClient.getBatchResult(fileId)
     }
 }

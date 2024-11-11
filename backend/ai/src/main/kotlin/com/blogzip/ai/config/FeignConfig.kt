@@ -22,7 +22,7 @@ class FeignConfig(
     @Bean
     fun requestInterceptor(): RequestInterceptor {
         return RequestInterceptor {
-            it.header("Authorization", "Bearer ${openAiProperties.apiKey}")
+            it.header("Authorization", "Bearer ${openAiProperties.apiKeyNew}")
         }
     }
 }
