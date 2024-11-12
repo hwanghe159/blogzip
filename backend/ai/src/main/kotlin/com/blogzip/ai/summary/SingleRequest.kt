@@ -1,4 +1,6 @@
-package com.blogzip.ai
+package com.blogzip.ai.summary
+
+import com.fasterxml.jackson.annotation.JsonProperty
 
 data class SingleRequest(
     val customId: String,
@@ -29,6 +31,7 @@ data class SingleRequest(
                     val type: String,
                     val properties: Properties,
                     val required: List<String>,
+                    @JsonProperty("additionalProperties")
                     val additionalProperties: Boolean
                 ) {
                     data class Properties(

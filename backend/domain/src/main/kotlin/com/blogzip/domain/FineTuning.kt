@@ -12,6 +12,8 @@ class FineTuning(
     val articleId: Long,
 
     var summary: String,
+
+    val keywords: String,
 ) {
     fun update(tunedSummary: String): FineTuning {
         this.summary = tunedSummary

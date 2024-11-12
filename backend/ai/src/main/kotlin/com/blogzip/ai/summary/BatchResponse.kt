@@ -1,4 +1,4 @@
-package com.blogzip.ai
+package com.blogzip.ai.summary
 
 data class BatchResponse(
     val id: String?,

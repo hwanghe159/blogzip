@@ -6,6 +6,7 @@ spring:
       - application-domain.yml
       - application-notification.yml
       - application-logging.yml
+      - application-ai.yml
 logging:
   level:
     org.hibernate.SQL: info

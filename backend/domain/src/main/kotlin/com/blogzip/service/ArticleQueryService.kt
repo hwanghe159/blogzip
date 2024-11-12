@@ -121,4 +121,9 @@ class ArticleQueryService(
     fun findAllByBlogId(blogId: Long): List<Article> {
         return articleRepository.findAllByBlogId(blogId)
     }
+
+    @Transactional(readOnly = true)
+    fun findAllById(articleIds: List<Long>): List<Article> {
+        return articleRepository.findAllById(articleIds)
+    }
 }

@@ -26,19 +26,12 @@ class Keyword(
     var createdAt: LocalDateTime = LocalDateTime.MIN,
 ) {
 
-//    init {
-//        if (head == null) {
-//            head = this
-//        }
-//    }
-
     fun isHead(): Boolean {
-//        return head == this
         return this.followers.isEmpty()
     }
-//
-//    fun follow(keyword: Keyword): Keyword {
-//        this.head = keyword
-//        return this
-//    }
+
+    fun follow(keyword: Keyword): Keyword {
+        this.head = keyword
+        return this
+    }
 }

@@ -1,12 +1,15 @@
 package com.blogzip.api.controller
 
-import com.blogzip.ai.OpenAiApiClient
+import com.blogzip.ai.summary.ArticleContentBatchSummarizer
+import com.blogzip.ai.summary.OpenAiApiClient
 import com.blogzip.crawler.dto.Article
 import com.blogzip.crawler.service.RssFeedFetcher
 import com.blogzip.crawler.service.WebScrapper
+import com.blogzip.domain.ArticleRepository
 import com.blogzip.logger
 import com.blogzip.slack.SlackSender
 import com.blogzip.notification.email.EmailSender
+import com.blogzip.service.ArticleQueryService
 import org.springframework.web.bind.annotation.*
 import java.lang.RuntimeException
 
@@ -17,6 +20,9 @@ class TestController(
     private val chromeWebScrapper: WebScrapper,
     private val emailSender: EmailSender,
     private val openAIApiClient: OpenAiApiClient,
+    private val articleContentBatchSummarizer: ArticleContentBatchSummarizer,
+    private val articleRepository: ArticleRepository,
+    private val articleQueryService: ArticleQueryService,
 ) {
 
     val log = logger()
@@ -64,5 +70,12 @@ class TestController(
     @GetMapping("/api/v1/test/file/{fileId}")
     fun getBatchResult(@PathVariable fileId: String): ByteArray {
         return openAIApiClient.getBatchResult(fileId)
+    }
+
+    @GetMapping("/api/v1/test/summary/article/{articleIds}")
+    fun summaryAndKeywordsTest(@PathVariable articleIds: List<Long>): List<ArticleContentBatchSummarizer.SummarizeAndKeywordsResult> {
+        val map = articleQueryService.findAllById(articleIds)
+            .map { ArticleContentBatchSummarizer.Article(id = it.id!!, content = it.content) }
+        return articleContentBatchSummarizer.summarizeAndGetKeywordsAll(map)
     }
 }

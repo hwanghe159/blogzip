@@ -1,15 +1,18 @@
-package com.blogzip.ai
+package com.blogzip.ai.common
 
+import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.PropertyNamingStrategies
 import com.fasterxml.jackson.module.kotlin.jsonMapper
 import com.fasterxml.jackson.module.kotlin.kotlinModule
 import org.springframework.stereotype.Component
 
 @Component
-class JsonlConverter(
-    private val objectMapper: ObjectMapper
-) {
+class JsonlConverter {
+
+    private val objectMapper = jsonMapper { addModule(kotlinModule()) }
+        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false) // 정의되지 않은 필드가 넘어오면 무시
 
     fun <T> objectsToJsonl(objects: List<T>): String {
         return objects.joinToString(separator = "\n") { obj ->

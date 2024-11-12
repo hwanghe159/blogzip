@@ -1,5 +1,6 @@
 package com.blogzip.ai
 
+import com.blogzip.ai.common.JsonlConverter
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
 

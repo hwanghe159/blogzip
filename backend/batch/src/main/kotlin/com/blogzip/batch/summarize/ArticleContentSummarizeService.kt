@@ -1,9 +1,12 @@
 package com.blogzip.batch.summarize
 
+import com.blogzip.ai.summary.ArticleContentBatchSummarizer
+import com.blogzip.ai.summary.ArticleContentBatchSummarizer.Article
 import com.blogzip.slack.SlackSender
 import com.blogzip.logger
 import com.blogzip.service.ArticleCommandService
 import com.blogzip.service.ArticleQueryService
+import com.blogzip.service.KeywordService
 import kotlinx.coroutines.runBlocking
 import org.springframework.retry.RetryException
 import org.springframework.retry.annotation.Backoff
@@ -15,7 +18,9 @@ import java.time.LocalDate
 class ArticleContentSummarizeService(
     private val articleQueryService: ArticleQueryService,
     private val articleCommandService: ArticleCommandService,
-    private val articleContentSummarizer: ArticleContentSummarizer,
+//    private val articleContentSummarizer: ArticleContentSummarizer,
+    private val articleContentBatchSummarizer: ArticleContentBatchSummarizer,
+    private val keywordService: KeywordService,
     private val slackSender: SlackSender,
 ) {
 
@@ -28,31 +33,43 @@ class ArticleContentSummarizeService(
     )
     fun summarize(startDate: LocalDate) {
         val articles = articleQueryService.findAllSummarizeTarget(startDate = startDate)
-        var failCount = 0
-        for (article in articles) {
-            runBlocking {
-                val summarizeResult = articleContentSummarizer.summarize(article.content)
-                if (summarizeResult != null) {
-                    articleCommandService.updateSummary(
-                        article.id!!,
-                        summarizeResult.summary,
-                        summarizeResult.summarizedBy
-                    )
-                } else {
-                    failCount++
-                }
-            }
+//        var failCount = 0
+//        for (article in articles) {
+//            runBlocking {
+//                val summarizeResult = articleContentSummarizer.summarize(article.content)
+//                if (summarizeResult != null) {
+//                    articleCommandService.updateSummary(
+//                        article.id!!,
+//                        summarizeResult.summary,
+//                        summarizeResult.summarizedBy
+//                    )
+//                } else {
+//                    failCount++
+//                }
+//            }
+//        }
+
+        val results = articleContentBatchSummarizer
+            .summarizeAndGetKeywordsAll(articles.map {
+                Article(
+                    id = it.id!!,
+                    content = it.content
+                )
+            })
+
+        for (result in results) {
+            articleCommandService.updateSummary(result.id, result.summary, result.summarizedBy)
+            keywordService.addArticleKeywords(result.id, result.keywords)
         }
 
-        val message =
-            "요약 결과: 총 ${articles.size}건, 성공 ${articles.size - failCount}건, 실패 ${failCount}건"
+        val message = "요약 결과: 총 ${articles.size}건"
         log.warn(message)
         slackSender.sendMessageAsync(SlackSender.SlackChannel.MONITORING, message)
 
-        if (failCount != 0) {
-            val retryMessage = "실패 ${failCount}건이 존재합니다. 5분 후 재시도합니다."
-            slackSender.sendMessageAsync(SlackSender.SlackChannel.MONITORING, retryMessage)
-            throw RetryException(retryMessage)
-        }
+//        if (failCount != 0) {
+//            val retryMessage = "실패 ${failCount}건이 존재합니다. 5분 후 재시도합니다."
+//            slackSender.sendMessageAsync(SlackSender.SlackChannel.MONITORING, retryMessage)
+//            throw RetryException(retryMessage)
+//        }
     }
 }
