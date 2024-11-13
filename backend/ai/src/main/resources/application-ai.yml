@@ -1,0 +1,22 @@
+open-ai:
+  api-key: "${OPEN_AI_API_KEY}"
+  assistant-id: "${OPEN_AI_ASSISTANT_ID}"
+  thread-id: "${OPEN_AI_THREAD_ID}"
+spring:
+  cloud:
+    openfeign:
+      okhttp:
+        enabled: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+logging.level.com.blogzip.ai: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod

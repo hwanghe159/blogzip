@@ -5,6 +5,7 @@ spring:
     import:
       - application-domain.yml
       - application-notification.yml
+      - application-ai.yml
 jwt:
   secret-key: "${JWT_SECRET_KEY}"
   access-token-expires-days: 7

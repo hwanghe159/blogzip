@@ -37,6 +37,5 @@ data class ReadLaterResponse private constructor(
                 )
             }
         }
-
     }
 }

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import {Card, CardContent, CardMedia, Divider, IconButton} from "@mui/material";
+import {Card, CardContent, CardMedia, Chip, Divider, IconButton} from "@mui/material";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
@@ -161,6 +161,11 @@ function Article({article: initialArticle}: ArticleProps) {
                       </IconButton>
                     </Tooltip>
                 }
+              </Box>
+              <Box mt={1}>
+                {article.keywords.map(keyword =>
+                    <Chip label={keyword} size={"small"} sx={{mr: 1, mt: 1}}/>
+                )}
               </Box>
             </CardContent>
           </Box>

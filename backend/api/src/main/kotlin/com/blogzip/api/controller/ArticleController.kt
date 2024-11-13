@@ -27,9 +27,19 @@ class ArticleController(
         @RequestParam(required = false, defaultValue = "20") size: Int,
     ): ResponseEntity<PaginationResponse<ArticleResponse>> {
         val searchedArticles = articleQueryService.search(from, to, next, size)
+        val articleIds = searchedArticles.articles.map { it.id }
+        val keywords = keywordService.getAllByArticleIds(articleIds)
         return ResponseEntity.ok(
             PaginationResponse(
-                items = searchedArticles.articles.map { ArticleResponse.from(it) },
+                items = searchedArticles.articles.map {
+                    ArticleResponse.from(
+                        article = it,
+                        keywords = keywords[it.id]
+                            ?.filter { it.isVisible }
+                            ?.map { it.value }
+                            ?: emptyList()
+                    )
+                },
                 next = searchedArticles.next
             )
         )
@@ -44,9 +54,19 @@ class ArticleController(
         @RequestParam(required = false, defaultValue = "20") size: Int,
     ): ResponseEntity<PaginationResponse<ArticleResponse>> {
         val searchedArticles = articleQueryService.searchMy(from, to, next, size, user.id)
+        val articleIds = searchedArticles.articles.map { it.id }
+        val keywords = keywordService.getAllByArticleIds(articleIds)
         return ResponseEntity.ok(
             PaginationResponse(
-                items = searchedArticles.articles.map { ArticleResponse.from(it) },
+                items = searchedArticles.articles.map {
+                    ArticleResponse.from(
+                        article = it,
+                        keywords = keywords[it.id]
+                            ?.filter { it.isVisible }
+                            ?.map { it.value }
+                            ?: emptyList()
+                    )
+                },
                 next = searchedArticles.next
             )
         )

@@ -5,10 +5,8 @@ spring:
     import:
       - application-domain.yml
       - application-notification.yml
-open-ai:
-  api-key: "${OPEN_AI_API_KEY}"
-  assistant-id: "${OPEN_AI_ASSISTANT_ID}"
-  thread-id: "${OPEN_AI_THREAD_ID}"
+      - application-logging.yml
+      - application-ai.yml
 logging:
   level:
     org.hibernate.SQL: info

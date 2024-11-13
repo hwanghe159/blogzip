@@ -6,6 +6,7 @@ import java.time.LocalDateTime
 data class HeadKeyword private constructor(
     val id: Long,
     val value: String,
+    val isVisible: Boolean,
     val followers: List<FollowerKeyword>,
     val createdAt: LocalDateTime,
 ) {
@@ -14,6 +15,7 @@ data class HeadKeyword private constructor(
             return HeadKeyword(
                 id = keyword.id!!,
                 value = keyword.value,
+                isVisible = keyword.isVisible,
                 followers = keyword.followers.map { FollowerKeyword.from(it) },
                 createdAt = keyword.createdAt,
             )

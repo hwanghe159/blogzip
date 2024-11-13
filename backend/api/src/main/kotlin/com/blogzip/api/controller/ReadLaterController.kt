@@ -3,6 +3,7 @@ package com.blogzip.api.controller
 import com.blogzip.api.auth.Authenticated
 import com.blogzip.api.auth.AuthenticatedUser
 import com.blogzip.api.dto.*
+import com.blogzip.service.KeywordService
 import com.blogzip.service.ReadLaterService
 import io.swagger.v3.oas.annotations.Parameter
 import org.springframework.http.ResponseEntity
@@ -12,13 +13,25 @@ import org.springframework.web.bind.annotation.*
 @RestController
 class ReadLaterController(
     private val readLaterService: ReadLaterService,
+    private val keywordService: KeywordService,
 ) {
 
     @GetMapping("/api/v1/read-later")
     fun getReadLater(@Parameter(hidden = true) @Authenticated user: AuthenticatedUser)
-            : ResponseEntity<List<ReadLaterResponse>> {
+            : ResponseEntity<List<ReadLaterWithKeywordsResponse>> {
+        val readLaters = readLaterService.findAllByUserId(user.id)
+        val articleIds = readLaters.map { it.article.id!! }
+        val keywords = keywordService.getAllByArticleIds(articleIds)
         val response = readLaterService.findAllByUserId(user.id)
-            .map { ReadLaterResponse.of(it.readLater, it.article) }
+            .map {
+                ReadLaterWithKeywordsResponse.of(
+                    it.readLater,
+                    it.article,
+                    keywords = keywords[it.article.id]
+                        ?.filter { it.isVisible }
+                        ?.map { it.value }
+                        ?: emptyList())
+            }
         return ResponseEntity.ok(response)
     }
 

@@ -1,5 +1,7 @@
 package com.blogzip.api.controller
 
+import com.blogzip.ai.common.JsonlConverter
+import com.blogzip.ai.tuning.FineTuningDataset
 import com.blogzip.api.dto.FineTuningRequest
 import com.blogzip.api.dto.TunedArticleResponse
 import com.blogzip.dto.FineTuningAndArticle
@@ -19,6 +21,7 @@ class FineTuningController(
     private val articleQueryService: ArticleQueryService,
     private val fineTuningService: FineTuningService,
     private val jsonlObjectMapper: ObjectMapper,
+    private val jsonlConverter: JsonlConverter,
 ) {
 
     @GetMapping("/api/v1/article/{id}/fine-tuning")
@@ -41,7 +44,8 @@ class FineTuningController(
         @PathVariable id: Long,
         @RequestBody request: FineTuningRequest,
     ): ResponseEntity<TunedArticleResponse> {
-        val fineTuningAndArticle = fineTuningService.update(id, request.tunedSummary)
+        val fineTuningAndArticle =
+            fineTuningService.update(id, request.tunedSummary, request.keywords)
         return ResponseEntity.ok(
             TunedArticleResponse.of(
                 fineTuningAndArticle.fineTuning,
@@ -62,26 +66,43 @@ class FineTuningController(
         )
     }
 
+    /**
+     * {"messages": [
+     *   {"role": "system", "content": "한국인을 대상으로 하는 테크블로그 내용 요약기 및 키워드 추출기"},
+     *   {"role": "user", "content": "...블로그 글 내용..."},
+     *   {"role": "assistant", "content": "{\"summary\": \"요약된 내용\", \"keywords\": [\"키워드1\", \"키워드2\", \"키워드3\"]}"}
+     * ]}
+     */
     private fun convertToJsonl(tunings: List<FineTuningAndArticle>): String {
-        val sb = StringBuilder()
-        tunings.forEach {
-//            val map = mapOf(
-//                "prompt" to it.article.content,
-//                "completion" to it.summary
-//            )
-
-            val map = mapOf(
-                "messages" to listOf(
-                    mapOf(
-                        "role" to "system",
-                        "content" to "너는 한국인을 대상으로 하는 테크블로그 내용 요약기야. markdown 형식의 글을 입력받으면 내용을 요약하는 역할이야. 내용을 5줄 정도의 줄글로 요약해줘. 말투는 친근하지만 정중한 존댓말인 '~~요'체를 써줘. 바로 요약 내용만 말해줘."
-                    ),
-                    mapOf("role" to "user", "content" to it.article.content),
-                    mapOf("role" to "assistant", "content" to it.fineTuning.summary),
+        val objects: List<FineTuningDataset> = tunings
+            .map {
+                FineTuningDataset(
+                    messages = listOf(
+                        FineTuningDataset.Message(
+                            role = "system",
+                            content = "한국인을 대상으로 하는 테크블로그 내용 요약기 및 키워드 추출기"
+                        ),
+                        FineTuningDataset.Message(
+                            role = "user",
+                            content = it.article.content
+                        ),
+                        FineTuningDataset.Message(
+                            role = "assistant",
+                            content = jsonlObjectMapper.writeValueAsString(
+                                SummaryAndKeywords(
+                                    summary = it.fineTuning.summary,
+                                    keywords = it.fineTuning.keywords.split(",").map { it.trim() },
+                                )
+                            )
+                        ),
+                    )
                 )
-            )
-            sb.appendLine(jsonlObjectMapper.writeValueAsString(map))
-        }
-        return sb.toString()
+            }
+        return jsonlConverter.objectsToJsonl(objects)
     }
+
+    data class SummaryAndKeywords(
+        val summary: String,
+        val keywords: List<String>,
+    )
 }

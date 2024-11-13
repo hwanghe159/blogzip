@@ -1,9 +1,6 @@
 package com.blogzip.service
 
-import com.blogzip.domain.Article
-import com.blogzip.domain.ArticleRepository
-import com.blogzip.domain.Keyword
-import com.blogzip.domain.KeywordRepository
+import com.blogzip.domain.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.DisplayName
 
@@ -20,6 +17,9 @@ class KeywordServiceTest {
 
     @Mock
     lateinit var keywordRepository: KeywordRepository
+
+    @Mock
+    lateinit var articleKeywordRepository: ArticleKeywordRepository
 
     @Mock
     lateinit var articleRepository: ArticleRepository
@@ -40,10 +40,11 @@ class KeywordServiceTest {
             .thenReturn(Optional.of(article))
         `when`(keywordRepository.findAllByValueIn(anyCollection()))
             .thenReturn(listOf(keyword1, keyword2, keyword3, keyword4))
+        `when`(articleKeywordRepository.findAllByArticleId(anyLong()))
+            .thenReturn(emptyList())
 
         keywordService.addArticleKeywords(1, listOf("백엔드", "server", "redis"))
 
-        verify(article, times(1)).addKeyword(anyLong())
-        verify(keywordRepository, times(1)).save(any())
+        verify(keywordRepository, times(1)).saveAll(anyCollection())
     }
 }

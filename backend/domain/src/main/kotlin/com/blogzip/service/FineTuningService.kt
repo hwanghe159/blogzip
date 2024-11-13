@@ -33,12 +33,22 @@ class FineTuningService(
     }
 
     @Transactional
-    fun update(articleId: Long, tunedSummary: String): FineTuningAndArticle {
+    fun update(
+        articleId: Long,
+        tunedSummary: String,
+        keywords: List<String>
+    ): FineTuningAndArticle {
         val article = articleRepository.findByIdOrNull(articleId)
             ?: throw DomainException(ErrorCode.ARTICLE_NOT_FOUND)
         val fineTuning = (fineTuningRepository.findByArticleId(article.id!!)
             ?.update(tunedSummary)
-            ?: fineTuningRepository.save(FineTuning(articleId = articleId, summary = tunedSummary)))
+            ?: fineTuningRepository.save(
+                FineTuning(
+                    articleId = articleId,
+                    summary = tunedSummary,
+                    keywords = keywords.joinToString(",") { it.trim() }
+                )
+            ))
         return FineTuningAndArticle(fineTuning, article)
     }
 }

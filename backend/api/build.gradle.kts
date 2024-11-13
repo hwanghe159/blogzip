@@ -7,6 +7,7 @@ dependencies {
     implementation(project(":crawler"))
     implementation(project(":notification"))
     implementation(project(":logging"))
+    implementation(project(":ai"))
 
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-webflux")

@@ -9,6 +9,7 @@ data class TunedArticleResponse private constructor(
     val url: String,
     val summary: String?,
     val tunedSummary: String?,
+    val keywords: List<String>,
 ) {
     companion object {
         fun of(fineTuning: FineTuning, article: Article): TunedArticleResponse {
@@ -18,6 +19,7 @@ data class TunedArticleResponse private constructor(
                 url = article.url,
                 summary = article.summary,
                 tunedSummary = fineTuning.summary,
+                keywords = fineTuning.keywords.split(",").map { it.trim() },
             )
         }
 
@@ -28,6 +30,7 @@ data class TunedArticleResponse private constructor(
                 url = article.url,
                 summary = article.summary,
                 tunedSummary = null,
+                keywords = emptyList(),
             )
         }
     }
