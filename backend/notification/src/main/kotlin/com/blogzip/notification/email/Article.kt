@@ -8,6 +8,7 @@ data class Article(
     val url: String,
     val summary: String,
     val blogName: String,
+    val keywords: List<String>,
     val createdDate: LocalDate,
 ) {
     val createdDateString: String = createdDate.format(FORMATTER)

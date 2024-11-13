@@ -9,6 +9,7 @@ import com.blogzip.notification.email.EmailSender
 import com.blogzip.notification.email.User
 import com.blogzip.service.ArticleQueryService
 import com.blogzip.service.BlogService
+import com.blogzip.service.KeywordService
 import com.blogzip.service.UserService
 import com.blogzip.slack.SlackSender.SlackChannel.MONITORING
 import org.springframework.batch.core.Job
@@ -28,6 +29,7 @@ class EmailSendJobConfig(
     private val userService: UserService,
     private val articleQueryService: ArticleQueryService,
     private val blogService: BlogService,
+    private val keywordService: KeywordService,
     private val jobResultNotifier: JobResultNotifier,
     private val emailSender: EmailSender,
     private val slackSender: SlackSender,
@@ -66,29 +68,32 @@ class EmailSendJobConfig(
                 for (user in users) {
                     val accumulatedDates = user.getAccumulatedDates(today)
                     val blogIds = user.getAllSubscribingBlogIds()
-                    val newArticles =
-                        articleQueryService.findAllByBlogIdsAndCreatedDates(
-                            blogIds,
-                            accumulatedDates
-                        )
-                            .filter {
-                                if (it.summary == null) {
-                                    val errorMessage = "요약되지 않아 전송 과정에서 걸러짐. article.id=${it.id}"
-                                    log.error(errorMessage)
-                                    slackSender.sendMessageAsync(channel = ERROR_LOG, errorMessage)
-                                }
-                                it.summary != null
+                    val newArticles = articleQueryService
+                        .findAllByBlogIdsAndCreatedDates(blogIds, accumulatedDates)
+                        .filter {
+                            if (it.summary == null) {
+                                val errorMessage = "요약되지 않아 전송 과정에서 걸러짐. article.id=${it.id}"
+                                log.error(errorMessage)
+                                slackSender.sendMessageAsync(channel = ERROR_LOG, errorMessage)
                             }
-                            .map {
-                                Article(
-                                    title = it.title,
-                                    url = it.url,
-                                    summary = it.summary!!,
-                                    blogName = blogs[it.blogId]?.name!!,
-                                    createdDate = it.createdDate!!,
-                                )
-                            }
-                    if (newArticles.isEmpty()) {
+                            it.summary != null
+                        }
+
+                    val articleIds = newArticles.map { it.id!! }.toSet()
+                    val keywords = keywordService.getAllByArticleIds(articleIds)
+
+                    val articlesToSend = newArticles
+                        .map {
+                            Article(
+                                title = it.title,
+                                url = it.url,
+                                summary = it.summary!!,
+                                blogName = blogs[it.blogId]?.name!!,
+                                keywords = keywords[it.id!!]?.map { it.value } ?: emptyList(),
+                                createdDate = it.createdDate!!,
+                            )
+                        }
+                    if (articlesToSend.isEmpty()) {
                         slackSender.sendMessageAsync(
                             MONITORING,
                             "구독한 블로그에 새 글이 없어 skip. email=${user.email}"
@@ -101,7 +106,7 @@ class EmailSendJobConfig(
                             email = user.email,
                             receiveDates = accumulatedDates,
                         ),
-                        articles = newArticles
+                        articles = articlesToSend
                     )
                 }
                 RepeatStatus.FINISHED

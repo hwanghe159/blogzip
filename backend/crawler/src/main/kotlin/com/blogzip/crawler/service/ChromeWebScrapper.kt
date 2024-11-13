@@ -173,7 +173,11 @@ class ChromeWebScrapper private constructor(
 
                 // 새 탭의 정보 추출
                 Thread.sleep(Random.nextLong(3000)) // url이 완전히 세팅될때까지 3초 sleep
-                val url = webDriver.currentUrl
+                var url = webDriver.currentUrl
+                if (url.startsWith("chrome-extension://")) {
+                    Thread.sleep(Random.nextLong(3000))
+                    url = webDriver.currentUrl
+                }
                 val content = webDriver.pageSource
 
                 // 새 탭 닫고 이전 탭으로 이동

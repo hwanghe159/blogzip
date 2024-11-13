@@ -31,12 +31,21 @@ class EmailTemplateParserTest {
                 url = "url1",
                 summary = "summary1",
                 blogName = "blogName1",
+                keywords = listOf("키워드1", "키워드2"),
                 createdDate = LocalDate.EPOCH,
             ), Article(
                 title = "title2",
                 url = "url2",
                 summary = "summary2",
                 blogName = "blogName2",
+                keywords = listOf("키워드3", "키워드4"),
+                createdDate = LocalDate.EPOCH,
+            ), Article(
+                title = "title3",
+                url = "url3",
+                summary = "summary3",
+                blogName = "blogName3",
+                keywords = emptyList(),
                 createdDate = LocalDate.EPOCH,
             )
         )
