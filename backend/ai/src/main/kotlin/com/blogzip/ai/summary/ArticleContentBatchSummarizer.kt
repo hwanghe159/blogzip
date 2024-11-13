@@ -14,7 +14,11 @@ class ArticleContentBatchSummarizer(
     fun summarizeAndGetKeywordsAll(articles: List<Article>): List<SummarizeAndKeywordsResult> {
         // jsonl 파일 생성
         val requests = articles.map {
-            singleRequestGenerator.generate(customId = it.id.toString(), content = it.content)
+            singleRequestGenerator.generate(
+                customId = it.id.toString(),
+                content = it.content,
+                model = "ft:gpt-4o-mini-2024-07-18:personal::AT34qLAv"
+            )
         }
         val jsonl = jsonlConverter.objectsToJsonl(requests)
 

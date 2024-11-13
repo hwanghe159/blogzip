@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test
 
 class JsonlConverterTest {
 
-    private val converter = JsonlConverter(ObjectMapper())
+    private val converter = JsonlConverter()
 
     @Test
     fun objectsToJsonl() {

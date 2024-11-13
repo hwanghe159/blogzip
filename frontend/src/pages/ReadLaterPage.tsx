@@ -7,7 +7,7 @@ import {
   Box,
   Typography,
   Tooltip,
-  Divider, FormControl, InputLabel, Select, MenuItem
+  Divider, FormControl, InputLabel, Select, MenuItem, Chip
 } from "@mui/material";
 import {Api} from "../utils/Api";
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
@@ -29,6 +29,7 @@ interface Article {
   title: string
   url: string
   summary: string
+  keywords: string[]
   createdDate: string
 }
 
@@ -285,6 +286,11 @@ export default function ReadLaterPage() {
                                   </IconButton>
                                 </Tooltip>
                             }
+                          </Box>
+                          <Box mt={1}>
+                            {readLater.article.keywords.map(keyword =>
+                                <Chip label={keyword} size={"small"} sx={{mr: 1, mt: 1}}/>
+                            )}
                           </Box>
                         </CardContent>
                       </Box>

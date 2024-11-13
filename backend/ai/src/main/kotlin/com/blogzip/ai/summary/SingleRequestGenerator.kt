@@ -11,14 +11,14 @@ class SingleRequestGenerator {
     private val objectMapper = jsonMapper { addModule(kotlinModule()) }
         .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
 
-    fun generate(customId: String, content: String): SingleRequest {
+    fun generate(customId: String, content: String, model: String): SingleRequest {
         val json = """
         {
            "custom_id":"$customId",
            "method":"POST",
            "url":"/v1/chat/completions",
            "body":{
-              "model":"gpt-4o-mini-2024-07-18",
+              "model":"$model",
               "messages":[
                  {
                     "role":"system",

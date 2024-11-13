@@ -1,6 +1,5 @@
 package com.blogzip.api.dto
 
-import com.blogzip.domain.Article
 import com.blogzip.dto.SearchedArticles
 import com.fasterxml.jackson.annotation.JsonProperty
 import java.time.LocalDate
@@ -13,10 +12,11 @@ data class ArticleResponse private constructor(
     var summary: String,
     @get:JsonProperty("isReadLater")
     val isReadLater: Boolean,
+    val keywords: List<String>,
     var createdDate: LocalDate,
 ) {
     companion object {
-        fun from(article: SearchedArticles.Article): ArticleResponse {
+        fun from(article: SearchedArticles.Article, keywords: List<String>): ArticleResponse {
             return ArticleResponse(
                 id = article.id,
                 blog = BlogResponse.from(article.blog),
@@ -24,6 +24,7 @@ data class ArticleResponse private constructor(
                 url = article.url,
                 summary = article.summary,
                 isReadLater = article.isReadLater,
+                keywords = keywords,
                 createdDate = article.createdDate,
             )
         }

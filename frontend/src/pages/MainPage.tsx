@@ -19,6 +19,7 @@ export interface ArticleResponse {
   url: string;
   summary: string;
   isReadLater: boolean;
+  keywords: string[];
   createdDate: string;
 }
 
@@ -136,7 +137,7 @@ function MainPage() {
         <Box display={"flex"} alignItems="center">
           <Typography variant="h5" component="h5">최근 일주일간 올라온 새 글</Typography>
           <Tooltip open={openTooltip} onClick={() => setOpenTooltip(!openTooltip)}
-                   title="ChatGPT4.0을 사용하여 요약하였습니다." sx={{ml: 1}}>
+                   title="GPT-4o를 사용하여 요약하였습니다." sx={{ml: 1}}>
             <InfoIcon color={"action"}/>
           </Tooltip>
         </Box>
