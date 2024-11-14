@@ -2,11 +2,10 @@ package com.blogzip.service
 
 import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
-import com.blogzip.domain.ArticleRepository
-import com.blogzip.domain.ReadLater
-import com.blogzip.domain.ReadLaterRepository
-import com.blogzip.domain.UserRepository
+import com.blogzip.domain.*
 import com.blogzip.dto.ReadLaterAndArticle
+import com.blogzip.dto.SearchedReadLaters
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
@@ -17,6 +16,7 @@ class ReadLaterService(
     private val readLaterRepository: ReadLaterRepository,
     private val userRepository: UserRepository,
     private val articleRepository: ArticleRepository,
+    private val blogRepository: BlogRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -28,6 +28,46 @@ class ReadLaterService(
         return readLaters
             .filter { articles[it.articleId] != null }
             .map { ReadLaterAndArticle(it, articles[it.articleId]!!) }
+    }
+
+    @Transactional(readOnly = true)
+    fun search(userId: Long, next: Long?, size: Int): SearchedReadLaters {
+        val readLaters = readLaterRepository.search(
+            userId,
+            next,
+            PageRequest.of(
+                0, size + 1,
+                Sort.by("id").descending()
+            )
+        )
+
+        val articleIds = readLaters.map { it.articleId }.toSet()
+        val articles = articleRepository.findAllById(articleIds)
+        val blogIds = articles.map { it.blogId }.toSet()
+        val blogs = blogRepository.findAllById(blogIds).map { it.id to it }.toMap()
+
+        val existsNext = readLaters.size == size + 1
+        val finalReadLaters = readLaters.take(size)
+
+        return SearchedReadLaters(
+            readLaters = finalReadLaters.map {
+                com.blogzip.dto.ReadLater(
+                    id = it.id!!,
+                    article = com.blogzip.dto.Article(
+                        id = it.articleId,
+                        blog = "",
+                        title = "",
+                        content = "",
+                        url = "",
+                        summary = "",
+                        summarizedBy = "",
+                        keywords = "",
+                        createdDate = "",
+                    )
+                )
+            },
+            next = if (existsNext) finalReadLaters.last().id else null,
+        )
     }
 
     @Transactional

@@ -22,17 +22,27 @@ class ReadLaterController(
         val readLaters = readLaterService.findAllByUserId(user.id)
         val articleIds = readLaters.map { it.article.id!! }
         val keywords = keywordService.getAllByArticleIds(articleIds)
-        val response = readLaterService.findAllByUserId(user.id)
-            .map {
-                ReadLaterWithKeywordsResponse.of(
-                    it.readLater,
-                    it.article,
-                    keywords = keywords[it.article.id]
-                        ?.filter { it.isVisible }
-                        ?.map { it.value }
-                        ?: emptyList())
-            }
+        val response = readLaters.map {
+            ReadLaterWithKeywordsResponse.of(
+                it.readLater,
+                it.article,
+                keywords = keywords[it.article.id]
+                    ?.filter { it.isVisible }
+                    ?.map { it.value }
+                    ?: emptyList())
+        }
         return ResponseEntity.ok(response)
+    }
+
+    // todo
+    @GetMapping("/api/v1/read-later/search")
+    fun search(
+        @Parameter(hidden = true) @Authenticated user: AuthenticatedUser,
+        @RequestParam(required = false) next: Long?,
+        @RequestParam(required = false, defaultValue = "20") size: Int,
+    ): ResponseEntity<PaginationResponse<ArticleResponse>> {
+        val response = readLaterService.search(user.id, next, size)
+        return ResponseEntity.ok(PaginationResponse(emptyList(), response.next))
     }
 
     @PostMapping("/api/v1/read-later")

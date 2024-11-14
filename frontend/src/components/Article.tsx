@@ -164,7 +164,7 @@ function Article({article: initialArticle}: ArticleProps) {
               </Box>
               <Box mt={1}>
                 {article.keywords.map(keyword =>
-                    <Chip label={keyword} size={"small"} sx={{mr: 1, mt: 1}}/>
+                    <Chip label={`# ${keyword}`} size={"small"} sx={{mr: 1, mt: 1}}/>
                 )}
               </Box>
             </CardContent>

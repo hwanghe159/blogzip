@@ -54,6 +54,7 @@ interface Sorter {
   selected: boolean
 }
 
+// todo 페이지네이션, 로딩 추가
 export default function ReadLaterPage() {
   const [readLaters, setReadLaters] = useState<ReadLater[]>([]);
   const [blogs, setBlogs] = useState<Map<number, Blog>>(new Map());
@@ -289,7 +290,7 @@ export default function ReadLaterPage() {
                           </Box>
                           <Box mt={1}>
                             {readLater.article.keywords.map(keyword =>
-                                <Chip label={keyword} size={"small"} sx={{mr: 1, mt: 1}}/>
+                                <Chip label={`# ${keyword}`} size={"small"} sx={{mr: 1, mt: 1}}/>
                             )}
                           </Box>
                         </CardContent>
