@@ -12,6 +12,9 @@ class ArticleContentBatchSummarizer(
     private val singleRequestGenerator: SingleRequestGenerator,
 ) {
     fun summarizeAndGetKeywordsAll(articles: List<Article>): List<SummarizeAndKeywordsResult> {
+        if (articles.isEmpty()) {
+            return emptyList()
+        }
         // jsonl 파일 생성
         val requests = articles.map {
             singleRequestGenerator.generate(
