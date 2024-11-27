@@ -7,6 +7,7 @@ import com.blogzip.domain.Blog
 import com.blogzip.logger
 import com.blogzip.slack.SlackSender
 import com.blogzip.slack.SlackSender.SlackChannel.ERROR_LOG
+import com.blogzip.slack.SlackSender.SlackChannel.MONITORING
 import org.springframework.stereotype.Component
 import java.lang.Exception
 import java.time.LocalDate
@@ -36,13 +37,22 @@ class WithContentFetcher(
             slackSender.sendStackTraceAsync(channel = ERROR_LOG, e)
         }
 
-        return articles.filter {
-            if (it.createdDate == null) {
-                true
-            } else {
-                from <= it.createdDate
+        return articles
+            .filter {
+                if (it.createdDate == null) {
+                    true
+                } else {
+                    from <= it.createdDate
+                }
             }
-        }
+            .filter { article ->
+                if (article.content == null) {
+                    slackSender.sendMessageAsync(ERROR_LOG, "${article.url} 의 content가 없어 필터링")
+                    false
+                } else {
+                    true
+                }
+            }
             .map {
                 Article(
                     blogId = blog.id!!,

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
+import java.util.*
 
 class ChromeWebScrapperTest {
 
@@ -52,10 +53,10 @@ class ChromeWebScrapperTest {
         }
     }
 
-    @DisplayName("thread safe 테스트")
     @Test
-    fun getMetadata() {
-        val datas: MutableList<WebScrapper.BlogMetadata> = mutableListOf()
+    fun `thread safe 테스트`() {
+        val datas: MutableList<WebScrapper.BlogMetadata> =
+            Collections.synchronizedList(mutableListOf())
         val threads = listOf(
             "https://techblog.woowahan.com",
             "https://d2.naver.com/helloworld",

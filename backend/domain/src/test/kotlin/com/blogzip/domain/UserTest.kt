@@ -13,7 +13,7 @@ class UserTest {
 
     @ParameterizedTest
     @MethodSource("dateProvider")
-    fun getAccumulatedDates(
+    fun `수신희망 요일에 기반하여 누적된 날짜를 반환한다`(
         receiveDays: List<DayOfWeek>,
         date: LocalDate,
         expected: List<LocalDate>

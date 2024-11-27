@@ -1,50 +1,58 @@
 create table `user`
 (
-    id                           bigint auto_increment primary key,
-    email                        varchar(200) not null comment '이메일 주소',
-    receive_days                 varchar(100) not null comment '수신 희망 요일',
-    verification_code_expired_at datetime     not null default current_timestamp comment '이메일 인증코드 만료시각',
-    created_at                   datetime     not null default current_timestamp comment '생성 시각',
-    updated_at                   datetime     not null default current_timestamp comment '수정 시각',
+    id           bigint auto_increment primary key,
+    email        varchar(200)                       not null,
+    social_type  varchar(10)                        not null,
+    social_id    varchar(100)                       not null,
+    receive_days varchar(100)                       not null,
+    created_at   datetime default CURRENT_TIMESTAMP not null,
+    updated_at   datetime default CURRENT_TIMESTAMP not null,
     unique (email)
 );
 
 create table blog
 (
     id               bigint auto_increment primary key,
-    name             varchar(200) not null comment '이름',
-    url              varchar(200) not null comment 'URL',
-    rss              varchar(200) null comment 'RSS URL',
-    url_css_selector varchar(200) null comment 'article.url을 크롤링하기 위한 css selector (RSS가 없을때 사용)',
-    rss_status       varchar(20)  not null comment 'RSS 존재여부 / RSS 내 내용 존재 여부',
-    created_by       bigint       not null comment '생성자 user.id',
-    created_at       datetime     not null default current_timestamp comment '생성 시각',
+    name             varchar(200)                       not null,
+    url              varchar(200)                       not null,
+    image            varchar(200),
+    rss              varchar(200),
+    url_css_selector varchar(200),
+    rss_status       varchar(20)                        not null,
+    is_show_on_main  boolean default false              not null,
+    created_by       bigint                             not null,
+    created_at       timestamp default CURRENT_TIMESTAMP not null,
     unique (url)
 );
 
 create table subscription
 (
     id         bigint auto_increment primary key,
-    user_id    bigint   not null comment 'user.id',
-    blog_id    bigint   not null comment 'blog.id',
-    created_at datetime not null default current_timestamp comment '구독 시각'
+    user_id    bigint                             not null,
+    blog_id    bigint                             not null,
+    created_at timestamp default CURRENT_TIMESTAMP not null,
+    constraint udx_user_blog unique (user_id, blog_id)
 );
+create index idx_blog_id on subscription (blog_id);
+create index idx_user_id on subscription (user_id);
 
 create table article
 (
     id            bigint auto_increment primary key,
-    blog_id       bigint        not null comment 'blog.id',
-    title         varchar(200)  not null comment '제목',
-    content       longtext      not null comment '내용',
-    summary       varchar(1000) null comment '요약된 내용',
-    summarized_by varchar(100)  null comment '요약된 내용 제공자',
-    url           varchar(700)  not null comment 'URL',
-    created_date  date          not null comment '생성 날짜',
+    blog_id       bigint                             not null,
+    title         varchar(1000)                      not null,
+    content       clob                               not null,
+    summary       varchar(2000),
+    summarized_by varchar(100),
+    url           varchar(700)                       not null,
+    created_date  date                               not null,
+    created_at    timestamp default CURRENT_TIMESTAMP not null,
     unique (url)
 );
+create index idx_created_date on article (created_date);
 
-insert into `user`(email, receive_days)
-values ('hwanghe159@gmail.com',
+insert into `user`(email, social_type, social_id, receive_days)
+values ('hwanghe159@gmail.com', 'GOOGLE', 1,
         'MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY,SATURDAY,SUNDAY');
 insert into blog (name, url, rss, url_css_selector, rss_status, created_by)
 values ('우아한형제들 기술블로그', 'https://techblog.woowahan.com', 'https://techblog.woowahan.com/feed/',

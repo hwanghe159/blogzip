@@ -3,6 +3,7 @@ package com.blogzip.ai
 import com.blogzip.ai.common.JsonlConverter
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.DisplayName
 
 import org.junit.jupiter.api.Test
 
@@ -10,6 +11,7 @@ class JsonlConverterTest {
 
     private val converter = JsonlConverter()
 
+    @DisplayName("인스턴스 -> jsonl")
     @Test
     fun objectsToJsonl() {
         val objects = listOf(TestClass(a = 1, b = "hi"), TestClass(a = 2, b = "hello"))
@@ -21,6 +23,7 @@ class JsonlConverterTest {
         )
     }
 
+    @DisplayName("jsonl -> 인스턴스")
     @Test
     fun jsonlToObjects() {
         val jsonl = """

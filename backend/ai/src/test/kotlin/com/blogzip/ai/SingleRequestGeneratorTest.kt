@@ -10,12 +10,12 @@ class SingleRequestGeneratorTest {
 
     private val generator = SingleRequestGenerator()
 
-    @DisplayName("JSON 변환 테스트")
     @Test
-    fun generate() {
-        val request = generator.generate("1", "내용")
+    fun `SingleRequest 인스턴스 생성`() {
+        val request = generator.generate("1", "내용", "model")
 
         assertThat(request.customId).isEqualTo("1")
         assertThat(request.body.messages[1].content).isEqualTo("내용")
+        assertThat(request.body.model).isEqualTo("model")
     }
 }

@@ -114,6 +114,7 @@ class ChromeWebScrapper private constructor(
                     }
                 }
             }
+            // todo rss에 요청한번 보내보고 4XX, 5XX이면 null 응답
             return BlogMetadata(title = title, imageUrl = imageUrl, rss = rss)
         } catch (e: Exception) {
             val metadata = BlogMetadata(title = title!!, imageUrl = imageUrl, rss = rss)

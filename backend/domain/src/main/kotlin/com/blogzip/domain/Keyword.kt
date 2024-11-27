@@ -31,7 +31,7 @@ class Keyword(
 ) {
 
     fun isHead(): Boolean {
-        return this.followers.isEmpty()
+        return this.head == null
     }
 
     fun follow(keyword: Keyword): Keyword {

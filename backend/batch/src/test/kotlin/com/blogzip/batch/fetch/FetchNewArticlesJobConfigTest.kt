@@ -23,7 +23,7 @@ class FetchNewArticlesJobConfigTest {
 
     @Test
     @Tag("exclude")
-    fun fetchNewArticlesJob() {
+    fun `fetch-new-articles 배치 실행`() {
         jobLauncherTestUtils.job = fetchNewArticlesJob
         val jobExecution = jobLauncherTestUtils.launchJob()
         assertThat(jobExecution.exitStatus.exitCode).isEqualTo("COMPLETED")

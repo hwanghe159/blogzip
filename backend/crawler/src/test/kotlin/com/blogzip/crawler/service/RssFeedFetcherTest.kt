@@ -49,7 +49,7 @@ class RssFeedFetcherTest {
             "https://techtopic.skplanet.com/rss.xml",
         ]
     )
-    fun fetch(url: String) {
+    fun `RSS 정보를 가져올때 예외가 발생하지 않는다`(url: String) {
         assertDoesNotThrow {
             rssFeedFetcher.getArticles(url)
         }

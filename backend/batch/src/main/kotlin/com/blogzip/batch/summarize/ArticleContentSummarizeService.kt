@@ -33,22 +33,6 @@ class ArticleContentSummarizeService(
     )
     fun summarize(startDate: LocalDate) {
         val articles = articleQueryService.findAllSummarizeTarget(startDate = startDate)
-//        var failCount = 0
-//        for (article in articles) {
-//            runBlocking {
-//                val summarizeResult = articleContentSummarizer.summarize(article.content)
-//                if (summarizeResult != null) {
-//                    articleCommandService.updateSummary(
-//                        article.id!!,
-//                        summarizeResult.summary,
-//                        summarizeResult.summarizedBy
-//                    )
-//                } else {
-//                    failCount++
-//                }
-//            }
-//        }
-
         val results = articleContentBatchSummarizer
             .summarizeAndGetKeywordsAll(articles.map {
                 Article(
@@ -65,11 +49,5 @@ class ArticleContentSummarizeService(
         val message = "요약 결과: 총 ${articles.size}건"
         log.warn(message)
         slackSender.sendMessageAsync(SlackSender.SlackChannel.MONITORING, message)
-
-//        if (failCount != 0) {
-//            val retryMessage = "실패 ${failCount}건이 존재합니다. 5분 후 재시도합니다."
-//            slackSender.sendMessageAsync(SlackSender.SlackChannel.MONITORING, retryMessage)
-//            throw RetryException(retryMessage)
-//        }
     }
 }

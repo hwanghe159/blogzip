@@ -7,7 +7,6 @@ import org.junit.jupiter.params.provider.CsvSource
 
 class MediumUrlTest {
 
-    @DisplayName("medium 링크에서 rss 링크로 변환한다")
     @ParameterizedTest
     @CsvSource(
         delimiterString = " -> ",
@@ -16,7 +15,7 @@ https://medium.com/riiid-teamblog-kr/tagged/engineering -> https://medium.com/fe
 https://medium.com/daangn -> https://medium.com/feed/daangn
 """
     )
-    fun rssUrl(mediumUrl: String, expected: String) {
+    fun `medium 링크에서 rss 링크로 변환한다`(mediumUrl: String, expected: String) {
         assertThat(MediumUrl(mediumUrl).rssUrl()).isEqualTo(expected)
     }
 
