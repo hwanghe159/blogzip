@@ -211,7 +211,7 @@ public class UndetectedChromeDriver extends ChromeDriver {
   }
 
   /**
-   * remove cdc
+   * remove cdc (Chrome DevTools Protocol)
    */
   private void _cdcProps() {
     List<String> f = (List<String>) this.executeScript("let objectToInspect = window,\n" +
