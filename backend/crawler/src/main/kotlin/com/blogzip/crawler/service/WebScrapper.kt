@@ -2,7 +2,6 @@ package com.blogzip.crawler.service
 
 interface WebScrapper {
 
-    fun getMetadata(url: String): BlogMetadata
     fun getContent(url: String): String?
     fun getArticles(blogUrl: String, cssSelector: String, articleUrls: Set<String>): ScrapResult
     fun test(url: String): String?
@@ -22,10 +21,4 @@ interface WebScrapper {
             return failCause != null
         }
     }
-
-    data class BlogMetadata(
-        val title: String,
-        val imageUrl: String?,
-        val rss: String?,
-    )
 }

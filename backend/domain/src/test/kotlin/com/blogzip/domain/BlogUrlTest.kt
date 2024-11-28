@@ -1,8 +1,11 @@
 package com.blogzip.domain
 
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
+import java.net.URISyntaxException
 
 class BlogUrlTest {
 
@@ -22,5 +25,13 @@ class BlogUrlTest {
 
         assertThat(blogUrls).hasSize(1)
         blogUrls.forEach { url -> assertThat(url.toString()).isEqualTo("https://naver.com") }
+    }
+
+    @ParameterizedTest
+    @CsvSource(value = ["aa", "올바르지않은 url"])
+    fun `예외 발생 테스트`(url: String) {
+        assertThrows<URISyntaxException> {
+            BlogUrl.from(url)
+        }
     }
 }

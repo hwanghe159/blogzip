@@ -1,6 +1,8 @@
 spring:
   application:
     name: blogzip-batch
+  module:
+    name: batch
   config:
     import:
       - application-domain.yml

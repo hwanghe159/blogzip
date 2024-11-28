@@ -3,9 +3,12 @@ package com.blogzip.api.controller
 import com.blogzip.ai.summary.ArticleContentBatchSummarizer
 import com.blogzip.ai.summary.OpenAiApiClient
 import com.blogzip.crawler.dto.Article
+import com.blogzip.crawler.dto.BlogMetadata
+import com.blogzip.crawler.service.BlogMetadataScrapper
 import com.blogzip.crawler.service.RssFeedFetcher
 import com.blogzip.crawler.service.WebScrapper
 import com.blogzip.domain.ArticleRepository
+import com.blogzip.domain.BlogUrl
 import com.blogzip.logger
 import com.blogzip.slack.SlackSender
 import com.blogzip.notification.email.EmailSender
@@ -17,7 +20,7 @@ import java.lang.RuntimeException
 class TestController(
     private val slackSender: SlackSender,
     private val rssFeedFetcher: RssFeedFetcher,
-    private val chromeWebScrapper: WebScrapper,
+    private val blogMetadataScrapper: BlogMetadataScrapper,
     private val emailSender: EmailSender,
     private val openAIApiClient: OpenAiApiClient,
     private val articleContentBatchSummarizer: ArticleContentBatchSummarizer,
@@ -49,8 +52,9 @@ class TestController(
     }
 
     @PostMapping("/api/v1/test/crawler")
-    fun crawlerTest(@RequestBody url: String): String? {
-        return chromeWebScrapper.test(url)
+    fun crawlerTest(@RequestBody url: String): BlogMetadata {
+        val blogUrl = BlogUrl.from(url)
+        return blogMetadataScrapper.getMetadata(blogUrl.toString())
     }
 
     @PostMapping("/api/v1/test/email")

@@ -1,6 +1,8 @@
 spring:
   application:
     name: blogzip-api
+  module:
+    name: api
   config:
     import:
       - application-domain.yml

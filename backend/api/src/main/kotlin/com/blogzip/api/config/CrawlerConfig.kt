@@ -1,5 +1,6 @@
 package com.blogzip.api.config
 
+import com.blogzip.crawler.service.BlogMetadataScrapper
 import com.blogzip.crawler.service.RssFeedFetcher
 import com.blogzip.crawler.service.ChromeWebScrapper
 import com.blogzip.crawler.service.WebScrapper
@@ -12,19 +13,19 @@ class CrawlerConfig(
     private val seleniumProperties: SeleniumProperties
 ) {
 
-    private lateinit var chromeWebScrapper: WebScrapper
+    private lateinit var blogMetadataScrapper: BlogMetadataScrapper
 
     @Bean
-    fun chromeWebScrapper(): WebScrapper {
-        chromeWebScrapper = ChromeWebScrapper.create(
+    fun blogMetadataScrapper(): BlogMetadataScrapper {
+        blogMetadataScrapper = BlogMetadataScrapper.create(
             com.blogzip.crawler.config.SeleniumProperties(seleniumProperties.chromeOptions)
         )
-        return chromeWebScrapper
+        return blogMetadataScrapper
     }
 
     @PreDestroy
     fun quitWebDriver() {
-        chromeWebScrapper.endUse()
+        blogMetadataScrapper.endUse()
     }
 
     @Bean

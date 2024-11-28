@@ -7,8 +7,8 @@ import com.blogzip.api.dto.BlogCreateResponse
 import com.blogzip.api.dto.BlogResponse
 import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
+import com.blogzip.crawler.service.BlogMetadataScrapper
 import com.blogzip.crawler.service.RssFeedFetcher
-import com.blogzip.crawler.service.WebScrapper
 import com.blogzip.domain.Blog
 import com.blogzip.domain.BlogUrl
 import com.blogzip.slack.SlackSender
@@ -17,13 +17,14 @@ import com.blogzip.service.BlogService
 import io.swagger.v3.oas.annotations.Parameter
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.net.URISyntaxException
 
 
 @RestController
 class BlogController(
     private val blogService: BlogService,
     private val rssFeedFetcher: RssFeedFetcher,
-    private val chromeWebScrapper: WebScrapper,
+    private val blogMetadataScrapper: BlogMetadataScrapper,
     private val slackSender: SlackSender,
 ) {
 
@@ -49,17 +50,20 @@ class BlogController(
         return ResponseEntity.ok(response)
     }
 
-    // todo 부가정보 비동기로 update 하는 것 고려
     @PostMapping("/api/v1/blog")
     fun save(
         @Parameter(hidden = true) @Authenticated user: AuthenticatedUser,
         @RequestBody request: BlogCreateRequest
     ): ResponseEntity<BlogCreateResponse> {
-        val blogUrl = BlogUrl.from(request.url)
+        val blogUrl = try {
+            BlogUrl.from(request.url)
+        } catch (e: URISyntaxException) {
+            throw DomainException(ErrorCode.BLOG_URL_NOT_VALID)
+        }
         if (blogService.existsByUrl(blogUrl)) {
             throw DomainException(ErrorCode.BLOG_URL_DUPLICATED)
         }
-        val metadata = chromeWebScrapper.getMetadata(blogUrl.toString())
+        val metadata = blogMetadataScrapper.getMetadata(blogUrl.toString())
         if (metadata.imageUrl == null || metadata.rss == null) {
             slackSender.sendMessageAsync(
                 MONITORING,

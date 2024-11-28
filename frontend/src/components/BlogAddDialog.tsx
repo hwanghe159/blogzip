@@ -33,19 +33,26 @@ enum Status {
   MANUAL_ADD_REQUIRED,
 
   BLOG_DUPLICATED,
+  BLOG_URL_NOT_VALID,
   UNEXPECTED_ERROR,
 
   SUCCESS,
 }
 
+const blogUrlRegex = /^(https?:\/\/|http:\/\/)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/
+
 export default function BlogAddDialog({onClose}: BlogAddDialogProps) {
   const [url, setUrl] = useState('');
+  const [isUrlValid, setIsUrlValid] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [blog, setBlog] = useState<Blog | null>(null);
   const [status, setStatus] = useState<Status>(Status.INITIAL)
 
   useEffect(() => {
+    const trimmedUrl = url.trim()
+    setIsUrlValid(trimmedUrl !== '' && trimmedUrl.match(blogUrlRegex) !== null);
+
     if (isLoading) {
       const timer = setInterval(() => {
         setProgress((oldProgress) => {
@@ -61,7 +68,7 @@ export default function BlogAddDialog({onClose}: BlogAddDialogProps) {
         clearInterval(timer);
       };
     }
-  }, [isLoading]);
+  }, [url, isLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,6 +106,8 @@ export default function BlogAddDialog({onClose}: BlogAddDialogProps) {
       }
       if (response.code === 'BLOG_URL_DUPLICATED') {
         setStatus(Status.BLOG_DUPLICATED)
+      } else if (response.code === 'BLOG_URL_NOT_VALID') {
+        setStatus(Status.BLOG_URL_NOT_VALID)
       }
       setIsLoading(false);
     })
@@ -130,7 +139,6 @@ export default function BlogAddDialog({onClose}: BlogAddDialogProps) {
     })
   };
 
-
   return (
       <Box sx={{width: '90%', maxWidth: 500, mx: 'auto', my: 8}}>
         <Typography variant="h5" component="h1" gutterBottom>
@@ -143,8 +151,8 @@ export default function BlogAddDialog({onClose}: BlogAddDialogProps) {
                   <Box sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
                     <TextField
                         label="URL"
-                        error={url === ""}
-                        helperText={url === "" ? "URL 형식에 맞게 정확하게 입력해주세요." : ""}
+                        error={!isUrlValid}
+                        helperText={!isUrlValid ? "URL 형식에 맞게 정확하게 입력해주세요." : ""}
                         placeholder="https://example.com"
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
@@ -152,7 +160,7 @@ export default function BlogAddDialog({onClose}: BlogAddDialogProps) {
                         fullWidth
                         disabled={isLoading}
                     />
-                    <Button type="submit" variant="contained" disabled={isLoading || !url}>
+                    <Button type="submit" variant="contained" disabled={!isUrlValid || isLoading}>
                       {isLoading ? '추가 중...' : 'URL 추가'}
                     </Button>
                   </Box>
@@ -202,6 +210,22 @@ export default function BlogAddDialog({onClose}: BlogAddDialogProps) {
                   <Alert severity="warning" sx={{my: 2}}>
                     <AlertTitle>
                       해당하는 블로그가 이미 등록되어 있어요!
+                    </AlertTitle>
+                  </Alert>
+                  <CardActions>
+                    <Button onClick={() => {
+                      onClose()
+                    }} variant="contained" fullWidth>
+                      닫기
+                    </Button>
+                  </CardActions>
+                </Box>
+            )}
+            {status === Status.BLOG_URL_NOT_VALID && (
+                <Box>
+                  <Alert severity="warning" sx={{my: 2}}>
+                    <AlertTitle>
+                      URL을 정확히 입력해주세요.
                     </AlertTitle>
                   </Alert>
                   <CardActions>
