@@ -2,7 +2,6 @@ package com.blogzip.crawler.service
 
 import com.blogzip.crawler.config.SeleniumProperties
 import com.blogzip.crawler.dto.BlogMetadata
-import com.blogzip.crawler.undetectedchromedriver.ChromeDriverBuilder
 import com.blogzip.crawler.vo.MediumUrl
 import com.blogzip.crawler.vo.VelogUrl
 import com.blogzip.logger
@@ -11,6 +10,7 @@ import org.openqa.selenium.By
 import org.openqa.selenium.WebDriver
 import org.openqa.selenium.WebElement
 import org.openqa.selenium.WindowType
+import org.openqa.selenium.chrome.ChromeDriver
 import org.openqa.selenium.chrome.ChromeOptions
 import org.openqa.selenium.support.ui.ExpectedConditions
 import org.openqa.selenium.support.ui.WebDriverWait
@@ -35,11 +35,9 @@ class BlogMetadataScrapper(
         fun create(properties: SeleniumProperties): BlogMetadataScrapper {
             val webDriverManager = WebDriverManager.chromedriver()
             webDriverManager.setup()
-            val driverHome = webDriverManager.downloadedDriverPath
             val chromeOptions = ChromeOptions()
             chromeOptions.addArguments(properties.chromeOptions)
-            val webDriver = ChromeDriverBuilder()
-                .build(chromeOptions, driverHome)
+            val webDriver = ChromeDriver(chromeOptions)
 
             return BlogMetadataScrapper(
                 webDriver,

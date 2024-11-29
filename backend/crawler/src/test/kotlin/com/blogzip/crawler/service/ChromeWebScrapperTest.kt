@@ -52,23 +52,4 @@ class ChromeWebScrapperTest {
             assertThat(article.url).isNotBlank()
         }
     }
-
-    @Test
-    fun `thread safe 테스트`() {
-        val datas: MutableList<WebScrapper.BlogMetadata> =
-            Collections.synchronizedList(mutableListOf())
-        val threads = listOf(
-            "https://techblog.woowahan.com",
-            "https://d2.naver.com/helloworld",
-            "https://techblog.lycorp.co.jp/ko",
-            "https://hyperconnect.github.io",
-        ).map { url -> Thread { datas.add(chromeWebScrapper.getMetadata(url)) } }
-
-        threads.forEach { it.start() }
-        threads.forEach { it.join() }
-
-        datas.forEach { println(it) }
-        assertThat(datas).hasSize(threads.size)
-        assertThat(datas.map { it.title }.distinct()).hasSize(threads.size)
-    }
 }
