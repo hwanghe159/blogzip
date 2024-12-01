@@ -13,6 +13,7 @@ import com.blogzip.logger
 import com.blogzip.slack.SlackSender
 import com.blogzip.notification.email.EmailSender
 import com.blogzip.service.ArticleQueryService
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.web.bind.annotation.*
 import java.lang.RuntimeException
 
@@ -55,6 +56,18 @@ class TestController(
     fun crawlerTest(@RequestBody url: String): BlogMetadata {
         val blogUrl = BlogUrl.from(url)
         return blogMetadataScrapper.getMetadata(blogUrl.toString())
+    }
+
+    // todo 제거
+    @Scheduled(fixedDelay = 10 * 60 * 1000)
+    fun crawlerSessionTest() {
+        try {
+            val blogUrl = BlogUrl.from("https://google.com/")
+            blogMetadataScrapper.getMetadata(blogUrl.toString())
+        } catch (e: Exception) {
+            log.error("메타데이터 조회 실패", e)
+            slackSender.sendMessageAsync(SlackSender.SlackChannel.ERROR_LOG, "메타데이터 조회 실패")
+        }
     }
 
     @PostMapping("/api/v1/test/email")
