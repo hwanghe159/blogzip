@@ -30,10 +30,12 @@ oauth2:
 logging:
   level:
     root: info
+
+# 크로미움 옵션 모음 : https://peter.sh/experiments/chromium-command-line-switches/
 selenium:
   chrome-options:
     - "--window-size=1920,1080"
-
+    - "--keep-alive-for-test" # 마지막 브라우저 창이 닫힌 후에도 브라우저를 계속 유지 (idle 세션 끊는 현상 디버깅)
 ---
 spring:
   config:
@@ -49,3 +51,4 @@ selenium:
   chrome-options:
     - "--headless=new" # 크롬창 노출 x
     - "--window-size=1920,1080"
+    - "--keep-alive-for-test" # 마지막 브라우저 창이 닫힌 후에도 브라우저를 계속 유지 (idle 세션 끊는 현상 디버깅)

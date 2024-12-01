@@ -110,10 +110,12 @@ class BlogMetadataScrapper(
                 }
             }
             // todo rss에 요청한번 보내보고 4XX, 5XX이면 null 응답
-            return BlogMetadata(title = title, imageUrl = imageUrl, rss = rss)
+            val metadata = BlogMetadata(title = title, imageUrl = imageUrl, rss = rss)
+            log.warn("$url 에서 메타데이터 추출 완료. metadata=${metadata}")
+            return metadata
         } catch (e: Exception) {
             val metadata = BlogMetadata(title = title!!, imageUrl = imageUrl, rss = rss)
-            log.error("${url}에서 메타데이터 추출 중 예외 발생. metadata=${metadata}", e)
+            log.error("$url 에서 메타데이터 추출 중 예외 발생. metadata=${metadata}", e)
             return metadata
         } finally {
             initializeWebDriver()
