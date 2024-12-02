@@ -142,11 +142,14 @@ function Article({article: initialArticle}: ArticleProps) {
               <Typography variant="body2" color="text.secondary" sx={{fontSize: '15px'}}>
                 {article.summary}
               </Typography>
+              <Box pb={1}>
+                {article.keywords.map(keyword =>
+                    <Chip key={keyword} label={`# ${keyword}`} size={"small"} sx={{mr: 1, mt: 1}}/>
+                )}
+              </Box>
               <Box
-                  sx={{
-                    marginTop: 1,
-                    textAlign: 'left'
-                  }}
+                  py={1}
+                  textAlign={'left'}
                   onClick={(e) => e.stopPropagation()}
               >
                 {article.isReadLater ?
@@ -161,11 +164,6 @@ function Article({article: initialArticle}: ArticleProps) {
                       </IconButton>
                     </Tooltip>
                 }
-              </Box>
-              <Box mt={1}>
-                {article.keywords.map(keyword =>
-                    <Chip label={`# ${keyword}`} size={"small"} sx={{mr: 1, mt: 1}}/>
-                )}
               </Box>
             </CardContent>
           </Box>

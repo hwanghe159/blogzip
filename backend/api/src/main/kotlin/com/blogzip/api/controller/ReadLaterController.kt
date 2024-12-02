@@ -17,32 +17,28 @@ class ReadLaterController(
 ) {
 
     @GetMapping("/api/v1/read-later")
-    fun getReadLater(@Parameter(hidden = true) @Authenticated user: AuthenticatedUser)
-            : ResponseEntity<List<ReadLaterWithKeywordsResponse>> {
-        val readLaters = readLaterService.findAllByUserId(user.id)
-        val articleIds = readLaters.map { it.article.id!! }
-        val keywords = keywordService.getAllByArticleIds(articleIds)
-        val response = readLaters.map {
-            ReadLaterWithKeywordsResponse.of(
-                it.readLater,
-                it.article,
-                keywords = keywords[it.article.id]
-                    ?.filter { it.isVisible }
-                    ?.map { it.value }
-                    ?: emptyList())
-        }
-        return ResponseEntity.ok(response)
-    }
-
-    // todo
-    @GetMapping("/api/v1/read-later/search")
-    fun search(
+    fun getReadLater(
         @Parameter(hidden = true) @Authenticated user: AuthenticatedUser,
         @RequestParam(required = false) next: Long?,
         @RequestParam(required = false, defaultValue = "20") size: Int,
-    ): ResponseEntity<PaginationResponse<ArticleResponse>> {
+    ): ResponseEntity<PaginationResponse<ReadLaterDetailResponse>> {
         val response = readLaterService.search(user.id, next, size)
-        return ResponseEntity.ok(PaginationResponse(emptyList(), response.next))
+        val articleKeywords =
+            keywordService.getAllByArticleIds(response.readLaters.map { it.article.id })
+        return ResponseEntity.ok(
+            PaginationResponse(
+                response.readLaters.map {
+                    ReadLaterDetailResponse.of(
+                        it,
+                        articleKeywords[it.article.id]
+                            ?.filter { it.isVisible }
+                            ?.map { it.value }
+                            ?: emptyList()
+                    )
+                },
+                response.next
+            )
+        )
     }
 
     @PostMapping("/api/v1/read-later")

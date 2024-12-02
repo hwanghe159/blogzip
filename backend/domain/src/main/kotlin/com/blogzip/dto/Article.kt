@@ -10,7 +10,6 @@ data class Article(
     val url: String,
     val summary: String,
     val summarizedBy: String,
-    val keywords: List<String>,
     val createdDate: LocalDate,
 ) {
 }

@@ -15,6 +15,13 @@ data class ReadLaterResponse private constructor(
                 article = ArticleResponse.from(article)
             )
         }
+
+        fun from(readLater: com.blogzip.dto.ReadLater): ReadLaterResponse {
+            return ReadLaterResponse(
+                id = readLater.id,
+                article = ArticleResponse.from(readLater.article),
+            )
+        }
     }
 
     data class ArticleResponse private constructor(
@@ -34,6 +41,17 @@ data class ReadLaterResponse private constructor(
                     url = article.url,
                     summary = article.summary!!,
                     createdDate = article.createdDate!!,
+                )
+            }
+
+            fun from(article: com.blogzip.dto.Article): ArticleResponse {
+                return ArticleResponse(
+                    id = article.id,
+                    blogId = article.blog.id,
+                    title = article.title,
+                    url = article.url,
+                    summary = article.summary,
+                    createdDate = article.createdDate,
                 )
             }
         }

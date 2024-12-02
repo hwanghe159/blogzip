@@ -147,7 +147,11 @@ function MainPage() {
             hasMore={hasMore}
             loader=
                 {
-                  <Box sx={{display: 'flex', justifyContent: 'center'}}>
+                  <Box
+                      mt={10}
+                      display={'flex'}
+                      justifyContent={'center'}
+                  >
                     <CircularProgress/>
                   </Box>
                 }

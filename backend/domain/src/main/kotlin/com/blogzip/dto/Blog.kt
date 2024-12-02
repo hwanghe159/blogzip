@@ -13,4 +13,19 @@ data class Blog(
     val isShowOnMain: Boolean,
     val createdBy: Long,
 ) {
+    companion object {
+        fun from(blog: com.blogzip.domain.Blog): Blog {
+            return Blog(
+                id = blog.id!!,
+                name = blog.name,
+                url = blog.url,
+                image = blog.image,
+                rssStatus = blog.rssStatus,
+                rss = blog.rss,
+                urlCssSelector = blog.urlCssSelector,
+                isShowOnMain = blog.isShowOnMain,
+                createdBy = blog.createdBy,
+            )
+        }
+    }
 }

@@ -42,30 +42,33 @@ class ReadLaterService(
         )
 
         val articleIds = readLaters.map { it.articleId }.toSet()
-        val articles = articleRepository.findAllById(articleIds)
-        val blogIds = articles.map { it.blogId }.toSet()
+        val articles = articleRepository.findAllById(articleIds).map { it.id to it }.toMap()
+        val blogIds = articles.values.map { it.blogId }.toSet()
         val blogs = blogRepository.findAllById(blogIds).map { it.id to it }.toMap()
 
         val existsNext = readLaters.size == size + 1
         val finalReadLaters = readLaters.take(size)
 
         return SearchedReadLaters(
-            readLaters = finalReadLaters.map {
-                com.blogzip.dto.ReadLater(
-                    id = it.id!!,
-                    article = com.blogzip.dto.Article(
-                        id = it.articleId,
-                        blog = "",
-                        title = "",
-                        content = "",
-                        url = "",
-                        summary = "",
-                        summarizedBy = "",
-                        keywords = "",
-                        createdDate = "",
+            readLaters = finalReadLaters
+                .map {
+                    val article = articles[it.articleId]!!
+                    val blog = blogs[article.blogId]!!
+
+                    com.blogzip.dto.ReadLater(
+                        id = it.id!!,
+                        article = com.blogzip.dto.Article(
+                            id = article.id!!,
+                            blog = com.blogzip.dto.Blog.from(blog),
+                            title = article.title,
+                            content = article.content,
+                            url = article.url,
+                            summary = article.summary!!,
+                            summarizedBy = article.summarizedBy!!,
+                            createdDate = article.createdDate!!,
+                        )
                     )
-                )
-            },
+                },
             next = if (existsNext) finalReadLaters.last().id else null,
         )
     }
