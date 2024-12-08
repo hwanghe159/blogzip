@@ -41,6 +41,31 @@ selenium:
 spring:
   config:
     activate:
+      on-profile: local-prod
+  batch:
+    job:
+      summarize:
+        retry:
+          max-attempts: 3
+          backoff-seconds: 300 # 5분
+  sql:
+    init:
+      mode: never
+      schema-locations:
+        - classpath:schema.sql
+logging:
+  level:
+    root: info
+
+selenium:
+  chrome-options:
+    - "--headless=new" # 크롬창 노출 x
+    - "--window-size=1920,1080"
+
+---
+spring:
+  config:
+    activate:
       on-profile: prod
   batch:
     job:

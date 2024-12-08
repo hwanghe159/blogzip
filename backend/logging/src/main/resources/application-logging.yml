@@ -14,4 +14,10 @@ spring:
 spring:
   config:
     activate:
+      on-profile: local-prod
+
+---
+spring:
+  config:
+    activate:
       on-profile: prod

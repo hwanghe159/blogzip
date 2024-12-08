@@ -18,7 +18,7 @@ class SlackSender(
 ) {
 
     fun sendStackTraceAsync(channel: SlackChannel, throwable: Throwable) {
-        if (!environment.activeProfiles.contains("prod")) {
+        if (environment.activeProfiles.contains("local")) {
             return
         }
         CoroutineScope(Dispatchers.Default).launch {
@@ -52,7 +52,7 @@ class SlackSender(
     }
 
     fun sendMessageAsync(channel: SlackChannel, message: String) {
-        if (!environment.activeProfiles.contains("prod")) {
+        if (environment.activeProfiles.contains("local")) {
             return
         }
         val maxLength = 3997

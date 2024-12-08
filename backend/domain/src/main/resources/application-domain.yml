@@ -29,9 +29,22 @@ spring:
 spring:
   config:
     activate:
-      on-profile: prod
+      on-profile: local-prod
   datasource:
     url: jdbc:mysql://13.125.138.71:3306/blogzip
+    username: ${MYSQL_USERNAME}
+    password: ${MYSQL_PASSWORD}
+  sql:
+    init:
+      mode: never
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: jdbc:mysql://localhost:3306/blogzip
     username: ${MYSQL_USERNAME}
     password: ${MYSQL_PASSWORD}
   sql:

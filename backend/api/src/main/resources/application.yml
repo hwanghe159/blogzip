@@ -36,6 +36,23 @@ selenium:
   chrome-options:
     - "--window-size=1920,1080"
     - "--keep-alive-for-test" # 마지막 브라우저 창이 닫힌 후에도 브라우저를 계속 유지 (idle 세션 끊는 현상 디버깅)
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local-prod
+oauth2:
+  google:
+    redirect-uri: https://blogzip.co.kr/login/google
+logging:
+  level:
+    root: info
+selenium:
+  chrome-options:
+    - "--window-size=1920,1080"
+    - "--keep-alive-for-test" # 마지막 브라우저 창이 닫힌 후에도 브라우저를 계속 유지 (idle 세션 끊는 현상 디버깅)
+
 ---
 spring:
   config:
