@@ -3,6 +3,7 @@ java {
 }
 
 dependencies {
+    implementation(project(":domain"))
     implementation(project(":logging"))
 
 //    implementation("org.springframework:spring-webflux:6.1.5")

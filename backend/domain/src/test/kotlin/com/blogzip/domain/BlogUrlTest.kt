@@ -28,6 +28,18 @@ class BlogUrlTest {
     }
 
     @ParameterizedTest
+    @CsvSource(
+        delimiterString = " -> ",
+        textBlock = """
+https://f-lab.kr/blog?category=Tech -> https://f-lab.kr/blog?category=Tech
+naver.com -> https://naver.com
+"""
+    )
+    fun `toString 테스트`(input: String, expected: String) {
+        assertThat(BlogUrl.from(input).toString()).isEqualTo(expected)
+    }
+
+    @ParameterizedTest
     @CsvSource(value = ["aa", "올바르지않은 url"])
     fun `예외 발생 테스트`(url: String) {
         assertThrows<URISyntaxException> {

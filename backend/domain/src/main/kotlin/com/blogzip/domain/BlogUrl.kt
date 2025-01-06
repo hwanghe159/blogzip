@@ -22,13 +22,14 @@ data class BlogUrl private constructor(
             val host = initialUri.host.replace("www.", "")
             val port = initialUri.port
             val path = if (initialUri.path == "/") "" else initialUri.path // todo /로 끝나는 경우도 핸들링
-            val normalizedUri = URI(scheme, null, host, port, path, null, null)
+            val query = initialUri.query
+            val normalizedUri = URI(scheme, null, host, port, path, query, null)
             return BlogUrl(normalizedUri.normalize())
         }
     }
 
     override fun toString(): String {
-        return "${uri.scheme}://${uri.host}${uri.path}"
+        return this.uri.toString()
     }
 
     override fun equals(other: Any?): Boolean {

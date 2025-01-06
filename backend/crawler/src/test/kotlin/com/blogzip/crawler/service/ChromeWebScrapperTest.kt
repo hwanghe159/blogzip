@@ -17,7 +17,14 @@ class ChromeWebScrapperTest {
     @BeforeEach
     fun setUp() {
         this.chromeWebScrapper =
-            ChromeWebScrapper.create(SeleniumProperties(listOf("--window-size=1920,1080")))
+            ChromeWebScrapper.create(
+                SeleniumProperties(
+                    listOf(
+                        "--window-size=1920,1080",
+                        "--headless=new"
+                    )
+                )
+            )
     }
 
     @AfterEach

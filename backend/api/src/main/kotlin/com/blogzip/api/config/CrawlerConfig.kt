@@ -1,9 +1,7 @@
 package com.blogzip.api.config
 
-import com.blogzip.crawler.service.BlogMetadataScrapper
+import com.blogzip.crawler.service.SeleniumBlogMetadataScrapper
 import com.blogzip.crawler.service.RssFeedFetcher
-import com.blogzip.crawler.service.ChromeWebScrapper
-import com.blogzip.crawler.service.WebScrapper
 import jakarta.annotation.PreDestroy
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -13,19 +11,19 @@ class CrawlerConfig(
     private val seleniumProperties: SeleniumProperties
 ) {
 
-    private lateinit var blogMetadataScrapper: BlogMetadataScrapper
+    private lateinit var seleniumBlogMetadataScrapper: SeleniumBlogMetadataScrapper
 
     @Bean
-    fun blogMetadataScrapper(): BlogMetadataScrapper {
-        blogMetadataScrapper = BlogMetadataScrapper.create(
+    fun blogMetadataScrapper(): SeleniumBlogMetadataScrapper {
+        seleniumBlogMetadataScrapper = SeleniumBlogMetadataScrapper.create(
             com.blogzip.crawler.config.SeleniumProperties(seleniumProperties.chromeOptions)
         )
-        return blogMetadataScrapper
+        return seleniumBlogMetadataScrapper
     }
 
     @PreDestroy
     fun quitWebDriver() {
-        blogMetadataScrapper.endUse()
+        seleniumBlogMetadataScrapper.endUse()
     }
 
     @Bean

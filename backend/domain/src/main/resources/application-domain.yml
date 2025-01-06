@@ -16,6 +16,12 @@ spring:
     url: jdbc:mysql://localhost:3306/blogzip
     username: blogzip
     password: blogzip
+    hikari:
+      maximum-pool-size: 10 # 최대 pool 크기
+      minimum-idle: 5 # 최소 pool 크기
+      idle-timeout: 300000 # 연결위한 최대 유후 시간 (5분)
+      max-lifetime: 1800000 # 반납된 커넥션의 최대 수명 (30분, MySQL의 wait_timeout보다 짧게)
+
   jpa:
     show-sql: true
     properties:

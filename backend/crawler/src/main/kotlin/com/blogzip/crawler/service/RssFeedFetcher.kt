@@ -11,6 +11,7 @@ import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
 import java.io.BufferedReader
 import java.io.StringReader
+import java.net.URI
 import java.time.ZoneId
 
 // contents 또는 description 이 500자 이하인 경우, 요약본으로 판단.
@@ -111,17 +112,27 @@ class RssFeedFetcher private constructor(
             ""
         )
 
-        return convertToArticles(validXmlString)
+        return convertToArticles(rss, validXmlString)
     }
 
-    private fun convertToArticles(xml: String): List<Article> {
+    private fun convertToArticles(rss: String, xml: String): List<Article> {
         val input = SyndFeedInput()
         val entries = input.build(BufferedReader(StringReader(xml))).entries
         val articles = entries.map {
+
+            // 상대경로일 경우 절대경로로 변환
+            val articleUri = URI(it.link)
+            val articleUrl = if (articleUri.isAbsolute) {
+                it.link
+            } else {
+                val baseUri = URI(rss).resolve("/")
+                baseUri.resolve(articleUri).toString()
+            }
+
             Article(
                 title = it.title,
                 content = it.content,
-                url = it.link,
+                url = articleUrl,
                 createdDate = it.publishedDate?.toInstant()
                     ?.atZone(ZoneId.systemDefault())
                     ?.toLocalDate()

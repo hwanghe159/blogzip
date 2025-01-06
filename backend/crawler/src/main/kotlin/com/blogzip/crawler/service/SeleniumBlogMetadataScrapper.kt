@@ -1,10 +1,10 @@
 package com.blogzip.crawler.service
 
 import com.blogzip.crawler.config.SeleniumProperties
-import com.blogzip.crawler.dto.BlogMetadata
 import com.blogzip.crawler.vo.MediumUrl
 import com.blogzip.crawler.vo.VelogUrl
 import com.blogzip.logger
+import com.blogzip.service.BlogMetadataScrapper
 import io.github.bonigarcia.wdm.WebDriverManager
 import org.openqa.selenium.By
 import org.openqa.selenium.WebDriver
@@ -19,10 +19,10 @@ import org.springframework.web.reactive.function.client.WebClient
 import java.net.URI
 import java.time.Duration
 
-class BlogMetadataScrapper(
+class SeleniumBlogMetadataScrapper(
     private val webDriver: WebDriver,
     private val webClient: WebClient,
-) {
+) : BlogMetadataScrapper {
 
     val log = logger()
 
@@ -32,14 +32,14 @@ class BlogMetadataScrapper(
         private val RSS_CONTENT_TYPE =
             setOf("application/xml", "application/rss+xml", "application/atom+xml", "text/xml")
 
-        fun create(properties: SeleniumProperties): BlogMetadataScrapper {
+        fun create(properties: SeleniumProperties): SeleniumBlogMetadataScrapper {
             val webDriverManager = WebDriverManager.chromedriver()
             webDriverManager.setup()
             val chromeOptions = ChromeOptions()
             chromeOptions.addArguments(properties.chromeOptions)
             val webDriver = ChromeDriver(chromeOptions)
 
-            return BlogMetadataScrapper(
+            return SeleniumBlogMetadataScrapper(
                 webDriver,
                 WebClient.builder()
                     .exchangeStrategies(
@@ -52,7 +52,7 @@ class BlogMetadataScrapper(
     }
 
     @Synchronized
-    fun getMetadata(url: String): BlogMetadata {
+    override fun getMetadata(url: String): BlogMetadataScrapper.BlogMetadata {
         var title: String? = null
         var imageUrl: String? = null
         var rss: String? = null
@@ -110,11 +110,23 @@ class BlogMetadataScrapper(
                 }
             }
             // todo rss에 요청한번 보내보고 4XX, 5XX이면 null 응답
-            val metadata = BlogMetadata(title = title, imageUrl = imageUrl, rss = rss)
+            val metadata =
+                BlogMetadataScrapper.BlogMetadata(
+                    title = title,
+                    imageUrl = imageUrl,
+                    rss = rss,
+                    true
+                )
             log.warn("$url 에서 메타데이터 추출 완료. metadata=${metadata}")
             return metadata
         } catch (e: Exception) {
-            val metadata = BlogMetadata(title = title!!, imageUrl = imageUrl, rss = rss)
+            val metadata =
+                BlogMetadataScrapper.BlogMetadata(
+                    title = title!!,
+                    imageUrl = imageUrl,
+                    rss = rss,
+                    true
+                )
             log.error("$url 에서 메타데이터 추출 중 예외 발생. metadata=${metadata}", e)
             return metadata
         } finally {

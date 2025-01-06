@@ -93,10 +93,10 @@ class ChromeWebScrapper private constructor(
                 webDriver.switchTo().window(newWindow)
 
                 // 새 탭의 정보 추출
-                Thread.sleep(Random.nextLong(3000)) // url이 완전히 세팅될때까지 3초 sleep
+                Thread.sleep(3000) // url이 완전히 세팅될때까지 3초 sleep
                 var url = webDriver.currentUrl
                 if (url.startsWith("chrome-extension://")) {
-                    Thread.sleep(Random.nextLong(3000))
+                    Thread.sleep(3000)
                     url = webDriver.currentUrl
                 }
                 val content = webDriver.pageSource

@@ -1,6 +1,7 @@
 package com.blogzip.api.dto
 
 import com.blogzip.domain.Blog
+import com.blogzip.service.BlogCreateService.BlogCreateResult
 
 data class BlogCreateResponse private constructor(
     val id: Long,
@@ -10,9 +11,9 @@ data class BlogCreateResponse private constructor(
     val rss: String?,
 ) {
     companion object {
-        fun from(blog: Blog): BlogCreateResponse {
+        fun from(blog: BlogCreateResult): BlogCreateResponse {
             return BlogCreateResponse(
-                id = blog.id!!,
+                id = blog.id,
                 name = blog.name,
                 url = blog.url,
                 image = blog.image,

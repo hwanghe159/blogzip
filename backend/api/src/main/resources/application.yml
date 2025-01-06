@@ -24,18 +24,32 @@ spring:
   config:
     activate:
       on-profile: local
+server:
+  tomcat:
+    threads:
+      max: 20 # 생성할 수 있는 thread의 총 개수
+      min-spare: 5 # 항상 활성화 되어있는(idle) thread의 개수
+    accept-count: 10 # 작업큐의 사이즈
+    max-connections: 8192 # 수립가능한 connection의 총 개수
 oauth2:
   google:
     redirect-uri: http://localhost:3000/login/google
 logging:
   level:
-    root: info
-
+    root: debug
 # 크로미움 옵션 모음 : https://peter.sh/experiments/chromium-command-line-switches/
 selenium:
   chrome-options:
     - "--window-size=1920,1080"
     - "--keep-alive-for-test" # 마지막 브라우저 창이 닫힌 후에도 브라우저를 계속 유지 (idle 세션 끊는 현상 디버깅)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*" # 모든 endpoint 활성화
+  endpoint:
+    env:
+      show-values: ALWAYS # /env 경로 값 전부 보이도록 설정 (없을 시 ***로 마스킹)
 
 ---
 spring:
@@ -52,6 +66,14 @@ selenium:
   chrome-options:
     - "--window-size=1920,1080"
     - "--keep-alive-for-test" # 마지막 브라우저 창이 닫힌 후에도 브라우저를 계속 유지 (idle 세션 끊는 현상 디버깅)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*" # 모든 endpoint 활성화
+  endpoint:
+    env:
+      show-values: ALWAYS # /env 경로 값 전부 보이도록 설정 (없을 시 ***로 마스킹)
 
 ---
 spring:
@@ -69,3 +91,6 @@ selenium:
     - "--headless=new" # 크롬창 노출 x
     - "--window-size=1920,1080"
     - "--keep-alive-for-test" # 마지막 브라우저 창이 닫힌 후에도 브라우저를 계속 유지 (idle 세션 끊는 현상 디버깅)
+management:
+  endpoints:
+    enabled-by-default: false

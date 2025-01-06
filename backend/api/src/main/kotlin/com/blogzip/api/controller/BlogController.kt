@@ -5,26 +5,22 @@ import com.blogzip.api.auth.AuthenticatedUser
 import com.blogzip.api.dto.BlogCreateRequest
 import com.blogzip.api.dto.BlogCreateResponse
 import com.blogzip.api.dto.BlogResponse
-import com.blogzip.common.DomainException
-import com.blogzip.common.ErrorCode
-import com.blogzip.crawler.service.BlogMetadataScrapper
+import com.blogzip.crawler.service.SeleniumBlogMetadataScrapper
 import com.blogzip.crawler.service.RssFeedFetcher
-import com.blogzip.domain.Blog
-import com.blogzip.domain.BlogUrl
+import com.blogzip.service.BlogCreateService
 import com.blogzip.slack.SlackSender
-import com.blogzip.slack.SlackSender.SlackChannel.*
 import com.blogzip.service.BlogService
 import io.swagger.v3.oas.annotations.Parameter
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import java.net.URISyntaxException
 
 
 @RestController
 class BlogController(
+    private val blogCreateService: BlogCreateService,
     private val blogService: BlogService,
     private val rssFeedFetcher: RssFeedFetcher,
-    private val blogMetadataScrapper: BlogMetadataScrapper,
+    private val blogMetadataScrapper: SeleniumBlogMetadataScrapper,
     private val slackSender: SlackSender,
 ) {
 
@@ -55,38 +51,7 @@ class BlogController(
         @Parameter(hidden = true) @Authenticated user: AuthenticatedUser,
         @RequestBody request: BlogCreateRequest
     ): ResponseEntity<BlogCreateResponse> {
-        val blogUrl = try {
-            BlogUrl.from(request.url)
-        } catch (e: URISyntaxException) {
-            throw DomainException(ErrorCode.BLOG_URL_NOT_VALID)
-        }
-        if (blogService.existsByUrl(blogUrl)) {
-            throw DomainException(ErrorCode.BLOG_URL_DUPLICATED)
-        }
-        val metadata = blogMetadataScrapper.getMetadata(blogUrl.toString())
-        if (metadata.imageUrl == null || metadata.rss == null) {
-            slackSender.sendMessageAsync(
-                MONITORING,
-                "imageUrl==null 또는 rss==null. url=$blogUrl, metadata=$metadata"
-            )
-        }
-        // todo rss 가 있어도 cloudflare에 의해 차단되는 경우가 있음. 이 경우엔 NO_RSS 가 되어야 함
-        val rssStatus =
-            if (metadata.rss == null) Blog.RssStatus.NO_RSS
-            else if (rssFeedFetcher.isContentContainsInRss(metadata.rss!!)) Blog.RssStatus.WITH_CONTENT
-            else Blog.RssStatus.WITHOUT_CONTENT
-
-        if (rssStatus == Blog.RssStatus.NO_RSS) {
-            slackSender.sendMessageAsync(MONITORING, "url_css_selector 직접 추가 필요. url=$blogUrl")
-        }
-        val blog = blogService.save(
-            name = metadata.title,
-            url = blogUrl.toString(),
-            image = metadata.imageUrl,
-            rss = metadata.rss,
-            rssStatus = rssStatus,
-            createdBy = user.id,
-        )
-        return ResponseEntity.ok(BlogCreateResponse.from(blog))
+        val result = blogCreateService.create(request.url, user.id)
+        return ResponseEntity.ok(BlogCreateResponse.from(result))
     }
 }

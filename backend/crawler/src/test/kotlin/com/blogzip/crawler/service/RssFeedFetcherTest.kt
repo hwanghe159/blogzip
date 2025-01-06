@@ -1,6 +1,8 @@
 package com.blogzip.crawler.service
 
+import org.assertj.core.api.AssertionsForClassTypes.assertThat
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.params.ParameterizedTest
@@ -53,5 +55,11 @@ class RssFeedFetcherTest {
         assertDoesNotThrow {
             rssFeedFetcher.getArticles(url)
         }
+    }
+
+    @Test
+    fun `글 URL이 상대경로인 경우 절대경로로 변환한다`() {
+        val articles = rssFeedFetcher.getArticles("https://tech.kakaobank.com/index.xml")
+        assertThat(articles[0].url).isEqualTo("https://tech.kakaobank.com/posts/2411-creating-banking-app-home-screen-for-30-million-traffic/")
     }
 }

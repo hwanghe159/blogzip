@@ -3,16 +3,15 @@ package com.blogzip.api.controller
 import com.blogzip.ai.summary.ArticleContentBatchSummarizer
 import com.blogzip.ai.summary.OpenAiApiClient
 import com.blogzip.crawler.dto.Article
-import com.blogzip.crawler.dto.BlogMetadata
-import com.blogzip.crawler.service.BlogMetadataScrapper
+import com.blogzip.crawler.service.SeleniumBlogMetadataScrapper
 import com.blogzip.crawler.service.RssFeedFetcher
-import com.blogzip.crawler.service.WebScrapper
 import com.blogzip.domain.ArticleRepository
 import com.blogzip.domain.BlogUrl
 import com.blogzip.logger
 import com.blogzip.slack.SlackSender
 import com.blogzip.notification.email.EmailSender
 import com.blogzip.service.ArticleQueryService
+import com.blogzip.service.BlogMetadataScrapper
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.web.bind.annotation.*
 import java.lang.RuntimeException
@@ -21,7 +20,7 @@ import java.lang.RuntimeException
 class TestController(
     private val slackSender: SlackSender,
     private val rssFeedFetcher: RssFeedFetcher,
-    private val blogMetadataScrapper: BlogMetadataScrapper,
+    private val seleniumBlogMetadataScrapper: SeleniumBlogMetadataScrapper,
     private val emailSender: EmailSender,
     private val openAIApiClient: OpenAiApiClient,
     private val articleContentBatchSummarizer: ArticleContentBatchSummarizer,
@@ -53,9 +52,9 @@ class TestController(
     }
 
     @PostMapping("/api/v1/test/crawler")
-    fun crawlerTest(@RequestBody url: String): BlogMetadata {
+    fun crawlerTest(@RequestBody url: String): BlogMetadataScrapper.BlogMetadata {
         val blogUrl = BlogUrl.from(url)
-        return blogMetadataScrapper.getMetadata(blogUrl.toString())
+        return seleniumBlogMetadataScrapper.getMetadata(blogUrl.toString())
     }
 
     // todo 제거
@@ -63,7 +62,7 @@ class TestController(
     fun crawlerSessionTest() {
         try {
             val blogUrl = BlogUrl.from("https://google.com/")
-            blogMetadataScrapper.getMetadata(blogUrl.toString())
+            seleniumBlogMetadataScrapper.getMetadata(blogUrl.toString())
         } catch (e: Exception) {
             log.error("메타데이터 조회 실패", e)
             slackSender.sendMessageAsync(SlackSender.SlackChannel.ERROR_LOG, "메타데이터 조회 실패")
