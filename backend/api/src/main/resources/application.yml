@@ -29,7 +29,7 @@ oauth2:
     redirect-uri: http://localhost:3000/login/google
 logging:
   level:
-    root: info
+    root: debug
 
 # 크로미움 옵션 모음 : https://peter.sh/experiments/chromium-command-line-switches/
 selenium:

@@ -3,8 +3,7 @@ package com.blogzip.batch.fetch
 import com.blogzip.batch.common.JobResultNotifier
 import com.blogzip.batch.summarize.SummarizeTasklet
 import com.blogzip.logger
-import org.springframework.batch.core.Job
-import org.springframework.batch.core.Step
+import org.springframework.batch.core.*
 import org.springframework.batch.core.configuration.annotation.JobScope
 import org.springframework.batch.core.job.builder.JobBuilder
 import org.springframework.batch.core.repository.JobRepository
@@ -63,6 +62,15 @@ class FetchNewArticlesJobConfig(
         return StepBuilder("summarize", jobRepository)
             .tasklet(summarizeTasklet, platformTransactionManager)
             .allowStartIfComplete(true) // COMPLETED 상태로 끝났어도 재실행 가능
+            .listener(object: StepExecutionListener {
+              override fun afterStep(stepExecution: StepExecution): ExitStatus? {
+                return if (stepExecution.exitStatus === ExitStatus.UNKNOWN) {
+                  ExitStatus.FAILED
+                } else {
+                  stepExecution.exitStatus
+                }
+              }
+            })
             .build()
     }
 }

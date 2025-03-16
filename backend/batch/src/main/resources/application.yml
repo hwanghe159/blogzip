@@ -3,6 +3,13 @@ spring:
     name: blogzip-batch
   module:
     name: batch
+  datasource:
+    hikari:
+      minimum-idle: 10
+      maximum-pool-size: 10
+      max-lifetime: 1800000  # 30분마다 커넥션 갱신
+      keepalive-time: 300000  # 5분마다 커넥션 체크
+      connection-test-query: "SELECT 1"
   config:
     import:
       - application-domain.yml
@@ -31,7 +38,7 @@ spring:
         - classpath:schema.sql
 logging:
   level:
-    root: info
+    root: debug
 
 selenium:
   chrome-options:
