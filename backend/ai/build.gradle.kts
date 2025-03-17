@@ -23,7 +23,7 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
 
     // OpenAI
-    implementation(platform("com.aallam.openai:openai-client-bom:3.7.0"))
+    implementation(platform("com.aallam.openai:openai-client-bom:4.0.1"))
     implementation("com.aallam.openai:openai-client")
     runtimeOnly("io.ktor:ktor-client-okhttp")
 

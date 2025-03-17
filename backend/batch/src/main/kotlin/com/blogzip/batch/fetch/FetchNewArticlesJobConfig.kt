@@ -6,6 +6,7 @@ import com.blogzip.logger
 import org.springframework.batch.core.*
 import org.springframework.batch.core.configuration.annotation.JobScope
 import org.springframework.batch.core.job.builder.JobBuilder
+import org.springframework.batch.core.launch.support.RunIdIncrementer
 import org.springframework.batch.core.repository.JobRepository
 import org.springframework.batch.core.step.builder.StepBuilder
 import org.springframework.context.annotation.Bean
@@ -32,8 +33,9 @@ class FetchNewArticlesJobConfig(
         jobRepository: JobRepository,
         platformTransactionManager: PlatformTransactionManager
     ): Job {
+        // todo 동일 파라미터로 재시도 허용, OpenAI api 최신거로 사용
         return JobBuilder(JOB_NAME, jobRepository)
-//            .incrementer(RunIdIncrementer())
+            .incrementer(RunIdIncrementer())
             .start(fetchNewArticlesStep(jobRepository, platformTransactionManager))
             .next(summarizeStep(jobRepository, platformTransactionManager))
             .listener(jobResultNotifier)
