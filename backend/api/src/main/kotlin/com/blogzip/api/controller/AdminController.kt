@@ -4,11 +4,10 @@ import com.blogzip.api.dto.admin.KeywordUpdateRequest
 import com.blogzip.service.KeywordService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import java.time.LocalDate
 
-
+// todo admin token 사용
 @RestController
-class KeywordController(
+class AdminController(
     private val keywordService: KeywordService,
 ) {
 
@@ -26,5 +25,13 @@ class KeywordController(
         @RequestParam(required = true) dest: String,
     ) {
         keywordService.merge(src, dest)
+    }
+
+    // todo
+    @PostMapping("/api/admin/openai/batches/{batchId}/re-run")
+    fun reRunOpenAiBatches(
+        @PathVariable batchId: String,
+    ): ResponseEntity<Boolean> {
+        return ResponseEntity.ok(true)
     }
 }
