@@ -7,7 +7,6 @@ import com.aallam.openai.api.core.Status
 import com.aallam.openai.api.message.MessageContent
 import com.aallam.openai.api.message.MessageRequest
 import com.aallam.openai.api.run.RunRequest
-import com.aallam.openai.api.thread.ThreadId
 import com.aallam.openai.client.OpenAI
 import com.blogzip.ai.config.OpenAiProperties
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -26,7 +25,7 @@ class ArticleContentSequentialSummarizer(
   }
 
   private fun summarizeAndGetKeywords(article: ArticleToSummarize): SummarizedArticleResult {
-    val summarizeResult = runBlocking { summarize(article.content) }
+    val summarizeResult = summarize(article.content)
     return if (summarizeResult != null) {
       SummarizedArticleResult(
         result = SummarizedArticleResult.Result.SUCCESS,
@@ -46,9 +45,9 @@ class ArticleContentSequentialSummarizer(
   }
 
   @OptIn(BetaOpenAI::class)
-  private suspend fun summarize(content: String): SummarizeResult? {
+  private fun summarize(content: String): SummarizeResult? = runBlocking {
     val openAI = OpenAI(openAiProperties.apiKey)
-    val threadId = ThreadId(openAiProperties.threadId)
+    val threadId = openAI.thread().id
     val assistantId = AssistantId(openAiProperties.assistantId)
 
     try {
@@ -80,13 +79,13 @@ class ArticleContentSequentialSummarizer(
       val messages = openAI.messages(threadId)
       val textContent = messages.first().content.first() as MessageContent.Text
       val jsonResponse = objectMapper.readTree(textContent.text.value)
-      return SummarizeResult(
+      return@runBlocking SummarizeResult(
         summary = jsonResponse.get("summary").asText(),
         keywords = jsonResponse.get("keywords").map { it.asText() },
         summarizedBy = run.model.id
       )
     } catch (e: Exception) {
-      return null
+      return@runBlocking null
     }
   }
 
