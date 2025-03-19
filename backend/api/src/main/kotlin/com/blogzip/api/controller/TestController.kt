@@ -1,12 +1,13 @@
 package com.blogzip.api.controller
 
 import com.blogzip.ai.summary.ArticleContentBatchSummarizer
+import com.blogzip.ai.summary.ArticleToSummarize
 import com.blogzip.ai.summary.OpenAiApiClient
+import com.blogzip.ai.summary.SummarizedArticleResult
 import com.blogzip.crawler.dto.Article
 import com.blogzip.crawler.dto.BlogMetadata
 import com.blogzip.crawler.service.BlogMetadataScrapper
 import com.blogzip.crawler.service.RssFeedFetcher
-import com.blogzip.crawler.service.WebScrapper
 import com.blogzip.domain.ArticleRepository
 import com.blogzip.domain.BlogUrl
 import com.blogzip.logger
@@ -90,9 +91,9 @@ class TestController(
     }
 
     @GetMapping("/api/v1/test/summary/article/{articleIds}")
-    fun summaryAndKeywordsTest(@PathVariable articleIds: List<Long>): List<ArticleContentBatchSummarizer.SummarizeAndKeywordsResult> {
-        val map = articleQueryService.findAllById(articleIds)
-            .map { ArticleContentBatchSummarizer.Article(id = it.id!!, content = it.content) }
-        return articleContentBatchSummarizer.summarizeAndGetKeywordsAll(map)
+    fun summaryAndKeywordsTest(@PathVariable articleIds: List<Long>): List<SummarizedArticleResult> {
+        val articles = articleQueryService.findAllById(articleIds)
+            .map { ArticleToSummarize(id = it.id!!, content = it.content) }
+        return articleContentBatchSummarizer.summarizeAndGetKeywordsAll(articles)
     }
 }
