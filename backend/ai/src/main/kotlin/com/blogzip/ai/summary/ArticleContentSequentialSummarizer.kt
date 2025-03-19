@@ -33,8 +33,8 @@ class ArticleContentSequentialSummarizer(
         article = SummarizedArticle(
           id = article.id,
           summary = summarizeResult.summary,
+          keywords = summarizeResult.keywords,
           summarizedBy = summarizeResult.summarizedBy,
-          keywords = emptyList()
         )
       )
     } else {
@@ -46,7 +46,7 @@ class ArticleContentSequentialSummarizer(
   }
 
   @OptIn(BetaOpenAI::class)
-  suspend fun summarize(content: String): SummarizeResult? {
+  private suspend fun summarize(content: String): SummarizeResult? {
     val openAI = OpenAI(openAiProperties.apiKey)
     val threadId = ThreadId(openAiProperties.threadId)
     val assistantId = AssistantId(openAiProperties.assistantId)
