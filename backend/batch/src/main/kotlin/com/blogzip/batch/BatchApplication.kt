@@ -9,6 +9,6 @@ import kotlin.system.exitProcess
 class BatchApplication
 
 fun main(args: Array<String>) {
-    val context = runApplication<BatchApplication>(*args)
-    exitProcess(SpringApplication.exit(context))
+  val context = runApplication<BatchApplication>(*args)
+  exitProcess(SpringApplication.exit(context))
 }

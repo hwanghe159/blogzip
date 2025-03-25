@@ -15,17 +15,17 @@ import org.springframework.test.context.ActiveProfiles
 @SpringBatchTest
 class FetchNewArticlesJobConfigTest {
 
-    @Autowired
-    private lateinit var jobLauncherTestUtils: JobLauncherTestUtils
+  @Autowired
+  private lateinit var jobLauncherTestUtils: JobLauncherTestUtils
 
-    @Autowired
-    private lateinit var fetchNewArticlesJob: Job
+  @Autowired
+  private lateinit var fetchNewArticlesJob: Job
 
-    @Test
-    @Tag("exclude")
-    fun `fetch-new-articles 배치 실행`() {
-        jobLauncherTestUtils.job = fetchNewArticlesJob
-        val jobExecution = jobLauncherTestUtils.launchJob()
-        assertThat(jobExecution.exitStatus.exitCode).isEqualTo("COMPLETED")
-    }
+  @Test
+  @Tag("exclude")
+  fun `fetch-new-articles 배치 실행`() {
+    jobLauncherTestUtils.job = fetchNewArticlesJob
+    val jobExecution = jobLauncherTestUtils.launchJob()
+    assertThat(jobExecution.exitStatus.exitCode).isEqualTo("COMPLETED")
+  }
 }

@@ -10,24 +10,24 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class CrawlerConfig(
-    private val seleniumProperties: SeleniumProperties
+  private val seleniumProperties: SeleniumProperties
 ) {
 
-    @StepScope
-    @Bean
-    fun chromeWebScrapper(): WebScrapper {
-        return ChromeWebScrapper.create(
-            com.blogzip.crawler.config.SeleniumProperties(seleniumProperties.chromeOptions)
-        )
-    }
+  @StepScope
+  @Bean
+  fun chromeWebScrapper(): WebScrapper {
+    return ChromeWebScrapper.create(
+      com.blogzip.crawler.config.SeleniumProperties(seleniumProperties.chromeOptions)
+    )
+  }
 
-    @Bean
-    fun rssFeedFetcher(): RssFeedFetcher {
-        return RssFeedFetcher.create()
-    }
+  @Bean
+  fun rssFeedFetcher(): RssFeedFetcher {
+    return RssFeedFetcher.create()
+  }
 
-    @Bean
-    fun htmlCompressor(): HtmlCompressor {
-        return HtmlCompressor()
-    }
+  @Bean
+  fun htmlCompressor(): HtmlCompressor {
+    return HtmlCompressor()
+  }
 }

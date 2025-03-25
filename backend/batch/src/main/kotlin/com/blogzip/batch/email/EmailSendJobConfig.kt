@@ -2,8 +2,6 @@ package com.blogzip.batch.email
 
 import com.blogzip.batch.common.JobResultNotifier
 import com.blogzip.logger
-import com.blogzip.slack.SlackSender
-import com.blogzip.slack.SlackSender.SlackChannel.ERROR_LOG
 import com.blogzip.notification.email.Article
 import com.blogzip.notification.email.EmailSender
 import com.blogzip.notification.email.User
@@ -11,6 +9,8 @@ import com.blogzip.service.ArticleQueryService
 import com.blogzip.service.BlogService
 import com.blogzip.service.KeywordService
 import com.blogzip.service.UserService
+import com.blogzip.slack.SlackSender
+import com.blogzip.slack.SlackSender.SlackChannel.ERROR_LOG
 import com.blogzip.slack.SlackSender.SlackChannel.MONITORING
 import org.springframework.batch.core.Job
 import org.springframework.batch.core.Step
@@ -26,92 +26,92 @@ import java.time.LocalDate
 
 @Configuration
 class EmailSendJobConfig(
-    private val userService: UserService,
-    private val articleQueryService: ArticleQueryService,
-    private val blogService: BlogService,
-    private val keywordService: KeywordService,
-    private val jobResultNotifier: JobResultNotifier,
-    private val emailSender: EmailSender,
-    private val slackSender: SlackSender,
+  private val userService: UserService,
+  private val articleQueryService: ArticleQueryService,
+  private val blogService: BlogService,
+  private val keywordService: KeywordService,
+  private val jobResultNotifier: JobResultNotifier,
+  private val emailSender: EmailSender,
+  private val slackSender: SlackSender,
 ) {
 
-    val log = logger()
+  val log = logger()
 
-    companion object {
-        private const val JOB_NAME = "email-send"
-    }
+  companion object {
+    private const val JOB_NAME = "email-send"
+  }
 
-    @Bean
-    fun emailSendJob(
-        jobRepository: JobRepository,
-        platformTransactionManager: PlatformTransactionManager
-    ): Job {
-        return JobBuilder(JOB_NAME, jobRepository)
+  @Bean
+  fun emailSendJob(
+    jobRepository: JobRepository,
+    platformTransactionManager: PlatformTransactionManager
+  ): Job {
+    return JobBuilder(JOB_NAME, jobRepository)
 //            .incrementer(RunIdIncrementer())
-            .start(emailSendStep(jobRepository, platformTransactionManager))
-            .listener(jobResultNotifier)
-            .build()
-    }
+      .start(emailSendStep(jobRepository, platformTransactionManager))
+      .listener(jobResultNotifier)
+      .build()
+  }
 
-    @JobScope
-    @Bean
-    fun emailSendStep(
-        jobRepository: JobRepository,
-        platformTransactionManager: PlatformTransactionManager,
-    ): Step {
-        return StepBuilder("email-send", jobRepository)
-            .tasklet({ _, _ ->
-                val today = LocalDate.now()
-                val users = userService.findAllByDayOfWeek(today.dayOfWeek)
-                val blogs = blogService.findAll().map { it.id to it }.toMap()
+  @JobScope
+  @Bean
+  fun emailSendStep(
+    jobRepository: JobRepository,
+    platformTransactionManager: PlatformTransactionManager,
+  ): Step {
+    return StepBuilder("email-send", jobRepository)
+      .tasklet({ _, _ ->
+        val today = LocalDate.now()
+        val users = userService.findAllByDayOfWeek(today.dayOfWeek)
+        val blogs = blogService.findAll().map { it.id to it }.toMap()
 
-                for (user in users) {
-                    val accumulatedDates = user.getAccumulatedDates(today)
-                    val blogIds = user.getAllSubscribingBlogIds()
-                    val newArticles = articleQueryService
-                        .findAllByBlogIdsAndCreatedDates(blogIds, accumulatedDates)
-                        .filter {
-                            if (it.summary == null) {
-                                val errorMessage = "요약되지 않아 전송 과정에서 걸러짐. article.id=${it.id}"
-                                log.error(errorMessage)
-                                slackSender.sendMessageAsync(channel = ERROR_LOG, errorMessage)
-                            }
-                            it.summary != null
-                        }
+        for (user in users) {
+          val accumulatedDates = user.getAccumulatedDates(today)
+          val blogIds = user.getAllSubscribingBlogIds()
+          val newArticles = articleQueryService
+            .findAllByBlogIdsAndCreatedDates(blogIds, accumulatedDates)
+            .filter {
+              if (it.summary == null) {
+                val errorMessage = "요약되지 않아 전송 과정에서 걸러짐. article.id=${it.id}"
+                log.error(errorMessage)
+                slackSender.sendMessageAsync(channel = ERROR_LOG, errorMessage)
+              }
+              it.summary != null
+            }
 
-                    val articleIds = newArticles.map { it.id!! }.toSet()
-                    val keywords = keywordService.getAllByArticleIds(articleIds)
+          val articleIds = newArticles.map { it.id!! }.toSet()
+          val keywords = keywordService.getAllByArticleIds(articleIds)
 
-                    val articlesToSend = newArticles
-                        .map {
-                            Article(
-                                title = it.title,
-                                url = it.url,
-                                summary = it.summary!!,
-                                blogName = blogs[it.blogId]?.name!!,
-                                keywords = keywords[it.id!!]?.map { it.value } ?: emptyList(),
-                                createdDate = it.createdDate!!,
-                            )
-                        }
-                    if (articlesToSend.isEmpty()) {
-                        slackSender.sendMessageAsync(
-                            MONITORING,
-                            "구독한 블로그에 새 글이 없어 skip. email=${user.email}"
-                        )
-                        continue
-                    }
-                    emailSender.sendNewArticles(
-                        to = User(
-                            id = user.id!!,
-                            email = user.email,
-                            receiveDates = accumulatedDates,
-                        ),
-                        articles = articlesToSend
-                    )
-                }
-                RepeatStatus.FINISHED
-            }, platformTransactionManager)
-            .allowStartIfComplete(true) // COMPLETED 상태로 끝났어도 재실행 가능
-            .build()
-    }
+          val articlesToSend = newArticles
+            .map {
+              Article(
+                title = it.title,
+                url = it.url,
+                summary = it.summary!!,
+                blogName = blogs[it.blogId]?.name!!,
+                keywords = keywords[it.id!!]?.map { it.value } ?: emptyList(),
+                createdDate = it.createdDate!!,
+              )
+            }
+          if (articlesToSend.isEmpty()) {
+            slackSender.sendMessageAsync(
+              MONITORING,
+              "구독한 블로그에 새 글이 없어 skip. email=${user.email}"
+            )
+            continue
+          }
+          emailSender.sendNewArticles(
+            to = User(
+              id = user.id!!,
+              email = user.email,
+              receiveDates = accumulatedDates,
+            ),
+            articles = articlesToSend
+          )
+        }
+        RepeatStatus.FINISHED
+      }, platformTransactionManager)
+      .allowStartIfComplete(true) // COMPLETED 상태로 끝났어도 재실행 가능
+      .build()
+  }
 }

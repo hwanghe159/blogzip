@@ -12,24 +12,24 @@ import java.time.LocalDate
 
 @Component
 class SummarizeTasklet(
-    private val articleContentSummarizeService: ArticleContentSummarizeService,
+  private val articleContentSummarizeService: ArticleContentSummarizeService,
 ) : Tasklet {
 
-    val log = logger()
+  val log = logger()
 
-    override fun execute(
-        contribution: StepContribution,
-        chunkContext: ChunkContext
-    ): RepeatStatus? {
-        val parameter = chunkContext.getParameter(PARAMETER_NAME)
-        val startDate: LocalDate
-        if (parameter.isNullOrBlank()) {
-            val yesterday = LocalDate.now().minusDays(1)
-            startDate = yesterday
-        } else {
-            startDate = LocalDate.parse(parameter)
-        }
-        articleContentSummarizeService.summarize(startDate = startDate)
-        return RepeatStatus.FINISHED
+  override fun execute(
+    contribution: StepContribution,
+    chunkContext: ChunkContext
+  ): RepeatStatus? {
+    val parameter = chunkContext.getParameter(PARAMETER_NAME)
+    val startDate: LocalDate
+    if (parameter.isNullOrBlank()) {
+      val yesterday = LocalDate.now().minusDays(1)
+      startDate = yesterday
+    } else {
+      startDate = LocalDate.parse(parameter)
     }
+    articleContentSummarizeService.summarize(startDate = startDate)
+    return RepeatStatus.FINISHED
+  }
 }

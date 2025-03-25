@@ -10,24 +10,24 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class SubscriptionCommandService(
-    private val userRepository: UserRepository,
-    private val blogRepository: BlogRepository,
+  private val userRepository: UserRepository,
+  private val blogRepository: BlogRepository,
 ) {
 
-    @Transactional
-    fun save(userId: Long, blogId: Long): SubscriptionAndBlog {
-        val user = userRepository.findByIdWithSubscriptions(userId)
-            ?: throw DomainException(ErrorCode.USER_NOT_FOUND)
-        val blog = blogRepository.findById(blogId)
-            .orElseThrow { DomainException(ErrorCode.BLOG_NOT_FOUND) }
-        val subscription = user.addSubscription(blogId)
-        return SubscriptionAndBlog(subscription, blog)
-    }
+  @Transactional
+  fun save(userId: Long, blogId: Long): SubscriptionAndBlog {
+    val user = userRepository.findByIdWithSubscriptions(userId)
+      ?: throw DomainException(ErrorCode.USER_NOT_FOUND)
+    val blog = blogRepository.findById(blogId)
+      .orElseThrow { DomainException(ErrorCode.BLOG_NOT_FOUND) }
+    val subscription = user.addSubscription(blogId)
+    return SubscriptionAndBlog(subscription, blog)
+  }
 
-    @Transactional
-    fun delete(userId: Long, blogId: Long): Boolean {
-        val user = userRepository.findByIdWithSubscriptions(userId)
-            ?: throw DomainException(ErrorCode.USER_NOT_FOUND)
-        return user.deleteSubscription(blogId)
-    }
+  @Transactional
+  fun delete(userId: Long, blogId: Long): Boolean {
+    val user = userRepository.findByIdWithSubscriptions(userId)
+      ?: throw DomainException(ErrorCode.USER_NOT_FOUND)
+    return user.deleteSubscription(blogId)
+  }
 }

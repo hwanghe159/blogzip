@@ -6,5 +6,5 @@ import java.time.LocalDate
 
 interface NewArticlesFetcher {
 
-    fun fetchArticles(blog: Blog, from: LocalDate): List<Article>
+  fun fetchArticles(blog: Blog, from: LocalDate): List<Article>
 }

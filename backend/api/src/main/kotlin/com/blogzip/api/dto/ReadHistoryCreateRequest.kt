@@ -4,6 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty
 
 data class ReadHistoryCreateRequest(
 
-    @JsonProperty("articleUrl")
-    val articleUrl: String,
+  @JsonProperty("articleUrl")
+  val articleUrl: String,
 )

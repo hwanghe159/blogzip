@@ -5,17 +5,17 @@ import org.springframework.data.jpa.repository.Query
 
 interface BlogRepository : JpaRepository<Blog, Long> {
 
-    fun existsByUrl(url: String): Boolean
+  fun existsByUrl(url: String): Boolean
 
-    @Query(
-        """
+  @Query(
+    """
             select blog
             from Blog blog
             where blog.name like %:query%
              or blog.url like %:query%
     """
-    )
-    fun search(query: String): List<Blog>
+  )
+  fun search(query: String): List<Blog>
 
-    fun findAllByIsShowOnMain(isShowOnMain: Boolean): List<Blog>
+  fun findAllByIsShowOnMain(isShowOnMain: Boolean): List<Blog>
 }

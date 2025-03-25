@@ -10,18 +10,18 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class SubscriptionQueryService(
-    private val userRepository: UserRepository,
-    private val blogRepository: BlogRepository,
+  private val userRepository: UserRepository,
+  private val blogRepository: BlogRepository,
 ) {
 
-    @Transactional(readOnly = true)
-    fun findAllByUserId(userId: Long): List<SubscriptionAndBlog> {
-        val user = userRepository.findByIdWithSubscriptions(userId)
-            ?: throw DomainException(ErrorCode.USER_NOT_FOUND)
-        val blogs = blogRepository.findAllById(user.getAllSubscribingBlogIds())
-            .map { it.id to it }.toMap()
-        return user.subscriptions
-            .filter { blogs[it.blogId] != null }
-            .map { SubscriptionAndBlog(it, blogs[it.blogId]!!) }
-    }
+  @Transactional(readOnly = true)
+  fun findAllByUserId(userId: Long): List<SubscriptionAndBlog> {
+    val user = userRepository.findByIdWithSubscriptions(userId)
+      ?: throw DomainException(ErrorCode.USER_NOT_FOUND)
+    val blogs = blogRepository.findAllById(user.getAllSubscribingBlogIds())
+      .map { it.id to it }.toMap()
+    return user.subscriptions
+      .filter { blogs[it.blogId] != null }
+      .map { SubscriptionAndBlog(it, blogs[it.blogId]!!) }
+  }
 }

@@ -2,12 +2,11 @@ package com.blogzip.batch.summarize
 
 import com.blogzip.ai.summary.ArticleContentSummarizer
 import com.blogzip.ai.summary.ArticleToSummarize
-import com.blogzip.ai.summary.SummarizedArticleResult
-import com.blogzip.slack.SlackSender
 import com.blogzip.logger
 import com.blogzip.service.ArticleCommandService
 import com.blogzip.service.ArticleQueryService
 import com.blogzip.service.KeywordService
+import com.blogzip.slack.SlackSender
 import org.springframework.retry.RetryException
 import org.springframework.retry.annotation.Backoff
 import org.springframework.retry.annotation.Retryable

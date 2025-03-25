@@ -19,18 +19,18 @@ import javax.sql.DataSource
 @ComponentScan(basePackages = ["com.blogzip.domain"])
 class BatchTestConfig {
 
-    @Bean
-    @Primary
-    fun dataSource(): DataSource {
-        return EmbeddedDatabaseBuilder()
-            .setType(EmbeddedDatabaseType.H2)
-            .addScript("/org/springframework/batch/core/schema-h2.sql")
-            .addScript("/schema-h2.sql")
-            .build()
-    }
+  @Bean
+  @Primary
+  fun dataSource(): DataSource {
+    return EmbeddedDatabaseBuilder()
+      .setType(EmbeddedDatabaseType.H2)
+      .addScript("/org/springframework/batch/core/schema-h2.sql")
+      .addScript("/schema-h2.sql")
+      .build()
+  }
 
-    @Bean
-    fun transactionManager(): PlatformTransactionManager {
-        return DataSourceTransactionManager(dataSource())
-    }
+  @Bean
+  fun transactionManager(): PlatformTransactionManager {
+    return DataSourceTransactionManager(dataSource())
+  }
 }

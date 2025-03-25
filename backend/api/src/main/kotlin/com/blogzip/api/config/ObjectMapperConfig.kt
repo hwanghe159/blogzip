@@ -15,22 +15,34 @@ import java.time.format.DateTimeFormatter
 @Configuration
 class ObjectMapperConfig {
 
-    @Bean
-    fun jsonlObjectMapper(): ObjectMapper {
-        return ObjectMapper()
-    }
+  @Bean
+  fun jsonlObjectMapper(): ObjectMapper {
+    return ObjectMapper()
+  }
 
-    @Bean
-    fun objectMapper(): ObjectMapper {
-        val objectMapper = ObjectMapper()
-        val javaTimeModule = JavaTimeModule()
+  @Bean
+  fun objectMapper(): ObjectMapper {
+    val objectMapper = ObjectMapper()
+    val javaTimeModule = JavaTimeModule()
 
-        javaTimeModule.addSerializer(LocalDate::class.java, LocalDateSerializer(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
-        javaTimeModule.addDeserializer(LocalDate::class.java, LocalDateDeserializer(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
+    javaTimeModule.addSerializer(
+      LocalDate::class.java,
+      LocalDateSerializer(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+    )
+    javaTimeModule.addDeserializer(
+      LocalDate::class.java,
+      LocalDateDeserializer(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+    )
 
-        javaTimeModule.addSerializer(LocalDateTime::class.java, LocalDateTimeSerializer(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
-        javaTimeModule.addDeserializer(LocalDateTime::class.java, LocalDateTimeDeserializer(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+    javaTimeModule.addSerializer(
+      LocalDateTime::class.java,
+      LocalDateTimeSerializer(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+    )
+    javaTimeModule.addDeserializer(
+      LocalDateTime::class.java,
+      LocalDateTimeDeserializer(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+    )
 
-        return objectMapper.registerModule(javaTimeModule)
-    }
+    return objectMapper.registerModule(javaTimeModule)
+  }
 }

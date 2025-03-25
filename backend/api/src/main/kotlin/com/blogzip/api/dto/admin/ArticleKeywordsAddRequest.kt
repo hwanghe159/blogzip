@@ -4,6 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty
 
 data class ArticleKeywordsAddRequest(
 
-    @JsonProperty("values")
-    val values: List<String>,
+  @JsonProperty("values")
+  val values: List<String>,
 )

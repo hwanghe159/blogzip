@@ -9,14 +9,14 @@ import java.time.LocalDateTime
 @EntityListeners(AuditingEntityListener::class)
 class ReadHistory(
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  val id: Long? = null,
 
-    val userId: Long,
+  val userId: Long,
 
-    val articleId: Long,
+  val articleId: Long,
 
-    @CreatedDate
-    var createdAt: LocalDateTime = LocalDateTime.MIN,
+  @CreatedDate
+  var createdAt: LocalDateTime = LocalDateTime.MIN,
 )

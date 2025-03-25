@@ -18,7 +18,8 @@
             style="font-size: 0.8em;color: grey;">블로그 이름</span>
     </h2>
     <span th:text="${article.summary}">글 내용</span>
-    <a th:href="'https://blogzip.co.kr/redirect?url=' + ${article.url} + '&userId=' + ${user.id}" th:text="'(원문보기)'"
+    <a th:href="'https://blogzip.co.kr/redirect?url=' + ${article.url} + '&userId=' + ${user.id}"
+       th:text="'(원문보기)'"
        style="font-size: 0.9em; text-decoration: none; margin-left: 5px;">(원문보기)</a>
     <div>
       <span th:each="keyword : ${article.keywords}" th:text="'#' + ${keyword} + ' '"></span>

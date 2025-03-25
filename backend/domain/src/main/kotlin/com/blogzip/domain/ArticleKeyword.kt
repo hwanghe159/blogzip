@@ -10,22 +10,22 @@ import java.time.LocalDateTime
 @EntityListeners(AuditingEntityListener::class)
 class ArticleKeyword(
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  val id: Long? = null,
 
-    val articleId: Long,
+  val articleId: Long,
 
-    var headKeywordId: Long,
+  var headKeywordId: Long,
 
-    @CreatedDate
-    var createdAt: LocalDateTime = LocalDateTime.MIN,
+  @CreatedDate
+  var createdAt: LocalDateTime = LocalDateTime.MIN,
 
-    @LastModifiedDate
-    var updatedAt: LocalDateTime = LocalDateTime.MIN,
+  @LastModifiedDate
+  var updatedAt: LocalDateTime = LocalDateTime.MIN,
 ) {
-    fun changeHeadKeywordId(headKeywordId: Long): ArticleKeyword {
-        this.headKeywordId = headKeywordId
-        return this
-    }
+  fun changeHeadKeywordId(headKeywordId: Long): ArticleKeyword {
+    this.headKeywordId = headKeywordId
+    return this
+  }
 }

@@ -8,6 +8,6 @@ import org.springframework.stereotype.Component
 class ShutdownEventListener(
 ) : ApplicationListener<ContextClosedEvent> {
 
-    override fun onApplicationEvent(event: ContextClosedEvent) {
-    }
+  override fun onApplicationEvent(event: ContextClosedEvent) {
+  }
 }

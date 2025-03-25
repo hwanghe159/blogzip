@@ -13,14 +13,14 @@ create table `user`
 create table blog
 (
     id               bigint auto_increment primary key,
-    name             varchar(200)                       not null,
-    url              varchar(200)                       not null,
+    name             varchar(200)                        not null,
+    url              varchar(200)                        not null,
     image            varchar(200),
     rss              varchar(200),
     url_css_selector varchar(200),
-    rss_status       varchar(20)                        not null,
-    is_show_on_main  boolean default false              not null,
-    created_by       bigint                             not null,
+    rss_status       varchar(20)                         not null,
+    is_show_on_main  boolean   default false             not null,
+    created_by       bigint                              not null,
     created_at       timestamp default CURRENT_TIMESTAMP not null,
     unique (url)
 );
@@ -28,8 +28,8 @@ create table blog
 create table subscription
 (
     id         bigint auto_increment primary key,
-    user_id    bigint                             not null,
-    blog_id    bigint                             not null,
+    user_id    bigint                              not null,
+    blog_id    bigint                              not null,
     created_at timestamp default CURRENT_TIMESTAMP not null,
     constraint udx_user_blog unique (user_id, blog_id)
 );
@@ -39,13 +39,13 @@ create index idx_user_id on subscription (user_id);
 create table article
 (
     id            bigint auto_increment primary key,
-    blog_id       bigint                             not null,
-    title         varchar(1000)                      not null,
-    content       clob                               not null,
+    blog_id       bigint                              not null,
+    title         varchar(1000)                       not null,
+    content       clob                                not null,
     summary       varchar(2000),
     summarized_by varchar(100),
-    url           varchar(700)                       not null,
-    created_date  date                               not null,
+    url           varchar(700)                        not null,
+    created_date  date                                not null,
     created_at    timestamp default CURRENT_TIMESTAMP not null,
     unique (url)
 );

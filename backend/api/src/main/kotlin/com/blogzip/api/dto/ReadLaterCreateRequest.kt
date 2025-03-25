@@ -4,6 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty
 
 data class ReadLaterCreateRequest(
 
-    @JsonProperty("articleId")
-    val articleId: Long,
+  @JsonProperty("articleId")
+  val articleId: Long,
 )

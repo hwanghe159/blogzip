@@ -8,10 +8,10 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 class BatchConfig {
 
-    @Bean
-    fun jobRegistryBeanPostProcessorRemover(): BeanDefinitionRegistryPostProcessor {
-        return BeanDefinitionRegistryPostProcessor { registry ->
-            registry.removeBeanDefinition("jobRegistryBeanPostProcessor")
-        }
+  @Bean
+  fun jobRegistryBeanPostProcessorRemover(): BeanDefinitionRegistryPostProcessor {
+    return BeanDefinitionRegistryPostProcessor { registry ->
+      registry.removeBeanDefinition("jobRegistryBeanPostProcessor")
     }
+  }
 }

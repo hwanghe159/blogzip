@@ -10,41 +10,41 @@ import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.multipart.MultipartFile
 
 @FeignClient(
-    name = "openAI",
-    url = "https://api.openai.com",
-    configuration = [FeignConfig::class]
+  name = "openAI",
+  url = "https://api.openai.com",
+  configuration = [FeignConfig::class]
 )
 interface OpenAiApiClient {
 
-    // 파일 업로드 API
-    @PostMapping("/v1/files", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
-    fun uploadFile(
-        @RequestPart("file") file: MultipartFile,
-        @RequestPart("purpose") purpose: String,
-    ): Map<String, Any>
+  // 파일 업로드 API
+  @PostMapping("/v1/files", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+  fun uploadFile(
+    @RequestPart("file") file: MultipartFile,
+    @RequestPart("purpose") purpose: String,
+  ): Map<String, Any>
 
-    // Batch 생성 API
-    @PostMapping("/v1/batches", consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun createBatch(
-        request: BatchCreateRequest
-    ): Map<String, Any>
+  // Batch 생성 API
+  @PostMapping("/v1/batches", consumes = [MediaType.APPLICATION_JSON_VALUE])
+  fun createBatch(
+    request: BatchCreateRequest
+  ): Map<String, Any>
 
-    // Batch 상태 조회 API
-    @GetMapping("/v1/batches/{batchId}", consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun getBatchStatus(
-        @PathVariable batchId: String,
-    ): Map<String, Any>
+  // Batch 상태 조회 API
+  @GetMapping("/v1/batches/{batchId}", consumes = [MediaType.APPLICATION_JSON_VALUE])
+  fun getBatchStatus(
+    @PathVariable batchId: String,
+  ): Map<String, Any>
 
-    // Batch 결과 조회 API
-    @GetMapping("/v1/files/{fileId}/content")
-    fun getBatchResult(
-        @PathVariable fileId: String,
-    ): ByteArray
+  // Batch 결과 조회 API
+  @GetMapping("/v1/files/{fileId}/content")
+  fun getBatchResult(
+    @PathVariable fileId: String,
+  ): ByteArray
 
-    // todo 설정으로 snake_case 적용
-    data class BatchCreateRequest(
-        val input_file_id: String,
-        val endpoint: String,
-        val completion_window: String,
-    )
+  // todo 설정으로 snake_case 적용
+  data class BatchCreateRequest(
+    val input_file_id: String,
+    val endpoint: String,
+    val completion_window: String,
+  )
 }

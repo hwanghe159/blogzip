@@ -4,6 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty
 
 data class UserUpdateRequest(
 
-    @JsonProperty("receiveDays")
-    val receiveDays: List<String>,
+  @JsonProperty("receiveDays")
+  val receiveDays: List<String>,
 )

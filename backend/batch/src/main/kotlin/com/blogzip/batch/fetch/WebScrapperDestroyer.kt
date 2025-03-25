@@ -9,11 +9,11 @@ import org.springframework.stereotype.Component
 // WebScrapper 가 @StepScope 이기 때문에 StepExecutionListener 를 사용하여 endUse()를 호출한다.
 @Component
 class WebScrapperDestroyer(
-    private val webScrapper: WebScrapper,
+  private val webScrapper: WebScrapper,
 ) : StepExecutionListener {
 
-    override fun afterStep(stepExecution: StepExecution): ExitStatus? {
-        webScrapper.endUse()
-        return stepExecution.exitStatus
-    }
+  override fun afterStep(stepExecution: StepExecution): ExitStatus? {
+    webScrapper.endUse()
+    return stepExecution.exitStatus
+  }
 }

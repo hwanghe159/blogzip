@@ -13,71 +13,71 @@ import org.springframework.stereotype.Component
 
 @Component
 class SlackSender(
-    private val slackProperties: SlackProperties,
-    private val environment: Environment,
+  private val slackProperties: SlackProperties,
+  private val environment: Environment,
 ) {
 
-    fun sendStackTraceAsync(channel: SlackChannel, throwable: Throwable) {
-        if (environment.activeProfiles.contains("local")) {
-            return
-        }
-        CoroutineScope(Dispatchers.Default).launch {
-            callApi(
-                slackProperties.webhookUrl,
-                Payload.builder()
-                    .channel("#${channel.channelName}")
-                    .text(throwable.message)
-                    .blocks(
-                        listOf(
-                            SectionBlock.builder()
-                                .text(
-                                    MarkdownTextObject.builder()
-                                        .text(
-                                            """
+  fun sendStackTraceAsync(channel: SlackChannel, throwable: Throwable) {
+    if (environment.activeProfiles.contains("local")) {
+      return
+    }
+    CoroutineScope(Dispatchers.Default).launch {
+      callApi(
+        slackProperties.webhookUrl,
+        Payload.builder()
+          .channel("#${channel.channelName}")
+          .text(throwable.message)
+          .blocks(
+            listOf(
+              SectionBlock.builder()
+                .text(
+                  MarkdownTextObject.builder()
+                    .text(
+                      """
                                         ```${
-                                                throwable.stackTraceToString()
-                                                    .substring(0, 1000)
-                                            }...
+                        throwable.stackTraceToString()
+                          .substring(0, 1000)
+                      }...
                                         ```
                                         """.trimIndent()
-                                        )
-                                        .build()
-                                )
-                                .build()
-                        )
                     )
                     .build()
+                )
+                .build()
             )
-        }
+          )
+          .build()
+      )
     }
+  }
 
-    fun sendMessageAsync(channel: SlackChannel, message: String) {
-        if (environment.activeProfiles.contains("local")) {
-            return
-        }
-        val maxLength = 3997
-        CoroutineScope(Dispatchers.Default).launch {
-            callApi(
-                slackProperties.webhookUrl,
-                Payload.builder()
-                    .channel("#${channel.channelName}")
-                    .text(
-                        if (message.length > maxLength) {
-                            message.substring(0, maxLength) + "..."
-                        } else message
-                    )
-                    .build()
-            )
-        }
+  fun sendMessageAsync(channel: SlackChannel, message: String) {
+    if (environment.activeProfiles.contains("local")) {
+      return
     }
+    val maxLength = 3997
+    CoroutineScope(Dispatchers.Default).launch {
+      callApi(
+        slackProperties.webhookUrl,
+        Payload.builder()
+          .channel("#${channel.channelName}")
+          .text(
+            if (message.length > maxLength) {
+              message.substring(0, maxLength) + "..."
+            } else message
+          )
+          .build()
+      )
+    }
+  }
 
-    private suspend fun callApi(url: String, payload: Payload): WebhookResponse {
-        val slack = Slack.getInstance()
-        return slack.send(url, payload)
-    }
+  private suspend fun callApi(url: String, payload: Payload): WebhookResponse {
+    val slack = Slack.getInstance()
+    return slack.send(url, payload)
+  }
 
-    enum class SlackChannel(val channelName: String) {
-        ERROR_LOG("error-log"),
-        MONITORING("monitoring")
-    }
+  enum class SlackChannel(val channelName: String) {
+    ERROR_LOG("error-log"),
+    MONITORING("monitoring")
+  }
 }

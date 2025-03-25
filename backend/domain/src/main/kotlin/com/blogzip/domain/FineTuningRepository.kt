@@ -5,12 +5,12 @@ import org.springframework.data.jpa.repository.Query
 
 interface FineTuningRepository : JpaRepository<FineTuning, Long> {
 
-    @Query(
-        """
+  @Query(
+    """
             select fineTuning
             from FineTuning fineTuning
             where fineTuning.articleId = :articleId
     """
-    )
-    fun findByArticleId(articleId: Long): FineTuning?
+  )
+  fun findByArticleId(articleId: Long): FineTuning?
 }

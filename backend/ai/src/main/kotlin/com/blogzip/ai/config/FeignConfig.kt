@@ -22,47 +22,47 @@ import org.springframework.context.annotation.Configuration
 @EnableConfigurationProperties(OpenAiProperties::class)
 @EnableFeignClients("com.blogzip.ai")
 class FeignConfig(
-    private val openAiProperties: OpenAiProperties,
+  private val openAiProperties: OpenAiProperties,
 ) {
 
-    @Bean
-    fun feignClient(): Client {
-        return Client.Default(null, null)
-    }
+  @Bean
+  fun feignClient(): Client {
+    return Client.Default(null, null)
+  }
 
-    @Bean
-    fun requestInterceptor(): RequestInterceptor {
-        return RequestInterceptor {
-            it.header("Authorization", "Bearer ${openAiProperties.apiKey}")
-        }
+  @Bean
+  fun requestInterceptor(): RequestInterceptor {
+    return RequestInterceptor {
+      it.header("Authorization", "Bearer ${openAiProperties.apiKey}")
     }
+  }
 
-    @Bean
-    fun feignEncoder(): Encoder {
-        val messageConverters: ObjectFactory<HttpMessageConverters> =
-            ObjectFactory<HttpMessageConverters> {
-                HttpMessageConverters()
-            }
-        return SpringEncoder(messageConverters)
-    }
+  @Bean
+  fun feignEncoder(): Encoder {
+    val messageConverters: ObjectFactory<HttpMessageConverters> =
+      ObjectFactory<HttpMessageConverters> {
+        HttpMessageConverters()
+      }
+    return SpringEncoder(messageConverters)
+  }
 
-    @Bean
-    fun feignDecoder(): Decoder {
-        val messageConverters: ObjectFactory<HttpMessageConverters> =
-            ObjectFactory<HttpMessageConverters> {
-                HttpMessageConverters()
-            }
-        return SpringDecoder(messageConverters)
-    }
+  @Bean
+  fun feignDecoder(): Decoder {
+    val messageConverters: ObjectFactory<HttpMessageConverters> =
+      ObjectFactory<HttpMessageConverters> {
+        HttpMessageConverters()
+      }
+    return SpringDecoder(messageConverters)
+  }
 
-    @Bean
-    fun snakeCaseObjectMapper(): ObjectMapper {
-        return jsonMapper { addModule(kotlinModule()) }
-            .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-    }
+  @Bean
+  fun snakeCaseObjectMapper(): ObjectMapper {
+    return jsonMapper { addModule(kotlinModule()) }
+      .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+  }
 
-    @Bean
-    fun feignLoggerLevel(): feign.Logger.Level {
-        return feign.Logger.Level.FULL
-    }
+  @Bean
+  fun feignLoggerLevel(): feign.Logger.Level {
+    return feign.Logger.Level.FULL
+  }
 }

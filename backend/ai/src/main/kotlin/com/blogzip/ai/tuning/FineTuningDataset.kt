@@ -1,10 +1,10 @@
 package com.blogzip.ai.tuning
 
 data class FineTuningDataset(
-    val messages: List<Message>
+  val messages: List<Message>
 ) {
-    data class Message(
-        val role: String,
-        val content: String
-    )
+  data class Message(
+    val role: String,
+    val content: String
+  )
 }

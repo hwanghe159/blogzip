@@ -2,34 +2,32 @@ package com.blogzip.api.config
 
 import com.blogzip.crawler.service.BlogMetadataScrapper
 import com.blogzip.crawler.service.RssFeedFetcher
-import com.blogzip.crawler.service.ChromeWebScrapper
-import com.blogzip.crawler.service.WebScrapper
 import jakarta.annotation.PreDestroy
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
 class CrawlerConfig(
-    private val seleniumProperties: SeleniumProperties
+  private val seleniumProperties: SeleniumProperties
 ) {
 
-    private lateinit var blogMetadataScrapper: BlogMetadataScrapper
+  private lateinit var blogMetadataScrapper: BlogMetadataScrapper
 
-    @Bean
-    fun blogMetadataScrapper(): BlogMetadataScrapper {
-        blogMetadataScrapper = BlogMetadataScrapper.create(
-            com.blogzip.crawler.config.SeleniumProperties(seleniumProperties.chromeOptions)
-        )
-        return blogMetadataScrapper
-    }
+  @Bean
+  fun blogMetadataScrapper(): BlogMetadataScrapper {
+    blogMetadataScrapper = BlogMetadataScrapper.create(
+      com.blogzip.crawler.config.SeleniumProperties(seleniumProperties.chromeOptions)
+    )
+    return blogMetadataScrapper
+  }
 
-    @PreDestroy
-    fun quitWebDriver() {
-        blogMetadataScrapper.endUse()
-    }
+  @PreDestroy
+  fun quitWebDriver() {
+    blogMetadataScrapper.endUse()
+  }
 
-    @Bean
-    fun rssFeedFetcher(): RssFeedFetcher {
-        return RssFeedFetcher.create()
-    }
+  @Bean
+  fun rssFeedFetcher(): RssFeedFetcher {
+    return RssFeedFetcher.create()
+  }
 }

@@ -15,64 +15,64 @@ import org.springframework.transaction.PlatformTransactionManager
 
 @Configuration
 class FetchNewArticlesJobConfig(
-    private val fetchNewArticlesTasklet: FetchNewArticlesTasklet,
-    private val summarizeTasklet: SummarizeTasklet,
-    private val jobResultNotifier: JobResultNotifier,
-    private val webScrapperDestroyer: WebScrapperDestroyer,
+  private val fetchNewArticlesTasklet: FetchNewArticlesTasklet,
+  private val summarizeTasklet: SummarizeTasklet,
+  private val jobResultNotifier: JobResultNotifier,
+  private val webScrapperDestroyer: WebScrapperDestroyer,
 ) {
 
-    val log = logger()
+  val log = logger()
 
-    companion object {
-        private const val JOB_NAME = "fetch-new-articles"
-        const val PARAMETER_NAME = "target-date"
-    }
+  companion object {
+    private const val JOB_NAME = "fetch-new-articles"
+    const val PARAMETER_NAME = "target-date"
+  }
 
-    @Bean
-    fun fetchNewArticlesJob(
-        jobRepository: JobRepository,
-        platformTransactionManager: PlatformTransactionManager
-    ): Job {
-        // todo 동일 파라미터로 재시도 허용, OpenAI api 최신거로 사용
-        return JobBuilder(JOB_NAME, jobRepository)
-            .incrementer(RunIdIncrementer())
-            .start(fetchNewArticlesStep(jobRepository, platformTransactionManager))
-            .next(summarizeStep(jobRepository, platformTransactionManager))
-            .listener(jobResultNotifier)
-            .build()
-    }
+  @Bean
+  fun fetchNewArticlesJob(
+    jobRepository: JobRepository,
+    platformTransactionManager: PlatformTransactionManager
+  ): Job {
+    // todo 동일 파라미터로 재시도 허용, OpenAI api 최신거로 사용
+    return JobBuilder(JOB_NAME, jobRepository)
+      .incrementer(RunIdIncrementer())
+      .start(fetchNewArticlesStep(jobRepository, platformTransactionManager))
+      .next(summarizeStep(jobRepository, platformTransactionManager))
+      .listener(jobResultNotifier)
+      .build()
+  }
 
-    @JobScope
-    @Bean
-    fun fetchNewArticlesStep(
-        jobRepository: JobRepository,
-        platformTransactionManager: PlatformTransactionManager
-    ): Step {
-        return StepBuilder("fetch-new-articles", jobRepository)
-            .tasklet(fetchNewArticlesTasklet, platformTransactionManager)
-            .listener(webScrapperDestroyer)
-            .allowStartIfComplete(true) // COMPLETED 상태로 끝났어도 재실행 가능
-            .build()
-    }
+  @JobScope
+  @Bean
+  fun fetchNewArticlesStep(
+    jobRepository: JobRepository,
+    platformTransactionManager: PlatformTransactionManager
+  ): Step {
+    return StepBuilder("fetch-new-articles", jobRepository)
+      .tasklet(fetchNewArticlesTasklet, platformTransactionManager)
+      .listener(webScrapperDestroyer)
+      .allowStartIfComplete(true) // COMPLETED 상태로 끝났어도 재실행 가능
+      .build()
+  }
 
-    @JobScope
-    @Bean
-    fun summarizeStep(
-        jobRepository: JobRepository,
-        platformTransactionManager: PlatformTransactionManager
-    ): Step {
-        return StepBuilder("summarize", jobRepository)
-            .tasklet(summarizeTasklet, platformTransactionManager)
-            .allowStartIfComplete(true) // COMPLETED 상태로 끝났어도 재실행 가능
-            .listener(object: StepExecutionListener {
-              override fun afterStep(stepExecution: StepExecution): ExitStatus? {
-                return if (stepExecution.exitStatus === ExitStatus.UNKNOWN) {
-                  ExitStatus.FAILED
-                } else {
-                  stepExecution.exitStatus
-                }
-              }
-            })
-            .build()
-    }
+  @JobScope
+  @Bean
+  fun summarizeStep(
+    jobRepository: JobRepository,
+    platformTransactionManager: PlatformTransactionManager
+  ): Step {
+    return StepBuilder("summarize", jobRepository)
+      .tasklet(summarizeTasklet, platformTransactionManager)
+      .allowStartIfComplete(true) // COMPLETED 상태로 끝났어도 재실행 가능
+      .listener(object : StepExecutionListener {
+        override fun afterStep(stepExecution: StepExecution): ExitStatus? {
+          return if (stepExecution.exitStatus === ExitStatus.UNKNOWN) {
+            ExitStatus.FAILED
+          } else {
+            stepExecution.exitStatus
+          }
+        }
+      })
+      .build()
+  }
 }

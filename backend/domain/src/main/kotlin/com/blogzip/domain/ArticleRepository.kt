@@ -7,14 +7,14 @@ import java.time.LocalDate
 
 interface ArticleRepository : JpaRepository<Article, Long> {
 
-    fun existsByUrl(url: String): Boolean
+  fun existsByUrl(url: String): Boolean
 
-    fun findByUrl(url: String): Article?
+  fun findByUrl(url: String): Article?
 
-    fun findAllByCreatedDateGreaterThanEqualAndSummaryIsNull(createdDate: LocalDate): List<Article>
+  fun findAllByCreatedDateGreaterThanEqualAndSummaryIsNull(createdDate: LocalDate): List<Article>
 
-    @Query(
-        """
+  @Query(
+    """
             select article
             from Article article
             where article.blogId in :blogIds
@@ -23,19 +23,19 @@ interface ArticleRepository : JpaRepository<Article, Long> {
             and (:next is null or article.id <= :next)
             and article.summary is not null
         """
-    )
-    fun search(
-        blogIds: Collection<Long>,
-        from: LocalDate,
-        to: LocalDate,
-        next: Long?,
-        pageable: Pageable
-    ): List<Article>
+  )
+  fun search(
+    blogIds: Collection<Long>,
+    from: LocalDate,
+    to: LocalDate,
+    next: Long?,
+    pageable: Pageable
+  ): List<Article>
 
-    fun findAllByBlogIdInAndCreatedDateIn(
-        blogIds: Collection<Long>,
-        createdDates: Collection<LocalDate>
-    ): List<Article>
+  fun findAllByBlogIdInAndCreatedDateIn(
+    blogIds: Collection<Long>,
+    createdDates: Collection<LocalDate>
+  ): List<Article>
 
-    fun findAllByBlogId(blogId: Long): List<Article>
+  fun findAllByBlogId(blogId: Long): List<Article>
 }

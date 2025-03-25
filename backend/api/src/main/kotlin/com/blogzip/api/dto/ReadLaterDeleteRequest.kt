@@ -4,6 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty
 
 data class ReadLaterDeleteRequest(
 
-    @JsonProperty("articleId")
-    val articleId: Long,
+  @JsonProperty("articleId")
+  val articleId: Long,
 )

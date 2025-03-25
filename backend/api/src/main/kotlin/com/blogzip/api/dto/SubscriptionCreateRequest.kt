@@ -4,6 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty
 
 data class SubscriptionCreateRequest(
 
-    @JsonProperty("blogId")
-    val blogId: Long,
+  @JsonProperty("blogId")
+  val blogId: Long,
 )

@@ -8,11 +8,11 @@ import org.springframework.stereotype.Component
 @Component
 class SingleRequestGenerator {
 
-    private val objectMapper = jsonMapper { addModule(kotlinModule()) }
-        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+  private val objectMapper = jsonMapper { addModule(kotlinModule()) }
+    .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
 
-    fun generate(customId: String, content: String, model: String): SingleRequest {
-        val json = """
+  fun generate(customId: String, content: String, model: String): SingleRequest {
+    val json = """
         {
            "custom_id":"$customId",
            "method":"POST",
@@ -61,6 +61,6 @@ class SingleRequestGenerator {
         }      
         """.trimIndent()
 
-        return objectMapper.readValue(json, SingleRequest::class.java)
-    }
+    return objectMapper.readValue(json, SingleRequest::class.java)
+  }
 }
