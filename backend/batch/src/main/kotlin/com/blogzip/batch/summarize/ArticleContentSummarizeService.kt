@@ -40,15 +40,21 @@ class ArticleContentSummarizeService(
         )
       })
 
-    results
-      .filter { it.result == SummarizedArticleResult.Result.SUCCESS }
-      .forEach {
-        val result = it.article!!
-        articleCommandService.updateSummary(result.id, result.summary, result.summarizedBy)
-        keywordService.addArticleKeywords(result.id, result.keywords)
-      }
+    results.forEach {
+      it.handle(
+        onSuccess = { result ->
+          articleCommandService.updateSummary(result.id, result.summary, result.summarizedBy)
+          keywordService.addArticleKeywords(result.id, result.keywords)
+        },
+        onFailure = { articleId, throwable ->
+          val exception = RuntimeException("$articleId 요약 실패", throwable)
+          slackSender.sendStackTraceAsync(SlackSender.SlackChannel.ERROR_LOG, exception)
+        }
+      )
+    }
 
-    val message = "요약 결과: 총 ${articles.size}건, 성공 ${results.count { it.result == SummarizedArticleResult.Result.SUCCESS }}건, 실패 ${results.count { it.result == SummarizedArticleResult.Result.FAIL }}건"
+    val message =
+      "요약 결과: 총 ${articles.size}건, 성공 ${results.count { it.isSuccess() }}건, 실패 ${results.count { !it.isSuccess() }}건"
     log.warn(message)
     slackSender.sendMessageAsync(SlackSender.SlackChannel.MONITORING, message)
   }

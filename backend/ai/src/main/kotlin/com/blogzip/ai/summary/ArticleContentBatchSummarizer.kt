@@ -19,7 +19,7 @@ class ArticleContentBatchSummarizer(
     return try {
       summarizeAll(articles)
     } catch (e: Exception) {
-      articles.map { SummarizedArticleResult(SummarizedArticleResult.Result.FAIL, null) }
+      articles.map { SummarizedArticleResult.Failure(it.id, e) }
     }
   }
 
@@ -79,9 +79,8 @@ class ArticleContentBatchSummarizer(
           objectMapper.readTree(it.response?.body?.choices?.first()?.message?.content)
         val summary = summaryAndKeywordsJson["summary"].textValue()
         val keywords = summaryAndKeywordsJson["keywords"].map { it.textValue() }
-        SummarizedArticleResult(
-          result = SummarizedArticleResult.Result.SUCCESS,
-          article = SummarizedArticle(
+        SummarizedArticleResult.Success(
+          SummarizedArticle(
             id = it.customId?.toLong()!!,
             summary = summary,
             summarizedBy = it.response?.body?.model!!,

@@ -90,7 +90,9 @@ class ChromeWebScrapper private constructor(
                 val currentWindow = webDriver.windowHandle
                 element.openNewTab(webDriver)
                 val newWindow = webDriver.windowHandles.lastOrNull { it != currentWindow }
-                webDriver.switchTo().window(newWindow)
+                webDriver
+                    .switchTo()
+                    .window(newWindow)
 
                 // 새 탭의 정보 추출
                 Thread.sleep(Random.nextLong(3000)) // url이 완전히 세팅될때까지 3초 sleep

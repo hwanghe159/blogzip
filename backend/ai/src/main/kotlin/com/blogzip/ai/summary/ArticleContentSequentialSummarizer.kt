@@ -25,10 +25,9 @@ class ArticleContentSequentialSummarizer(
   }
 
   private fun summarizeAndGetKeywords(article: ArticleToSummarize): SummarizedArticleResult {
-    val summarizeResult = summarize(article.content)
-    return if (summarizeResult != null) {
-      SummarizedArticleResult(
-        result = SummarizedArticleResult.Result.SUCCESS,
+    try {
+      val summarizeResult = summarize(article.content)
+      return SummarizedArticleResult.Success(
         article = SummarizedArticle(
           id = article.id,
           summary = summarizeResult.summary,
@@ -36,57 +35,50 @@ class ArticleContentSequentialSummarizer(
           summarizedBy = summarizeResult.summarizedBy,
         )
       )
-    } else {
-      SummarizedArticleResult(
-        result = SummarizedArticleResult.Result.FAIL,
-        article = null
-      )
+    } catch (e: Exception) {
+      return SummarizedArticleResult.Failure(article.id, e)
     }
   }
 
   @OptIn(BetaOpenAI::class)
-  private fun summarize(content: String): SummarizeResult? = runBlocking {
+  private fun summarize(content: String): SummarizeResult = runBlocking {
     val openAI = OpenAI(openAiProperties.apiKey)
     val threadId = openAI.thread().id
     val assistantId = AssistantId(openAiProperties.assistantId)
 
-    try {
-      // POST https://api.openai.com/v1/threads/{thread_id}/messages
-      // https://platform.openai.com/docs/api-reference/messages-v1/createMessage
-      openAI.message(
-        threadId = threadId,
-        request = MessageRequest(
-          role = Role.User,
-          content = content
-        )
+    // POST https://api.openai.com/v1/threads/{thread_id}/messages
+    // https://platform.openai.com/docs/api-reference/messages-v1/createMessage
+    openAI.message(
+      threadId = threadId,
+      request = MessageRequest(
+        role = Role.User,
+        content = content
       )
-      // POST https://api.openai.com/v1/threads/{thread_id}/runs
-      // https://platform.openai.com/docs/api-reference/runs-v1/createRun
-      val run = openAI.createRun(
-        threadId,
-        request = RunRequest(
-          assistantId = assistantId
-        )
+    )
+    // POST https://api.openai.com/v1/threads/{thread_id}/runs
+    // https://platform.openai.com/docs/api-reference/runs-v1/createRun
+    val run = openAI.createRun(
+      threadId,
+      request = RunRequest(
+        assistantId = assistantId
       )
-      do {
-        delay(3000)
-        // GET https://api.openai.com/v1/threads/{thread_id}/runs/{run_id}
-        // https://platform.openai.com/docs/api-reference/runs-v1/getRun
-        val retrievedRun = openAI.getRun(threadId = threadId, runId = run.id)
-      } while (retrievedRun.status != Status.Completed)
-      // GET https://api.openai.com/v1/threads/{thread_id}/messages
-      // https://platform.openai.com/docs/api-reference/messages-v1/listMessages
-      val messages = openAI.messages(threadId)
-      val textContent = messages.first().content.first() as MessageContent.Text
-      val jsonResponse = objectMapper.readTree(textContent.text.value)
-      return@runBlocking SummarizeResult(
-        summary = jsonResponse.get("summary").asText(),
-        keywords = jsonResponse.get("keywords").map { it.asText() },
-        summarizedBy = run.model.id
-      )
-    } catch (e: Exception) {
-      return@runBlocking null
-    }
+    )
+    do {
+      delay(3000)
+      // GET https://api.openai.com/v1/threads/{thread_id}/runs/{run_id}
+      // https://platform.openai.com/docs/api-reference/runs-v1/getRun
+      val retrievedRun = openAI.getRun(threadId = threadId, runId = run.id)
+    } while (retrievedRun.status != Status.Completed)
+    // GET https://api.openai.com/v1/threads/{thread_id}/messages
+    // https://platform.openai.com/docs/api-reference/messages-v1/listMessages
+    val messages = openAI.messages(threadId)
+    val textContent = messages.first().content.first() as MessageContent.Text
+    val jsonResponse = objectMapper.readTree(textContent.text.value)
+    return@runBlocking SummarizeResult(
+      summary = jsonResponse.get("summary").asText(),
+      keywords = jsonResponse.get("keywords").map { it.asText() },
+      summarizedBy = run.model.id
+    )
   }
 
   data class SummarizeResult(
