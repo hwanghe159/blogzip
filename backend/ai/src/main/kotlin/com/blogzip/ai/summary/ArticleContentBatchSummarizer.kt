@@ -57,7 +57,7 @@ class ArticleContentBatchSummarizer(
     // batch 상태 체크
     var outputFileId: String? = null
     while (true) {
-      val response = openAiApiClient.getBatchStatus(batchId)
+      val response = openAiApiClient.getBatch(batchId)
       val status = response["status"] as String
       if (status == "completed") {
         outputFileId = response["output_file_id"] as String
@@ -69,7 +69,7 @@ class ArticleContentBatchSummarizer(
     }
 
     // batch 결과 조회
-    val resultJsonl = openAiApiClient.getBatchResult(outputFileId!!)
+    val resultJsonl = openAiApiClient.getFileContent(outputFileId!!)
     return jsonlConverter.jsonlToObjects(
       resultJsonl.toString(Charsets.UTF_8),
       BatchResponse::class.java

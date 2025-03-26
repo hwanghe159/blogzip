@@ -31,15 +31,20 @@ interface OpenAiApiClient {
 
   // Batch 상태 조회 API
   @GetMapping("/v1/batches/{batchId}", consumes = [MediaType.APPLICATION_JSON_VALUE])
-  fun getBatchStatus(
+  fun getBatch(
     @PathVariable batchId: String,
   ): Map<String, Any>
 
   // Batch 결과 조회 API
   @GetMapping("/v1/files/{fileId}/content")
-  fun getBatchResult(
+  fun getFileContent(
     @PathVariable fileId: String,
   ): ByteArray
+
+  @GetMapping("/v1/files/{fileId}", consumes = [MediaType.APPLICATION_JSON_VALUE])
+  fun getFile(
+    @PathVariable fileId: String,
+  ): Map<String, Any>
 
   // todo 설정으로 snake_case 적용
   data class BatchCreateRequest(

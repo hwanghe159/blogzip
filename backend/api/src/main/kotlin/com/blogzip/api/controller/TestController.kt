@@ -4,6 +4,7 @@ import com.blogzip.ai.summary.ArticleContentBatchSummarizer
 import com.blogzip.ai.summary.ArticleToSummarize
 import com.blogzip.ai.summary.OpenAiApiClient
 import com.blogzip.ai.summary.SummarizedArticleResult
+import com.blogzip.api.admin.AdminTokenRequired
 import com.blogzip.crawler.dto.Article
 import com.blogzip.crawler.dto.BlogMetadata
 import com.blogzip.crawler.service.BlogMetadataScrapper
@@ -81,12 +82,12 @@ class TestController(
 
   @GetMapping("/api/v1/test/batch/{batchId}")
   fun getBatchStatus(@PathVariable batchId: String): Map<String, Any> {
-    return openAIApiClient.getBatchStatus(batchId)
+    return openAIApiClient.getBatch(batchId)
   }
 
   @GetMapping("/api/v1/test/file/{fileId}")
   fun getBatchResult(@PathVariable fileId: String): ByteArray {
-    return openAIApiClient.getBatchResult(fileId)
+    return openAIApiClient.getFileContent(fileId)
   }
 
   @GetMapping("/api/v1/test/summary/article/{articleIds}")
@@ -94,5 +95,11 @@ class TestController(
     val articles = articleQueryService.findAllById(articleIds)
       .map { ArticleToSummarize(id = it.id!!, content = it.content) }
     return articleContentBatchSummarizer.summarizeAndGetKeywordsAll(articles)
+  }
+
+  @AdminTokenRequired
+  @GetMapping("/api/v1/test/admin-token")
+  fun adminTokenTest(): String {
+    return "success"
   }
 }
