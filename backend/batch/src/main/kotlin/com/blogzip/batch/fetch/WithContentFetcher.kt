@@ -31,8 +31,9 @@ class WithContentFetcher(
     try {
       articles = rssFeedFetcher.getArticles(blog.rss!!)
     } catch (e: Exception) {
-      log.error("${blog.rss}의 글 가져오기 실패.", e)
-      slackSender.sendStackTraceAsync(channel = ERROR_LOG, e)
+      val exception = RuntimeException("${blog.rss}의 글 가져오기 실패.", e)
+      log.error(exception.message, exception)
+      slackSender.sendStackTraceAsync(channel = ERROR_LOG, exception)
     }
 
     return articles
