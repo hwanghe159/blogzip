@@ -10,10 +10,13 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -38,6 +41,8 @@ public class ChromeDriverBuilder {
 
   //chromeOptions args
   private List<String> args = new ArrayList<>();
+  private String _debugHost = "127.0.0.1";
+  private int _debugPort = -1;
 
   /**
    * step1: Patcher build
@@ -94,6 +99,8 @@ public class ChromeDriverBuilder {
     } else {
       chromeOptions.addArguments("--remote-debugging-port=" + String.valueOf(debugPort));
     }
+    _debugHost = debugHost;
+    _debugPort = debugPort;
 
     try {
       Field experimentalOptions = chromeOptions.getClass().getSuperclass()
@@ -513,11 +520,18 @@ public class ChromeDriverBuilder {
     Process browser = createBrowserProcess(chromeOptions, needPrintChromeInfo);
 
     //step12, make undetectedChrome chrome driver
-    UndetectedChromeDriver undetectedChromeDriver =
-        new UndetectedChromeDriver(chromeOptions, headless, _keepUserDataDir, _userDataDir,
-            browser);
-
-    return undetectedChromeDriver;
+    try {
+      waitForDebugPortReady(10_000L);
+      return new UndetectedChromeDriver(
+          chromeOptions, headless, _keepUserDataDir, _userDataDir, browser
+      );
+    } catch (RuntimeException e) {
+      safeDestroyProcess(browser);
+      if (!_keepUserDataDir) {
+        deleteDirectoryQuietly(_userDataDir);
+      }
+      throw e;
+    }
   }
 
   /**
@@ -729,5 +743,54 @@ public class ChromeDriverBuilder {
       return;
     }
     dict.put(key, value);
+  }
+
+  private void waitForDebugPortReady(long timeoutMs) {
+    if (_debugPort <= 0) {
+      return;
+    }
+
+    long deadline = System.currentTimeMillis() + timeoutMs;
+    while (System.currentTimeMillis() < deadline) {
+      try (Socket ignored = new Socket(_debugHost, _debugPort)) {
+        return;
+      } catch (Exception ignored) {
+        try {
+          Thread.sleep(100L);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new RuntimeException("wait for chrome debug port interrupted");
+        }
+      }
+    }
+    throw new RuntimeException("chrome debug port not ready: " + _debugHost + ":" + _debugPort);
+  }
+
+  private void safeDestroyProcess(Process process) {
+    if (process == null) {
+      return;
+    }
+    try {
+      process.destroyForcibly();
+    } catch (Exception ignored) {
+    }
+  }
+
+  private void deleteDirectoryQuietly(String userDataDir) {
+    if (userDataDir == null || userDataDir.isBlank()) {
+      return;
+    }
+
+    Path root = Path.of(userDataDir);
+    if (!Files.exists(root)) {
+      return;
+    }
+
+    try (var walk = Files.walk(root)) {
+      walk.sorted(Comparator.reverseOrder())
+          .map(Path::toFile)
+          .forEach(File::delete);
+    } catch (Exception ignored) {
+    }
   }
 }

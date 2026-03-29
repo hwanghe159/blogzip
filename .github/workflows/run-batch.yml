@@ -1,0 +1,47 @@
+name: Run Batch Job
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_name:
+        description: Spring Batch job name
+        required: true
+        default: fetch-new-articles
+      target_date:
+        description: Optional target-date argument (YYYY-MM-DD)
+        required: false
+        default: ""
+
+env:
+  DEPLOY_PATH: /opt/blogzip
+
+jobs:
+  run-batch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run batch container on server
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          JOB_NAME: ${{ inputs.job_name }}
+          TARGET_DATE: ${{ inputs.target_date }}
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: JOB_NAME,TARGET_DATE,DEPLOY_PATH
+          script: |
+            set -euo pipefail
+            chmod +x "${DEPLOY_PATH}/scripts/"*.sh
+            if [[ -n "${TARGET_DATE}" ]]; then
+              "${DEPLOY_PATH}/scripts/run-batch.sh" \
+                --spring.profiles.active=prod \
+                --server.port=8081 \
+                --spring.batch.job.name="${JOB_NAME}" \
+                "target-date=${TARGET_DATE}"
+            else
+              "${DEPLOY_PATH}/scripts/run-batch.sh" \
+                --spring.profiles.active=prod \
+                --server.port=8081 \
+                --spring.batch.job.name="${JOB_NAME}"
+            fi

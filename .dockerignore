@@ -1,0 +1,10 @@
+.git
+.github
+.idea
+**/.DS_Store
+deploy/compose/.env*
+**/node_modules
+**/build
+**/.gradle
+**/out
+frontend/coverage

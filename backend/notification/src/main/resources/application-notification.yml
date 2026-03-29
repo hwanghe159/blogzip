@@ -7,27 +7,51 @@ spring:
   config:
     activate:
       on-profile: local
-aws:
-  ses:
-    access-key: "${AWS_SES_ACCESS_KEY}"
-    secret-key: "${AWS_SES_SECRET_KEY}"
+  mail:
+    host: "${OCI_EMAIL_SMTP_HOST:}"
+    port: "${OCI_EMAIL_SMTP_PORT:465}"
+    username: "${OCI_EMAIL_SMTP_USERNAME:}"
+    password: "${OCI_EMAIL_SMTP_PASSWORD:}"
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.ssl.enable: true
+app:
+  mail:
+    from-name: "${OCI_EMAIL_FROM_NAME:blogzip}"
+    from-address: "${OCI_EMAIL_FROM_ADDRESS:no-reply@blogzip.co.kr}"
 
 ---
 spring:
   config:
     activate:
       on-profile: local-prod
-aws:
-  ses:
-    access-key: "${AWS_SES_ACCESS_KEY}"
-    secret-key: "${AWS_SES_SECRET_KEY}"
+  mail:
+    host: "${OCI_EMAIL_SMTP_HOST:}"
+    port: "${OCI_EMAIL_SMTP_PORT:465}"
+    username: "${OCI_EMAIL_SMTP_USERNAME:}"
+    password: "${OCI_EMAIL_SMTP_PASSWORD:}"
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.ssl.enable: true
+app:
+  mail:
+    from-name: "${OCI_EMAIL_FROM_NAME:blogzip}"
+    from-address: "${OCI_EMAIL_FROM_ADDRESS:no-reply@blogzip.co.kr}"
 
 ---
 spring:
   config:
     activate:
       on-profile: prod
-aws:
-  ses:
-    access-key: "${AWS_SES_ACCESS_KEY}"
-    secret-key: "${AWS_SES_SECRET_KEY}"
+  mail:
+    host: "${OCI_EMAIL_SMTP_HOST:}"
+    port: "${OCI_EMAIL_SMTP_PORT:465}"
+    username: "${OCI_EMAIL_SMTP_USERNAME:}"
+    password: "${OCI_EMAIL_SMTP_PASSWORD:}"
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.ssl.enable: true
+app:
+  mail:
+    from-name: "${OCI_EMAIL_FROM_NAME:blogzip}"
+    from-address: "${OCI_EMAIL_FROM_ADDRESS:no-reply@blogzip.co.kr}"

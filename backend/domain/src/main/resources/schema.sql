@@ -54,8 +54,8 @@ create table article
     unique index udx_url (url)
 ) comment '블로그 글';
 
-insert into user(email, password, verification_code, is_verified, receive_days)
-values ('hwanghe159@gmail.com', null, '', true,
+insert into user(email, verification_code, is_verified, receive_days)
+values ('hwanghe159@gmail.com', '', true,
         'MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY,SATURDAY,SUNDAY');
 insert into blog (name, url, rss, url_css_selector, rss_status, created_by)
 values ('우아한형제들 기술블로그', 'https://techblog.woowahan.com', 'https://techblog.woowahan.com/feed/',

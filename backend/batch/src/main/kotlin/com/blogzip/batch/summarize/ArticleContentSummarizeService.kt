@@ -31,6 +31,14 @@ class ArticleContentSummarizeService(
   )
   fun summarize(startDate: LocalDate) {
     val articles = articleQueryService.findAllSummarizeTarget(startDate = startDate)
+    if (articles.isEmpty()) {
+      val noTargetMessage =
+        "요약 대상 없음: startDate=$startDate, 조건=(createdDate >= startDate AND summary is null)"
+      log.info(noTargetMessage)
+      slackSender.sendMessageAsync(SlackSender.SlackChannel.MONITORING, noTargetMessage)
+      return
+    }
+
     val results = articleContentSequentialSummarizer
       .summarizeAndGetKeywordsAll(articles.map {
         ArticleToSummarize(
@@ -54,7 +62,11 @@ class ArticleContentSummarizeService(
 
     val message =
       "요약 결과: 총 ${articles.size}건, 성공 ${results.count { it.isSuccess() }}건, 실패 ${results.count { !it.isSuccess() }}건"
-    log.warn(message)
+    if (results.any { !it.isSuccess() }) {
+      log.warn(message)
+    } else {
+      log.info(message)
+    }
     slackSender.sendMessageAsync(SlackSender.SlackChannel.MONITORING, message)
   }
 }

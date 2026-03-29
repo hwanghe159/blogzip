@@ -19,6 +19,7 @@ spring:
 logging:
   level:
     org.hibernate.SQL: info
+    org.openqa.selenium.os.ExternalProcess: error
 
 ---
 spring:
@@ -38,7 +39,7 @@ spring:
         - classpath:schema.sql
 logging:
   level:
-    root: debug
+    root: info
 
 selenium:
   chrome-options:

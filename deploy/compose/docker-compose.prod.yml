@@ -1,0 +1,25 @@
+services:
+  api:
+    image: ${API_IMAGE}
+    container_name: blogzip-api
+    restart: unless-stopped
+    env_file:
+      - .env.runtime
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    expose:
+      - "8080"
+    volumes:
+      - ./data/heapdumps/api:/app/heapdumps
+
+  nginx:
+    image: ${NGINX_IMAGE}
+    container_name: blogzip-nginx
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro

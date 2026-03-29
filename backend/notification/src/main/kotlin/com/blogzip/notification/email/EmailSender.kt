@@ -1,77 +1,39 @@
 package com.blogzip.notification.email
 
 import com.blogzip.logger
-import com.blogzip.notification.config.AwsSesProperties
 import com.blogzip.slack.SlackSender
 import com.blogzip.slack.SlackSender.SlackChannel.ERROR_LOG
+import jakarta.mail.internet.InternetAddress
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.mail.javamail.JavaMailSender
+import org.springframework.mail.javamail.MimeMessageHelper
 import org.springframework.stereotype.Component
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
-import software.amazon.awssdk.regions.Region.AP_NORTHEAST_2
-import software.amazon.awssdk.services.ses.SesClient
-import software.amazon.awssdk.services.ses.model.*
 
 
 @Component
 class EmailSender(
-  private val awsSesProperties: AwsSesProperties,
+  private val mailSender: JavaMailSender,
   private val emailTemplateParser: EmailTemplateParser,
   private val slackSender: SlackSender,
+  @Value("\${app.mail.from-name:blogzip}") private val senderName: String,
+  @Value("\${app.mail.from-address:no-reply@blogzip.co.kr}") private val senderEmailAddress: String,
 ) {
-  companion object {
-    private const val SENDER_NAME = "blogzip"
-    private const val SENDER_EMAIL_ADDRESS = "no-reply@blogzip.co.kr"
-  }
-
   var log = logger()
 
   fun sendNewArticles(to: User, articles: List<Article>) {
     val content = emailTemplateParser.parseArticles(to, articles)
-    sendEmailUsingSES(to.email, "구독한 블로그의 새 글", content)
+    sendEmail(to.email, "구독한 블로그의 새 글", content)
   }
 
-  fun sendEmailUsingSES(to: String, subject: String, content: String) {
-    val sesClient = SesClient.builder()
-      .credentialsProvider(
-        StaticCredentialsProvider.create(
-          AwsBasicCredentials.create(
-            awsSesProperties.accessKey,
-            awsSesProperties.secretKey
-          )
-        )
-      )
-      .region(AP_NORTHEAST_2)
-      .build()
+  fun sendEmail(to: String, subject: String, content: String) {
     try {
-      sesClient.use { client ->
-        client.sendEmail(
-          SendEmailRequest.builder()
-            .source("$SENDER_NAME <${SENDER_EMAIL_ADDRESS}>")
-            .destination(
-              Destination.builder()
-                .toAddresses(to)
-                .build()
-            )
-            .message(
-              Message.builder()
-                .subject(
-                  Content.builder()
-                    .data(subject)
-                    .build()
-                )
-                .body(
-                  Body.builder()
-                    .html(
-                      Content.builder()
-                        .data(content)
-                        .build()
-                    ).build()
-                )
-                .build()
-            )
-            .build()
-        )
-      }
+      val mimeMessage = mailSender.createMimeMessage()
+      val helper = MimeMessageHelper(mimeMessage, "UTF-8")
+      helper.setTo(to)
+      helper.setSubject(subject)
+      helper.setText(content, true)
+      helper.setFrom(InternetAddress(senderEmailAddress, senderName).toString())
+      mailSender.send(mimeMessage)
     } catch (e: Exception) {
       log.error("이메일 발송 실패. to=${to}", e)
       slackSender.sendStackTraceAsync(ERROR_LOG, e)

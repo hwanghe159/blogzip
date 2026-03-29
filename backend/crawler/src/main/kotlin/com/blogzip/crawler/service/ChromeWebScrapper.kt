@@ -6,13 +6,18 @@ import com.blogzip.crawler.service.WebScrapper.ScrapResult
 import com.blogzip.crawler.undetectedchromedriver.ChromeDriverBuilder
 import com.blogzip.logger
 import io.github.bonigarcia.wdm.WebDriverManager
+import jakarta.annotation.PreDestroy
 import org.openqa.selenium.*
+import org.openqa.selenium.chrome.ChromeDriver
 import org.openqa.selenium.chrome.ChromeOptions
+import org.openqa.selenium.chrome.ChromeDriverService
 import org.openqa.selenium.interactions.Actions
 import org.openqa.selenium.support.ui.ExpectedCondition
 import org.openqa.selenium.support.ui.ExpectedConditions
 import org.openqa.selenium.support.ui.WebDriverWait
+import java.io.File
 import java.time.Duration
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.random.Random
 
 class ChromeWebScrapper private constructor(
@@ -21,19 +26,71 @@ class ChromeWebScrapper private constructor(
 ) : WebScrapper {
 
   val log = logger()
+  private val isClosed = AtomicBoolean(false)
 
   companion object {
     private val BATCH_TIMEOUT = Duration.ofSeconds(100)
+    private val log = logger()
 
     fun create(properties: SeleniumProperties): ChromeWebScrapper {
+      val isMac = System.getProperty("os.name").contains("Mac", ignoreCase = true)
       val webDriverManager = WebDriverManager.chromedriver()
-      webDriverManager.setup()
-      val driverHome = webDriverManager.downloadedDriverPath
       val chromeOptions = ChromeOptions()
       chromeOptions.addArguments(properties.chromeOptions)
-      val webDriver = ChromeDriverBuilder()
-        .build(chromeOptions, driverHome)
 
+      if (isMac) {
+        return runCatching {
+          createWithStandardChromeDriver(webDriverManager, chromeOptions, clearCache = false)
+        }.recoverCatching { e ->
+          log.warn("macOS에서 기본 ChromeDriver 생성 실패. 드라이버 캐시 정리 후 재시도", e)
+          createWithStandardChromeDriver(webDriverManager, chromeOptions, clearCache = true)
+        }.getOrElse { e ->
+          throw IllegalStateException(
+            "ChromeWebScrapper 생성 실패(macOS, chromeOptions=${properties.chromeOptions}, cause=${e.javaClass.simpleName}: ${e.message})",
+            e
+          )
+        }
+      }
+
+      webDriverManager.setup()
+      val driverHome = webDriverManager.downloadedDriverPath
+      return runCatching {
+        val webDriver = ChromeDriverBuilder()
+          .build(chromeOptions, driverHome)
+
+        ChromeWebScrapper(
+          HtmlCompressor(),
+          webDriver
+        )
+      }.recoverCatching { e ->
+        log.warn("Undetected ChromeDriver 생성 실패. 기본 ChromeDriver로 fallback 시도", e)
+        val webDriver = ChromeDriver(chromeOptions)
+        ChromeWebScrapper(
+          HtmlCompressor(),
+          webDriver
+        )
+      }.getOrElse { e ->
+        throw IllegalStateException(
+          "ChromeWebScrapper 생성 실패(driverHome=$driverHome, chromeOptions=${properties.chromeOptions}, cause=${e.javaClass.simpleName}: ${e.message})",
+          e
+        )
+      }
+    }
+
+    private fun createWithStandardChromeDriver(
+      webDriverManager: WebDriverManager,
+      chromeOptions: ChromeOptions,
+      clearCache: Boolean
+    ): ChromeWebScrapper {
+      if (clearCache) {
+        webDriverManager.clearDriverCache()
+      }
+      webDriverManager.setup()
+      val driverHome = webDriverManager.downloadedDriverPath
+      val service = ChromeDriverService.Builder()
+        .usingDriverExecutable(File(driverHome))
+        .build()
+      val webDriver = ChromeDriver(service, chromeOptions)
       return ChromeWebScrapper(
         HtmlCompressor(),
         webDriver
@@ -133,7 +190,20 @@ class ChromeWebScrapper private constructor(
   }
 
   override fun endUse() {
-    webDriver.quit()
+    if (!isClosed.compareAndSet(false, true)) {
+      return
+    }
+
+    runCatching {
+      webDriver.quit()
+    }.onFailure { e ->
+      log.warn("ChromeWebScrapper 종료 실패", e)
+    }
+  }
+
+  @PreDestroy
+  fun shutdown() {
+    endUse()
   }
 
   private fun scrollToBottom() {

@@ -73,7 +73,7 @@ class TestController(
 
   @PostMapping("/api/v1/test/email")
   fun emailTest(@RequestBody request: Map<String, String>) {
-    return emailSender.sendEmailUsingSES(
+    return emailSender.sendEmail(
       request["to"]!!,
       request["subject"]!!,
       request["content"]!!

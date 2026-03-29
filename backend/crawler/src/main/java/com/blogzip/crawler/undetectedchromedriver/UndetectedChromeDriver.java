@@ -4,6 +4,9 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,30 +37,40 @@ public class UndetectedChromeDriver extends ChromeDriver {
 
 
   public void quit() {
-    super.quit();
-    // kill process
-    _browser.destroyForcibly();
-    //delete temp user dir
-    if (_keepUserDataDir) {
-      for (int i = 0; i < 5; i++) {
-        try {
-          File file = new File(_userDataDir);
-          if (!file.exists()) {
-            break;
-          }
-          boolean f = file.delete();
-          if (f) {
-            break;
-          }
-        } catch (Exception e) {
-          try {
-            Thread.sleep(300);
-          } catch (Exception ignored) {
-          }
-        }
-      }
+    try {
+      super.quit();
+    } catch (Exception ignored) {
     }
 
+    try {
+      if (_browser != null) {
+        _browser.destroyForcibly();
+      }
+    } catch (Exception ignored) {
+    }
+
+    // temp user-data-dir 생성한 경우에만 정리한다.
+    if (!_keepUserDataDir) {
+      deleteDirectoryQuietly(_userDataDir);
+    }
+  }
+
+  private void deleteDirectoryQuietly(String userDataDir) {
+    if (userDataDir == null || userDataDir.isBlank()) {
+      return;
+    }
+
+    Path root = Path.of(userDataDir);
+    if (!Files.exists(root)) {
+      return;
+    }
+
+    try (var walk = Files.walk(root)) {
+      walk.sorted(Comparator.reverseOrder())
+          .map(Path::toFile)
+          .forEach(File::delete);
+    } catch (Exception ignored) {
+    }
   }
 
   public UndetectedChromeDriver(ChromeOptions chromeOptions,
