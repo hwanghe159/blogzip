@@ -9,6 +9,3 @@ spring:
         retry:
           max-attempts: 3
           backoff-seconds: 60 # 1분
-selenium:
-  chrome-options:
-    - "--window-size=1920,1080"

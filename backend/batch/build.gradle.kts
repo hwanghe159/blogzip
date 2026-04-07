@@ -11,12 +11,13 @@ dependencyManagement {
 
 dependencies {
   implementation(project(":domain"))
-  implementation(project(":crawler"))
+  implementation(project(":crawler-client"))
   implementation(project(":notification"))
   implementation(project(":logging"))
   implementation(project(":ai"))
 
   implementation("org.springframework.boot:spring-boot-starter-batch")
+  implementation("org.springframework.boot:spring-boot-starter-webflux")
 
   implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
   implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")

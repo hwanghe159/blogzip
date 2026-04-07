@@ -1,29 +1,29 @@
 package com.blogzip.api.config
 
-import com.blogzip.crawler.service.BlogMetadataScrapper
+import com.blogzip.crawler.service.CrawlerHttpClient
 import com.blogzip.crawler.service.RssFeedFetcher
-import jakarta.annotation.PreDestroy
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.web.reactive.function.client.ExchangeStrategies
+import org.springframework.web.reactive.function.client.WebClient
 
 @Configuration
 class CrawlerConfig(
-  private val seleniumProperties: SeleniumProperties
+  @Value("\${crawler.base-url}") private val crawlerBaseUrl: String,
 ) {
 
-  private lateinit var blogMetadataScrapper: BlogMetadataScrapper
-
   @Bean
-  fun blogMetadataScrapper(): BlogMetadataScrapper {
-    blogMetadataScrapper = BlogMetadataScrapper.create(
-      com.blogzip.crawler.config.SeleniumProperties(seleniumProperties.chromeOptions)
-    )
-    return blogMetadataScrapper
-  }
-
-  @PreDestroy
-  fun quitWebDriver() {
-    blogMetadataScrapper.endUse()
+  fun crawlerHttpClient(): CrawlerHttpClient {
+    val webClient = WebClient.builder()
+      .baseUrl(crawlerBaseUrl)
+      .exchangeStrategies(
+        ExchangeStrategies.builder()
+          .codecs { it.defaultCodecs().maxInMemorySize(-1) }
+          .build()
+      )
+      .build()
+    return CrawlerHttpClient(webClient)
   }
 
   @Bean

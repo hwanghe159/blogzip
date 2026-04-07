@@ -19,7 +19,8 @@ spring:
 logging:
   level:
     org.hibernate.SQL: info
-    org.openqa.selenium.os.ExternalProcess: error
+crawler:
+  base-url: ${CRAWLER_BASE_URL:http://localhost:8090}
 
 ---
 spring:
@@ -41,10 +42,6 @@ logging:
   level:
     root: info
 
-selenium:
-  chrome-options:
-    - "--window-size=1920,1080"
-
 ---
 spring:
   config:
@@ -65,11 +62,6 @@ logging:
   level:
     root: info
 
-selenium:
-  chrome-options:
-#    - "--headless=new" # 크롬창 노출 x (headless 모드 시 동적으로 url이 변경되는 페이지 대응이 불가하여 비활성화함)
-    - "--window-size=1920,1080"
-
 ---
 spring:
   config:
@@ -89,8 +81,3 @@ spring:
 logging:
   level:
     root: info
-
-selenium:
-  chrome-options:
-#    - "--headless=new" # 크롬창 노출 x (headless 모드 시 동적으로 url이 변경되는 페이지 대응이 불가하여 비활성화함)
-    - "--window-size=1920,1080"

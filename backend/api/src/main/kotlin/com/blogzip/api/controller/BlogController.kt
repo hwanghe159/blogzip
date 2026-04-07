@@ -7,7 +7,7 @@ import com.blogzip.api.dto.BlogCreateResponse
 import com.blogzip.api.dto.BlogResponse
 import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
-import com.blogzip.crawler.service.BlogMetadataScrapper
+import com.blogzip.crawler.service.CrawlerHttpClient
 import com.blogzip.crawler.service.RssFeedFetcher
 import com.blogzip.domain.Blog
 import com.blogzip.domain.BlogUrl
@@ -24,7 +24,7 @@ import java.net.URISyntaxException
 class BlogController(
   private val blogService: BlogService,
   private val rssFeedFetcher: RssFeedFetcher,
-  private val blogMetadataScrapper: BlogMetadataScrapper,
+  private val crawlerHttpClient: CrawlerHttpClient,
   private val slackSender: SlackSender,
 ) {
 
@@ -63,7 +63,7 @@ class BlogController(
     if (blogService.existsByUrl(blogUrl)) {
       throw DomainException(ErrorCode.BLOG_URL_DUPLICATED)
     }
-    val metadata = blogMetadataScrapper.getMetadata(blogUrl.toString())
+    val metadata = crawlerHttpClient.getMetadata(blogUrl.toString())
     if (metadata.imageUrl == null || metadata.rss == null) {
       slackSender.sendMessageAsync(
         MONITORING,

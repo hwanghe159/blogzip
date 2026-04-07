@@ -7,7 +7,7 @@ import com.blogzip.ai.summary.SummarizedArticleResult
 import com.blogzip.api.admin.AdminTokenRequired
 import com.blogzip.crawler.dto.Article
 import com.blogzip.crawler.dto.BlogMetadata
-import com.blogzip.crawler.service.BlogMetadataScrapper
+import com.blogzip.crawler.service.CrawlerHttpClient
 import com.blogzip.crawler.service.RssFeedFetcher
 import com.blogzip.domain.ArticleRepository
 import com.blogzip.domain.BlogUrl
@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*
 class TestController(
   private val slackSender: SlackSender,
   private val rssFeedFetcher: RssFeedFetcher,
-  private val blogMetadataScrapper: BlogMetadataScrapper,
+  private val crawlerHttpClient: CrawlerHttpClient,
   private val emailSender: EmailSender,
   private val openAIApiClient: OpenAiApiClient,
   private val articleContentBatchSummarizer: ArticleContentBatchSummarizer,
@@ -56,7 +56,7 @@ class TestController(
   @PostMapping("/api/v1/test/crawler")
   fun crawlerTest(@RequestBody url: String): BlogMetadata {
     val blogUrl = BlogUrl.from(url)
-    return blogMetadataScrapper.getMetadata(blogUrl.toString())
+    return crawlerHttpClient.getMetadata(blogUrl.toString())
   }
 
 //  // todo 제거

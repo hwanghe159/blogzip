@@ -21,6 +21,7 @@ jobs:
       api-image: ${{ steps.images.outputs.api-image }}
       nginx-image: ${{ steps.images.outputs.nginx-image }}
       batch-image: ${{ steps.images.outputs.batch-image }}
+      crawler-image: ${{ steps.images.outputs.crawler-image }}
     steps:
       - uses: actions/checkout@v4
 
@@ -37,6 +38,7 @@ jobs:
           echo "api-image=${IMAGE_PREFIX}/api:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
           echo "nginx-image=${IMAGE_PREFIX}/nginx:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
           echo "batch-image=${IMAGE_PREFIX}/batch:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          echo "crawler-image=${IMAGE_PREFIX}/crawler:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push api image
         uses: docker/build-push-action@v6
@@ -68,6 +70,16 @@ jobs:
             ${{ steps.images.outputs.batch-image }}
             ${{ env.IMAGE_PREFIX }}/batch:latest
 
+      - name: Build and push crawler image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/crawler.Dockerfile
+          push: true
+          tags: |
+            ${{ steps.images.outputs.crawler-image }}
+            ${{ env.IMAGE_PREFIX }}/crawler:latest
+
   deploy:
     runs-on: ubuntu-latest
     needs:
@@ -85,12 +97,13 @@ jobs:
           target: ${{ env.DEPLOY_PATH }}
           strip_components: 1
 
-      - name: Deploy api and nginx containers
+      - name: Deploy api, crawler and nginx containers
         uses: appleboy/ssh-action@v1.2.0
         env:
           API_IMAGE: ${{ needs.build-and-push.outputs.api-image }}
           NGINX_IMAGE: ${{ needs.build-and-push.outputs.nginx-image }}
           BATCH_IMAGE: ${{ needs.build-and-push.outputs.batch-image }}
+          CRAWLER_IMAGE: ${{ needs.build-and-push.outputs.crawler-image }}
           REGISTRY_HOST: ${{ env.REGISTRY_HOST }}
           REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
@@ -99,7 +112,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: API_IMAGE,NGINX_IMAGE,BATCH_IMAGE,REGISTRY_HOST,REGISTRY_USERNAME,REGISTRY_PASSWORD,DEPLOY_PATH
+          envs: API_IMAGE,NGINX_IMAGE,BATCH_IMAGE,CRAWLER_IMAGE,REGISTRY_HOST,REGISTRY_USERNAME,REGISTRY_PASSWORD,DEPLOY_PATH
           script: |
             set -euo pipefail
             mkdir -p "${DEPLOY_PATH}/compose" "${DEPLOY_PATH}/scripts" "${DEPLOY_PATH}/data/heapdumps/api" "${DEPLOY_PATH}/data/heapdumps/batch"
@@ -107,6 +120,7 @@ jobs:
             API_IMAGE=${API_IMAGE}
             NGINX_IMAGE=${NGINX_IMAGE}
             BATCH_IMAGE=${BATCH_IMAGE}
+            CRAWLER_IMAGE=${CRAWLER_IMAGE}
             EOF
             echo "${REGISTRY_PASSWORD}" | docker login "${REGISTRY_HOST}" -u "${REGISTRY_USERNAME}" --password-stdin
             chmod +x "${DEPLOY_PATH}/scripts/"*.sh

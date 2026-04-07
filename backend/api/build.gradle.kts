@@ -4,7 +4,7 @@ java {
 
 dependencies {
   implementation(project(":domain"))
-  implementation(project(":crawler"))
+  implementation(project(":crawler-client"))
   implementation(project(":notification"))
   implementation(project(":logging"))
   implementation(project(":ai"))

@@ -1,16 +1,39 @@
 services:
+  crawler:
+    image: ${CRAWLER_IMAGE}
+    container_name: blogzip-crawler
+    restart: unless-stopped
+    expose:
+      - "8090"
+
   api:
     image: ${API_IMAGE}
     container_name: blogzip-api
     restart: unless-stopped
+    depends_on:
+      - crawler
     env_file:
       - .env.runtime
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    environment:
+      CRAWLER_BASE_URL: http://crawler:8090
     expose:
       - "8080"
     volumes:
       - ./data/heapdumps/api:/app/heapdumps
+
+  batch:
+    image: ${BATCH_IMAGE}
+    restart: unless-stopped
+    profiles:
+      - batch
+    depends_on:
+      - crawler
+    env_file:
+      - .env.runtime
+    environment:
+      CRAWLER_BASE_URL: http://crawler:8090
+    volumes:
+      - ./data/heapdumps/batch:/app/heapdumps
 
   nginx:
     image: ${NGINX_IMAGE}

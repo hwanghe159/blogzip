@@ -3,6 +3,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+COMPOSE_FILE="${ROOT_DIR}/compose/docker-compose.prod.yml"
 APP_ENV_FILE="${ROOT_DIR}/compose/.env.api"
 DEPLOY_ENV_FILE="${ROOT_DIR}/compose/.env.deploy"
 RUNTIME_ENV_FILE="${ROOT_DIR}/compose/.env.runtime"
@@ -33,11 +34,10 @@ if [[ -z "${BATCH_IMAGE:-}" ]]; then
   exit 1
 fi
 
-docker pull "${BATCH_IMAGE}"
+if [[ -z "${CRAWLER_IMAGE:-}" ]]; then
+  echo "CRAWLER_IMAGE is missing in ${DEPLOY_ENV_FILE}" >&2
+  exit 1
+fi
 
-docker run --rm \
-  --name "blogzip-batch-$(date +%s)" \
-  --env-file "${RUNTIME_ENV_FILE}" \
-  --add-host host.docker.internal:host-gateway \
-  -v "${ROOT_DIR}/data/heapdumps/batch:/app/heapdumps" \
-  "${BATCH_IMAGE}" "$@"
+docker compose --env-file "${DEPLOY_ENV_FILE}" -f "${COMPOSE_FILE}" pull batch
+docker compose --env-file "${DEPLOY_ENV_FILE}" -f "${COMPOSE_FILE}" --profile batch run --rm batch "$@"
