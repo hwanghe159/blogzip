@@ -31,13 +31,10 @@
 ### 한 번만 해두면 되는 서버 준비
 1. 운영 VM에 Docker Engine + Docker Compose plugin을 설치합니다.
 2. 운영 VM에 OCI CLI를 설치합니다.
-3. `/opt/blogzip/compose/.env.api` 파일을 만들고 `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `OCI_REGION`, `OCI_VAULT_ID` 값을 채웁니다.
-4. 인증 모드는 기본 `OCI_CLI_AUTH=instance_principal`(기본값)이며, 필요하면 `OCI_CLI_AUTH`, `OCI_CONFIG_FILE`, `OCI_CLI_PROFILE` 값을 `.env.api`에 추가해 override 할 수 있습니다.
-5. SMTP endpoint 관련 비민감 값(`OCI_EMAIL_SMTP_HOST`, `OCI_EMAIL_SMTP_PORT`, `OCI_EMAIL_FROM_NAME`, `OCI_EMAIL_FROM_ADDRESS`)은 `.env.api`에 두거나 Vault Secret으로 관리할 수 있습니다.
-6. 컨테이너가 VM의 로컬 MySQL에 붙어야 하면 `MYSQL_HOST=host.docker.internal` 로 둡니다.
-7. 80 포트를 외부에 열고, 필요하면 443은 로드밸런서나 리버스 프록시에서 종료합니다.
-8. `nginx` 컨테이너가 TLS 종료를 수행하므로 VM에 Certbot 인증서가 있어야 합니다.
-9. 아래 파일이 VM에 존재해야 합니다.
+3. 운영 VM이 OCI Vault를 읽을 수 있도록 Instance Principal IAM 정책을 설정합니다.
+4. 80 포트를 외부에 열고, 필요하면 443은 로드밸런서나 리버스 프록시에서 종료합니다.
+5. `nginx` 컨테이너가 TLS 종료를 수행하므로 VM에 Certbot 인증서가 있어야 합니다.
+6. 아래 파일이 VM에 존재해야 합니다.
 - `/etc/letsencrypt/live/blogzip.co.kr/fullchain.pem`
 - `/etc/letsencrypt/live/blogzip.co.kr/privkey.pem`
 - `/etc/letsencrypt/options-ssl-nginx.conf`
@@ -45,13 +42,17 @@
 
 ### OCI Vault 연동 (prod, local-prod)
 - 앱이 직접 Vault를 import 하지 않고, 배포 스크립트(`deploy/scripts/fetch-vault-env.sh`)가 Vault Secret을 읽어 `deploy/compose/.env.runtime`을 생성한 뒤 컨테이너에 주입합니다.
+- VM에 별도 `.env.api` 파일을 두지 않아도 됩니다.
+- `OCI_REGION`, `OCI_VAULT_ID`는 GitHub Actions Variables에서 SSH 실행 환경변수로 전달합니다.
+- `MYSQL_HOST`는 Vault Secret으로 관리하고, `MYSQL_DATABASE`는 `blogzip`으로 고정됩니다.
 - `local` 프로파일은 Vault를 사용하지 않고, 필요한 값을 로컬 환경변수로 직접 주입해서 실행합니다.
-- 기본 Vault 인증: `instance_principal` (필요 시 `.env.api`에서 `OCI_CLI_AUTH`로 변경 가능)
-- 필수 환경변수: `OCI_REGION`, `OCI_VAULT_ID`
+- 기본 Vault 인증: `instance_principal` (필요 시 GitHub Variables의 `OCI_CLI_AUTH`로 변경 가능)
+- 필수 환경변수: `OCI_REGION`, `OCI_VAULT_ID` (`MYSQL_PORT`는 기본값 `3306`)
 - Vault Secret 이름은 아래 환경변수 키와 동일하게 생성해야 합니다.
 - `JWT_SECRET_KEY`
 - `GOOGLE_CLIENT_SECRET`
 - `ADMIN_TOKEN`
+- `MYSQL_HOST`
 - `MYSQL_USERNAME`
 - `MYSQL_PASSWORD`
 - `OCI_EMAIL_SMTP_USERNAME`
@@ -60,16 +61,13 @@
 - `OPEN_AI_ASSISTANT_ID`
 - `OPEN_AI_THREAD_ID`
 - `SLACK_WEBHOOK_URL`
-- 아래 값은 `.env.api` 또는 Vault Secret 중 편한 방식으로 관리할 수 있습니다.
-- `OCI_EMAIL_SMTP_HOST`
-- `OCI_EMAIL_SMTP_PORT`
-- `OCI_EMAIL_FROM_NAME`
-- `OCI_EMAIL_FROM_ADDRESS`
 
 ### GitHub 설정
 - Repository Variables
-- `IMAGE_PREFIX`: 예) `icn.ocir.io/<tenancy-namespace>/blogzip`
-- `REGISTRY_HOST`: 예) `icn.ocir.io`
+- `REGISTRY_HOST`: 예) `ap-chuncheon-1.ocir.io`
+- `IMAGE_PREFIX`: 예) `ap-chuncheon-1.ocir.io/<tenancy-namespace>/blogzip`
+- `OCI_REGION`: 예) `ap-chuncheon-1`
+- `OCI_VAULT_ID`
 - Repository Secrets
 - `REGISTRY_USERNAME`
 - `REGISTRY_PASSWORD`

@@ -14,22 +14,49 @@ on:
 
 env:
   DEPLOY_PATH: /opt/blogzip
+  REGISTRY_HOST: ${{ vars.REGISTRY_HOST }}
+  OCI_REGION: ${{ vars.OCI_REGION }}
+  OCI_VAULT_ID: ${{ vars.OCI_VAULT_ID }}
 
 jobs:
   run-batch:
     runs-on: ubuntu-latest
     steps:
+      - name: Validate required repository settings
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -z "${DEPLOY_HOST}" ]] && missing+=("secrets.DEPLOY_HOST")
+          [[ -z "${DEPLOY_USER}" ]] && missing+=("secrets.DEPLOY_USER")
+          [[ -z "${DEPLOY_SSH_KEY}" ]] && missing+=("secrets.DEPLOY_SSH_KEY")
+          [[ -z "${OCI_REGION}" ]] && missing+=("vars.OCI_REGION")
+          [[ -z "${OCI_VAULT_ID}" ]] && missing+=("vars.OCI_VAULT_ID")
+          if (( ${#missing[@]} > 0 )); then
+            echo "Missing required settings:"
+            printf ' - %s\n' "${missing[@]}"
+            exit 1
+          fi
+
       - name: Run batch container on server
         uses: appleboy/ssh-action@v1.2.0
         env:
           JOB_NAME: ${{ inputs.job_name }}
           TARGET_DATE: ${{ inputs.target_date }}
           DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
+          REGISTRY_HOST: ${{ env.REGISTRY_HOST }}
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          OCI_REGION: ${{ env.OCI_REGION }}
+          OCI_VAULT_ID: ${{ env.OCI_VAULT_ID }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: JOB_NAME,TARGET_DATE,DEPLOY_PATH
+          envs: JOB_NAME,TARGET_DATE,DEPLOY_PATH,REGISTRY_HOST,REGISTRY_USERNAME,REGISTRY_PASSWORD,OCI_REGION,OCI_VAULT_ID
           script: |
             set -euo pipefail
             chmod +x "${DEPLOY_PATH}/scripts/"*.sh

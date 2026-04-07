@@ -8,8 +8,8 @@ spring:
     activate:
       on-profile: local
   mail:
-    host: "${OCI_EMAIL_SMTP_HOST:}"
-    port: "${OCI_EMAIL_SMTP_PORT:587}"
+    host: "smtp.email.ap-chuncheon-1.oci.oraclecloud.com"
+    port: 587
     username: "${OCI_EMAIL_SMTP_USERNAME:}"
     password: "${OCI_EMAIL_SMTP_PASSWORD:}"
     properties:
@@ -18,8 +18,8 @@ spring:
       mail.smtp.starttls.required: true
 app:
   mail:
-    from-name: "${OCI_EMAIL_FROM_NAME:blogzip}"
-    from-address: "${OCI_EMAIL_FROM_ADDRESS:no-reply@blogzip.co.kr}"
+    from-name: "blogzip"
+    from-address: "no-reply@blogzip.co.kr"
 
 ---
 spring:
@@ -27,8 +27,8 @@ spring:
     activate:
       on-profile: local-prod
   mail:
-    host: "${OCI_EMAIL_SMTP_HOST:}"
-    port: "${OCI_EMAIL_SMTP_PORT:587}"
+    host: "smtp.email.ap-chuncheon-1.oci.oraclecloud.com"
+    port: 587
     username: "${OCI_EMAIL_SMTP_USERNAME:}"
     password: "${OCI_EMAIL_SMTP_PASSWORD:}"
     properties:
@@ -37,8 +37,8 @@ spring:
       mail.smtp.starttls.required: true
 app:
   mail:
-    from-name: "${OCI_EMAIL_FROM_NAME:blogzip}"
-    from-address: "${OCI_EMAIL_FROM_ADDRESS:no-reply@blogzip.co.kr}"
+    from-name: "blogzip"
+    from-address: "no-reply@blogzip.co.kr"
 
 ---
 spring:
@@ -46,8 +46,8 @@ spring:
     activate:
       on-profile: prod
   mail:
-    host: "${OCI_EMAIL_SMTP_HOST:}"
-    port: "${OCI_EMAIL_SMTP_PORT:587}"
+    host: "smtp.email.ap-chuncheon-1.oci.oraclecloud.com"
+    port: 587
     username: "${OCI_EMAIL_SMTP_USERNAME:}"
     password: "${OCI_EMAIL_SMTP_PASSWORD:}"
     properties:
@@ -56,5 +56,5 @@ spring:
       mail.smtp.starttls.required: true
 app:
   mail:
-    from-name: "${OCI_EMAIL_FROM_NAME:blogzip}"
-    from-address: "${OCI_EMAIL_FROM_ADDRESS:no-reply@blogzip.co.kr}"
+    from-name: "blogzip"
+    from-address: "no-reply@blogzip.co.kr"

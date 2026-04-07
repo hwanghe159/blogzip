@@ -14,6 +14,8 @@ env:
   DEPLOY_PATH: /opt/blogzip
   IMAGE_PREFIX: ${{ vars.IMAGE_PREFIX }}
   REGISTRY_HOST: ${{ vars.REGISTRY_HOST }}
+  OCI_REGION: ${{ vars.OCI_REGION }}
+  OCI_VAULT_ID: ${{ vars.OCI_VAULT_ID }}
 
 jobs:
   build-and-push:
@@ -25,6 +27,31 @@ jobs:
       crawler-image: ${{ steps.images.outputs.crawler-image }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validate required repository settings
+        env:
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -z "${REGISTRY_HOST}" ]] && missing+=("vars.REGISTRY_HOST")
+          [[ -z "${IMAGE_PREFIX}" ]] && missing+=("vars.IMAGE_PREFIX")
+          [[ -z "${OCI_REGION}" ]] && missing+=("vars.OCI_REGION")
+          [[ -z "${OCI_VAULT_ID}" ]] && missing+=("vars.OCI_VAULT_ID")
+          [[ -z "${REGISTRY_USERNAME}" ]] && missing+=("secrets.REGISTRY_USERNAME")
+          [[ -z "${REGISTRY_PASSWORD}" ]] && missing+=("secrets.REGISTRY_PASSWORD")
+          [[ -z "${DEPLOY_HOST}" ]] && missing+=("secrets.DEPLOY_HOST")
+          [[ -z "${DEPLOY_USER}" ]] && missing+=("secrets.DEPLOY_USER")
+          [[ -z "${DEPLOY_SSH_KEY}" ]] && missing+=("secrets.DEPLOY_SSH_KEY")
+          if (( ${#missing[@]} > 0 )); then
+            echo "Missing required settings:"
+            printf ' - %s\n' "${missing[@]}"
+            exit 1
+          fi
 
       - uses: docker/setup-buildx-action@v3
 
@@ -109,11 +136,13 @@ jobs:
           REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
           DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
+          OCI_REGION: ${{ env.OCI_REGION }}
+          OCI_VAULT_ID: ${{ env.OCI_VAULT_ID }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: API_IMAGE,NGINX_IMAGE,BATCH_IMAGE,CRAWLER_IMAGE,REGISTRY_HOST,REGISTRY_USERNAME,REGISTRY_PASSWORD,DEPLOY_PATH
+          envs: API_IMAGE,NGINX_IMAGE,BATCH_IMAGE,CRAWLER_IMAGE,REGISTRY_HOST,REGISTRY_USERNAME,REGISTRY_PASSWORD,DEPLOY_PATH,OCI_REGION,OCI_VAULT_ID
           script: |
             set -euo pipefail
             mkdir -p "${DEPLOY_PATH}/compose" "${DEPLOY_PATH}/scripts" "${DEPLOY_PATH}/data/heapdumps/api" "${DEPLOY_PATH}/data/heapdumps/batch"
