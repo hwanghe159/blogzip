@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: 배포할 이미지 태그 (예: latest 또는 git sha)
+        description: "배포할 이미지 태그 (예: latest 또는 git sha)"
         required: true
         default: latest
 
