@@ -59,6 +59,22 @@ jobs:
           script: |
             set -euo pipefail
             export PATH="$HOME/bin:$PATH"
+            if ! command -v oci >/dev/null 2>&1; then
+              echo "OCI CLI가 없어 설치를 시도합니다."
+              if command -v curl >/dev/null 2>&1; then
+                bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults
+              elif command -v wget >/dev/null 2>&1; then
+                bash -c "$(wget -qO- https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults
+              else
+                echo "curl 또는 wget 이 필요합니다." >&2
+                exit 1
+              fi
+              export PATH="$HOME/bin:$PATH"
+            fi
+            command -v oci >/dev/null 2>&1 || {
+              echo "OCI CLI 설치에 실패했습니다." >&2
+              exit 1
+            }
             chmod +x "${DEPLOY_PATH}/scripts/"*.sh
             if [[ -n "${TARGET_DATE}" ]]; then
               "${DEPLOY_PATH}/scripts/run-batch.sh" \
