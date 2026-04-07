@@ -15,8 +15,21 @@ import com.blogzip.logger
 import com.blogzip.notification.email.EmailSender
 import com.blogzip.service.ArticleQueryService
 import com.blogzip.slack.SlackSender
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.web.bind.annotation.*
+
+data class TestEmailRequest(
+  val to: String = "",
+  val subject: String = "",
+  val content: String = "",
+)
+
+data class TestEmailResponse(
+  val success: Boolean = false,
+  val message: String = "",
+)
 
 @RestController
 class TestController(
@@ -72,12 +85,19 @@ class TestController(
 //  }
 
   @PostMapping("/api/v1/test/email")
-  fun emailTest(@RequestBody request: Map<String, String>) {
-    return emailSender.sendEmail(
-      request["to"]!!,
-      request["subject"]!!,
-      request["content"]!!
+  fun emailTest(@RequestBody request: TestEmailRequest): ResponseEntity<TestEmailResponse> {
+    val result = emailSender.sendEmail(
+      request.to,
+      request.subject,
+      request.content,
     )
+
+    return if (result.success) {
+      ResponseEntity.ok(TestEmailResponse(success = true, message = result.message))
+    } else {
+      ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .body(TestEmailResponse(success = false, message = result.message))
+    }
   }
 
   @GetMapping("/api/v1/test/batch/{batchId}")

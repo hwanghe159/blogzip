@@ -9,12 +9,13 @@ spring:
       on-profile: local
   mail:
     host: "${OCI_EMAIL_SMTP_HOST:}"
-    port: "${OCI_EMAIL_SMTP_PORT:465}"
+    port: "${OCI_EMAIL_SMTP_PORT:587}"
     username: "${OCI_EMAIL_SMTP_USERNAME:}"
     password: "${OCI_EMAIL_SMTP_PASSWORD:}"
     properties:
       mail.smtp.auth: true
-      mail.smtp.ssl.enable: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
 app:
   mail:
     from-name: "${OCI_EMAIL_FROM_NAME:blogzip}"
@@ -27,12 +28,13 @@ spring:
       on-profile: local-prod
   mail:
     host: "${OCI_EMAIL_SMTP_HOST:}"
-    port: "${OCI_EMAIL_SMTP_PORT:465}"
+    port: "${OCI_EMAIL_SMTP_PORT:587}"
     username: "${OCI_EMAIL_SMTP_USERNAME:}"
     password: "${OCI_EMAIL_SMTP_PASSWORD:}"
     properties:
       mail.smtp.auth: true
-      mail.smtp.ssl.enable: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
 app:
   mail:
     from-name: "${OCI_EMAIL_FROM_NAME:blogzip}"
@@ -45,12 +47,13 @@ spring:
       on-profile: prod
   mail:
     host: "${OCI_EMAIL_SMTP_HOST:}"
-    port: "${OCI_EMAIL_SMTP_PORT:465}"
+    port: "${OCI_EMAIL_SMTP_PORT:587}"
     username: "${OCI_EMAIL_SMTP_USERNAME:}"
     password: "${OCI_EMAIL_SMTP_PASSWORD:}"
     properties:
       mail.smtp.auth: true
-      mail.smtp.ssl.enable: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
 app:
   mail:
     from-name: "${OCI_EMAIL_FROM_NAME:blogzip}"
