@@ -5,10 +5,32 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUNTIME_ENV_FILE="${ROOT_DIR}/compose/.env.runtime"
 
-if ! command -v oci >/dev/null 2>&1; then
-  echo "OCI CLI is required. Please install OCI CLI on this server." >&2
+resolve_oci_cli() {
+  if [[ -n "${OCI_CLI_BIN:-}" ]]; then
+    if [[ -x "${OCI_CLI_BIN}" ]]; then
+      printf '%s' "${OCI_CLI_BIN}"
+      return 0
+    fi
+    echo "OCI_CLI_BIN is set but not executable: ${OCI_CLI_BIN}" >&2
+    exit 1
+  fi
+
+  if command -v oci >/dev/null 2>&1; then
+    command -v oci
+    return 0
+  fi
+
+  if [[ -x "${HOME}/bin/oci" ]]; then
+    printf '%s' "${HOME}/bin/oci"
+    return 0
+  fi
+
+  echo "OCI CLI is required but was not found in PATH or ${HOME}/bin/oci." >&2
+  echo "Install once on the VM: bash -c \"\$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)\" -- --accept-all-defaults" >&2
   exit 1
-fi
+}
+
+OCI_BIN="$(resolve_oci_cli)"
 
 require_env() {
   local name="$1"
@@ -26,7 +48,7 @@ MYSQL_PORT_VALUE="${MYSQL_PORT:-3306}"
 
 AUTH_MODE="${OCI_CLI_AUTH:-instance_principal}"
 
-declare -a OCI_CMD=(oci)
+declare -a OCI_CMD=("${OCI_BIN}")
 if [[ -n "${OCI_CONFIG_FILE:-}" ]]; then
   OCI_CMD+=(--config-file "${OCI_CONFIG_FILE}")
 fi

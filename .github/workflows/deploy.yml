@@ -1,4 +1,4 @@
-name: Build And Deploy
+name: prod 배포
 
 on:
   push:
@@ -11,7 +11,6 @@ permissions:
   packages: write
 
 env:
-  DEPLOY_PATH: /opt/blogzip
   IMAGE_PREFIX: ${{ vars.IMAGE_PREFIX }}
   REGISTRY_HOST: ${{ vars.REGISTRY_HOST }}
   OCI_REGION: ${{ vars.OCI_REGION }}
@@ -26,9 +25,10 @@ jobs:
       batch-image: ${{ steps.images.outputs.batch-image }}
       crawler-image: ${{ steps.images.outputs.crawler-image }}
     steps:
-      - uses: actions/checkout@v4
+      - name: 소스 코드 체크아웃
+        uses: actions/checkout@v4
 
-      - name: Validate required repository settings
+      - name: 필수 저장소 설정 검증
         env:
           REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
@@ -53,22 +53,25 @@ jobs:
             exit 1
           fi
 
-      - uses: docker/setup-buildx-action@v3
+      - name: Docker Buildx 설정
+        uses: docker/setup-buildx-action@v3
 
-      - uses: docker/login-action@v3
+      - name: OCI Registry 로그인
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY_HOST }}
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - id: images
+      - name: 이미지 태그 생성
+        id: images
         run: |
           echo "api-image=${IMAGE_PREFIX}/api:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
           echo "nginx-image=${IMAGE_PREFIX}/nginx:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
           echo "batch-image=${IMAGE_PREFIX}/batch:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
           echo "crawler-image=${IMAGE_PREFIX}/crawler:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
-      - name: Build and push api image
+      - name: API 이미지 빌드 및 푸시
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -78,7 +81,7 @@ jobs:
             ${{ steps.images.outputs.api-image }}
             ${{ env.IMAGE_PREFIX }}/api:latest
 
-      - name: Build and push nginx image
+      - name: Nginx 이미지 빌드 및 푸시
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -88,7 +91,7 @@ jobs:
             ${{ steps.images.outputs.nginx-image }}
             ${{ env.IMAGE_PREFIX }}/nginx:latest
 
-      - name: Build and push batch image
+      - name: Batch 이미지 빌드 및 푸시
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -98,7 +101,7 @@ jobs:
             ${{ steps.images.outputs.batch-image }}
             ${{ env.IMAGE_PREFIX }}/batch:latest
 
-      - name: Build and push crawler image
+      - name: Crawler 이미지 빌드 및 푸시
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -113,19 +116,20 @@ jobs:
     needs:
       - build-and-push
     steps:
-      - uses: actions/checkout@v4
+      - name: 소스 코드 체크아웃
+        uses: actions/checkout@v4
 
-      - name: Copy deploy assets to server
+      - name: 배포 파일 서버 전송
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           source: "deploy/compose/*,deploy/scripts/*"
-          target: ${{ env.DEPLOY_PATH }}
+          target: /home/${{ secrets.DEPLOY_USER }}/blogzip
           strip_components: 1
 
-      - name: Deploy api, crawler and nginx containers
+      - name: API·Crawler·Nginx 컨테이너 배포
         uses: appleboy/ssh-action@v1.2.0
         env:
           API_IMAGE: ${{ needs.build-and-push.outputs.api-image }}
@@ -135,7 +139,7 @@ jobs:
           REGISTRY_HOST: ${{ env.REGISTRY_HOST }}
           REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
-          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
+          DEPLOY_PATH: /home/${{ secrets.DEPLOY_USER }}/blogzip
           OCI_REGION: ${{ env.OCI_REGION }}
           OCI_VAULT_ID: ${{ env.OCI_VAULT_ID }}
         with:
@@ -145,6 +149,7 @@ jobs:
           envs: API_IMAGE,NGINX_IMAGE,BATCH_IMAGE,CRAWLER_IMAGE,REGISTRY_HOST,REGISTRY_USERNAME,REGISTRY_PASSWORD,DEPLOY_PATH,OCI_REGION,OCI_VAULT_ID
           script: |
             set -euo pipefail
+            export PATH="$HOME/bin:$PATH"
             mkdir -p "${DEPLOY_PATH}/compose" "${DEPLOY_PATH}/scripts" "${DEPLOY_PATH}/data/heapdumps/api" "${DEPLOY_PATH}/data/heapdumps/batch"
             cat > "${DEPLOY_PATH}/compose/.env.deploy" <<EOF
             API_IMAGE=${API_IMAGE}

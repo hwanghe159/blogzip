@@ -1,4 +1,4 @@
-name: Run Batch Job
+name: 배치 잡 실행
 
 on:
   workflow_dispatch:
@@ -13,7 +13,6 @@ on:
         default: ""
 
 env:
-  DEPLOY_PATH: /opt/blogzip
   REGISTRY_HOST: ${{ vars.REGISTRY_HOST }}
   OCI_REGION: ${{ vars.OCI_REGION }}
   OCI_VAULT_ID: ${{ vars.OCI_VAULT_ID }}
@@ -22,7 +21,7 @@ jobs:
   run-batch:
     runs-on: ubuntu-latest
     steps:
-      - name: Validate required repository settings
+      - name: 필수 저장소 설정 검증
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
@@ -41,12 +40,12 @@ jobs:
             exit 1
           fi
 
-      - name: Run batch container on server
+      - name: 서버에서 배치 컨테이너 실행
         uses: appleboy/ssh-action@v1.2.0
         env:
           JOB_NAME: ${{ inputs.job_name }}
           TARGET_DATE: ${{ inputs.target_date }}
-          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
+          DEPLOY_PATH: /home/${{ secrets.DEPLOY_USER }}/blogzip
           REGISTRY_HOST: ${{ env.REGISTRY_HOST }}
           REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
@@ -59,6 +58,7 @@ jobs:
           envs: JOB_NAME,TARGET_DATE,DEPLOY_PATH,REGISTRY_HOST,REGISTRY_USERNAME,REGISTRY_PASSWORD,OCI_REGION,OCI_VAULT_ID
           script: |
             set -euo pipefail
+            export PATH="$HOME/bin:$PATH"
             chmod +x "${DEPLOY_PATH}/scripts/"*.sh
             if [[ -n "${TARGET_DATE}" ]]; then
               "${DEPLOY_PATH}/scripts/run-batch.sh" \
