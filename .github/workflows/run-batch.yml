@@ -1,37 +1,101 @@
 name: 배치 잡 실행
 
 on:
+  schedule:
+    # 매일 KST 00:00 -> UTC 15:00
+    - cron: "0 15 * * *"
+    # 매일 KST 09:00 -> UTC 00:00
+    - cron: "0 0 * * *"
   workflow_dispatch:
     inputs:
-      job_name:
-        description: Spring Batch job name
+      batch_job_name:
+        description: 실행할 Spring Batch job name
+        type: choice
+        options:
+          - fetch-new-articles
+          - email-send
+          - test
         required: true
         default: fetch-new-articles
-      target_date:
-        description: Optional target-date argument (YYYY-MM-DD)
+      batch_arguments:
+        description: "추가 인자(선택). 예: target-date=2026-04-09 foo=bar"
         required: false
         default: ""
 
+permissions:
+  contents: read
+
 env:
+  IMAGE_PREFIX: ${{ vars.IMAGE_PREFIX }}
   REGISTRY_HOST: ${{ vars.REGISTRY_HOST }}
   OCI_REGION: ${{ vars.OCI_REGION }}
   OCI_VAULT_ID: ${{ vars.OCI_VAULT_ID }}
+
+concurrency:
+  group: run-batch
+  cancel-in-progress: false
 
 jobs:
   run-batch:
     runs-on: ubuntu-latest
     steps:
+      - name: 소스 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 배치 실행 파라미터 결정
+        id: params
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
+          INPUT_JOB_NAME: ${{ inputs.batch_job_name }}
+          INPUT_JOB_ARGS: ${{ inputs.batch_arguments }}
+          DEFAULT_JOB_NAME: ${{ vars.BATCH_SCHEDULE_JOB_NAME }}
+          DEFAULT_JOB_ARGS: ${{ vars.BATCH_SCHEDULE_JOB_ARGS }}
+          DEFAULT_FETCH_ARGS: ${{ vars.BATCH_SCHEDULE_FETCH_NEW_ARTICLES_ARGS }}
+          DEFAULT_EMAIL_ARGS: ${{ vars.BATCH_SCHEDULE_EMAIL_SEND_ARGS }}
+        run: |
+          set -euo pipefail
+          if [[ "${EVENT_NAME}" == "schedule" ]]; then
+            case "${EVENT_SCHEDULE}" in
+              "0 15 * * *")
+                job_name="fetch-new-articles"
+                job_args="${DEFAULT_FETCH_ARGS:-}"
+                ;;
+              "0 0 * * *")
+                job_name="email-send"
+                job_args="${DEFAULT_EMAIL_ARGS:-}"
+                ;;
+              *)
+                job_name="${DEFAULT_JOB_NAME:-fetch-new-articles}"
+                job_args="${DEFAULT_JOB_ARGS:-}"
+                ;;
+            esac
+          else
+            job_name="${INPUT_JOB_NAME:-fetch-new-articles}"
+            job_args="${INPUT_JOB_ARGS:-}"
+          fi
+
+          echo "job_name=${job_name}" >> "${GITHUB_OUTPUT}"
+          echo "job_args=${job_args}" >> "${GITHUB_OUTPUT}"
+          echo "실행 파라미터: job_name=${job_name}, job_args='${job_args}'"
+
       - name: 필수 저장소 설정 검증
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
         run: |
           set -euo pipefail
           missing=()
+          [[ -z "${IMAGE_PREFIX}" ]] && missing+=("vars.IMAGE_PREFIX")
+          [[ -z "${REGISTRY_HOST}" ]] && missing+=("vars.REGISTRY_HOST")
           [[ -z "${DEPLOY_HOST}" ]] && missing+=("secrets.DEPLOY_HOST")
           [[ -z "${DEPLOY_USER}" ]] && missing+=("secrets.DEPLOY_USER")
           [[ -z "${DEPLOY_SSH_KEY}" ]] && missing+=("secrets.DEPLOY_SSH_KEY")
+          [[ -z "${REGISTRY_USERNAME}" ]] && missing+=("secrets.REGISTRY_USERNAME")
+          [[ -z "${REGISTRY_PASSWORD}" ]] && missing+=("secrets.REGISTRY_PASSWORD")
           [[ -z "${OCI_REGION}" ]] && missing+=("vars.OCI_REGION")
           [[ -z "${OCI_VAULT_ID}" ]] && missing+=("vars.OCI_VAULT_ID")
           if (( ${#missing[@]} > 0 )); then
@@ -40,12 +104,23 @@ jobs:
             exit 1
           fi
 
+      - name: 배포 파일 서버 전송
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "deploy/compose/*,deploy/scripts/*"
+          target: /home/${{ secrets.DEPLOY_USER }}/blogzip
+          strip_components: 1
+
       - name: 서버에서 배치 컨테이너 실행
         uses: appleboy/ssh-action@v1.2.0
         env:
-          JOB_NAME: ${{ inputs.job_name }}
-          TARGET_DATE: ${{ inputs.target_date }}
+          JOB_NAME: ${{ steps.params.outputs.job_name }}
+          JOB_ARGS: ${{ steps.params.outputs.job_args }}
           DEPLOY_PATH: /home/${{ secrets.DEPLOY_USER }}/blogzip
+          IMAGE_PREFIX: ${{ env.IMAGE_PREFIX }}
           REGISTRY_HOST: ${{ env.REGISTRY_HOST }}
           REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
@@ -55,7 +130,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: JOB_NAME,TARGET_DATE,DEPLOY_PATH,REGISTRY_HOST,REGISTRY_USERNAME,REGISTRY_PASSWORD,OCI_REGION,OCI_VAULT_ID
+          envs: JOB_NAME,JOB_ARGS,DEPLOY_PATH,IMAGE_PREFIX,REGISTRY_HOST,REGISTRY_USERNAME,REGISTRY_PASSWORD,OCI_REGION,OCI_VAULT_ID
           script: |
             set -euo pipefail
             export PATH="$HOME/bin:$PATH"
@@ -75,16 +150,23 @@ jobs:
               echo "OCI CLI 설치에 실패했습니다." >&2
               exit 1
             }
+
+            mkdir -p "${DEPLOY_PATH}/compose" "${DEPLOY_PATH}/scripts" "${DEPLOY_PATH}/data/heapdumps/batch"
+            cat > "${DEPLOY_PATH}/compose/.env.deploy" <<EOF
+            BATCH_IMAGE=${IMAGE_PREFIX}/batch:latest
+            CRAWLER_IMAGE=${IMAGE_PREFIX}/crawler:latest
+            EOF
+
+            echo "${REGISTRY_PASSWORD}" | docker login "${REGISTRY_HOST}" -u "${REGISTRY_USERNAME}" --password-stdin
             chmod +x "${DEPLOY_PATH}/scripts/"*.sh
-            if [[ -n "${TARGET_DATE}" ]]; then
-              "${DEPLOY_PATH}/scripts/run-batch.sh" \
-                --spring.profiles.active=prod \
-                --server.port=8081 \
-                --spring.batch.job.name="${JOB_NAME}" \
-                "target-date=${TARGET_DATE}"
-            else
-              "${DEPLOY_PATH}/scripts/run-batch.sh" \
-                --spring.profiles.active=prod \
-                --server.port=8081 \
-                --spring.batch.job.name="${JOB_NAME}"
+
+            EXTRA_ARGS=()
+            if [[ -n "${JOB_ARGS}" ]]; then
+              read -r -a EXTRA_ARGS <<< "${JOB_ARGS}"
             fi
+
+            "${DEPLOY_PATH}/scripts/run-batch.sh" \
+              --spring.profiles.active=prod \
+              --server.port=8081 \
+              --spring.batch.job.name="${JOB_NAME}" \
+              "${EXTRA_ARGS[@]}"

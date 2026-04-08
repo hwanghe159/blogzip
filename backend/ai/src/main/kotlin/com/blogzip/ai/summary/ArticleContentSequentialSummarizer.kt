@@ -12,13 +12,22 @@ import com.blogzip.ai.config.OpenAiProperties
 import com.fasterxml.jackson.databind.ObjectMapper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
+import java.util.concurrent.TimeoutException
 
 @Component
 class ArticleContentSequentialSummarizer(
   private val openAiProperties: OpenAiProperties,
   private val objectMapper: ObjectMapper,
 ) : ArticleContentSummarizer {
+
+  private val log = LoggerFactory.getLogger(ArticleContentSequentialSummarizer::class.java)
+
+  companion object {
+    private const val RUN_POLL_INTERVAL_MS = 3_000L
+    private const val RUN_TIMEOUT_MS = 5 * 60 * 1_000L
+  }
 
   override fun summarizeAndGetKeywordsAll(articles: List<ArticleToSummarize>): List<SummarizedArticleResult> {
     return articles.map { summarizeAndGetKeywords(it) }
@@ -63,12 +72,67 @@ class ArticleContentSequentialSummarizer(
         assistantId = assistantId
       )
     )
-    do {
-      delay(3000)
+
+    val startedAt = System.currentTimeMillis()
+    var pollCount = 0
+    while (true) {
+      delay(RUN_POLL_INTERVAL_MS)
+      pollCount++
+
       // GET https://api.openai.com/v1/threads/{thread_id}/runs/{run_id}
       // https://platform.openai.com/docs/api-reference/runs-v1/getRun
       val retrievedRun = openAI.getRun(threadId = threadId, runId = run.id)
-    } while (retrievedRun.status != Status.Completed)
+      val elapsedMs = System.currentTimeMillis() - startedAt
+      val status = retrievedRun.status
+
+      if (status == Status.Completed) {
+        break
+      }
+
+      if (status == Status.RequiresAction) {
+        val reason = buildString {
+          append("OpenAI run requires action. ")
+          append("runId=${run.id}, ")
+          append("status=$status, ")
+          append("requiredAction=${retrievedRun.requiredAction}, ")
+          append("lastError=${retrievedRun.lastError}")
+        }
+        log.error(reason)
+        throw IllegalStateException(reason)
+      }
+
+      if (status == Status.Failed || status == Status.Cancelled || status == Status.Expired) {
+        val reason = buildString {
+          append("OpenAI run terminated without completion. ")
+          append("runId=${run.id}, ")
+          append("status=$status, ")
+          append("lastError=${retrievedRun.lastError}")
+        }
+        log.error(reason)
+        throw IllegalStateException(reason)
+      }
+
+      if (elapsedMs >= RUN_TIMEOUT_MS) {
+        val reason = buildString {
+          append("OpenAI run polling timed out. ")
+          append("runId=${run.id}, ")
+          append("status=$status, ")
+          append("pollCount=$pollCount, ")
+          append("elapsedMs=$elapsedMs, ")
+          append("requiredAction=${retrievedRun.requiredAction}, ")
+          append("lastError=${retrievedRun.lastError}")
+        }
+        log.error(reason)
+        throw TimeoutException(reason)
+      }
+
+      if (pollCount % 10 == 0) {
+        log.info(
+          "OpenAI run is still in progress. runId=${run.id}, status=$status, pollCount=$pollCount, elapsedMs=$elapsedMs"
+        )
+      }
+    }
+
     // GET https://api.openai.com/v1/threads/{thread_id}/messages
     // https://platform.openai.com/docs/api-reference/messages-v1/listMessages
     val messages = openAI.messages(threadId)
