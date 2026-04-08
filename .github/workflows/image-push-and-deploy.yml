@@ -99,7 +99,7 @@ jobs:
   deploy:
     needs:
       - build-and-push
-    uses: ./.github/workflows/deploy-reusable.yml
+    uses: ./.github/workflows/deploy.yml
     with:
       image_tag: ${{ github.sha }}
     secrets: inherit

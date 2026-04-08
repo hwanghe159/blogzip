@@ -1,6 +1,12 @@
 name: 배포
 
 on:
+  workflow_call:
+    inputs:
+      image_tag:
+        description: 배포할 이미지 태그
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       image_tag:
@@ -8,9 +14,112 @@ on:
         required: true
         default: latest
 
+permissions:
+  contents: read
+
+env:
+  IMAGE_PREFIX: ${{ vars.IMAGE_PREFIX }}
+  REGISTRY_HOST: ${{ vars.REGISTRY_HOST }}
+  OCI_REGION: ${{ vars.OCI_REGION }}
+  OCI_VAULT_ID: ${{ vars.OCI_VAULT_ID }}
+
 jobs:
   deploy:
-    uses: ./.github/workflows/deploy-reusable.yml
-    with:
-      image_tag: ${{ inputs.image_tag }}
-    secrets: inherit
+    runs-on: ubuntu-latest
+    steps:
+      - name: 소스 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 필수 저장소 설정 검증
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -z "${IMAGE_PREFIX}" ]] && missing+=("vars.IMAGE_PREFIX")
+          [[ -z "${REGISTRY_HOST}" ]] && missing+=("vars.REGISTRY_HOST")
+          [[ -z "${OCI_REGION}" ]] && missing+=("vars.OCI_REGION")
+          [[ -z "${OCI_VAULT_ID}" ]] && missing+=("vars.OCI_VAULT_ID")
+          [[ -z "${DEPLOY_HOST}" ]] && missing+=("secrets.DEPLOY_HOST")
+          [[ -z "${DEPLOY_USER}" ]] && missing+=("secrets.DEPLOY_USER")
+          [[ -z "${DEPLOY_SSH_KEY}" ]] && missing+=("secrets.DEPLOY_SSH_KEY")
+          [[ -z "${REGISTRY_USERNAME}" ]] && missing+=("secrets.REGISTRY_USERNAME")
+          [[ -z "${REGISTRY_PASSWORD}" ]] && missing+=("secrets.REGISTRY_PASSWORD")
+          if (( ${#missing[@]} > 0 )); then
+            echo "Missing required settings:"
+            printf ' - %s\n' "${missing[@]}"
+            exit 1
+          fi
+
+      - name: 배포 대상 이미지 경로 구성
+        id: images
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+          echo "api-image=${IMAGE_PREFIX}/api:${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "nginx-image=${IMAGE_PREFIX}/nginx:${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "batch-image=${IMAGE_PREFIX}/batch:${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "crawler-image=${IMAGE_PREFIX}/crawler:${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: 배포 파일 서버 전송
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "deploy/compose/*,deploy/scripts/*"
+          target: /home/${{ secrets.DEPLOY_USER }}/blogzip
+          strip_components: 1
+
+      - name: API·Crawler·Nginx 컨테이너 배포
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          API_IMAGE: ${{ steps.images.outputs.api-image }}
+          NGINX_IMAGE: ${{ steps.images.outputs.nginx-image }}
+          BATCH_IMAGE: ${{ steps.images.outputs.batch-image }}
+          CRAWLER_IMAGE: ${{ steps.images.outputs.crawler-image }}
+          REGISTRY_HOST: ${{ env.REGISTRY_HOST }}
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          DEPLOY_PATH: /home/${{ secrets.DEPLOY_USER }}/blogzip
+          OCI_REGION: ${{ env.OCI_REGION }}
+          OCI_VAULT_ID: ${{ env.OCI_VAULT_ID }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: API_IMAGE,NGINX_IMAGE,BATCH_IMAGE,CRAWLER_IMAGE,REGISTRY_HOST,REGISTRY_USERNAME,REGISTRY_PASSWORD,DEPLOY_PATH,OCI_REGION,OCI_VAULT_ID
+          script: |
+            set -euo pipefail
+            export PATH="$HOME/bin:$PATH"
+            if ! command -v oci >/dev/null 2>&1; then
+              echo "OCI CLI가 없어 설치를 시도합니다."
+              if command -v curl >/dev/null 2>&1; then
+                bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults
+              elif command -v wget >/dev/null 2>&1; then
+                bash -c "$(wget -qO- https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults
+              else
+                echo "curl 또는 wget 이 필요합니다." >&2
+                exit 1
+              fi
+              export PATH="$HOME/bin:$PATH"
+            fi
+            command -v oci >/dev/null 2>&1 || {
+              echo "OCI CLI 설치에 실패했습니다." >&2
+              exit 1
+            }
+            mkdir -p "${DEPLOY_PATH}/compose" "${DEPLOY_PATH}/scripts" "${DEPLOY_PATH}/data/heapdumps/api" "${DEPLOY_PATH}/data/heapdumps/batch"
+            cat > "${DEPLOY_PATH}/compose/.env.deploy" <<EOF
+            API_IMAGE=${API_IMAGE}
+            NGINX_IMAGE=${NGINX_IMAGE}
+            BATCH_IMAGE=${BATCH_IMAGE}
+            CRAWLER_IMAGE=${CRAWLER_IMAGE}
+            EOF
+            echo "${REGISTRY_PASSWORD}" | docker login "${REGISTRY_HOST}" -u "${REGISTRY_USERNAME}" --password-stdin
+            chmod +x "${DEPLOY_PATH}/scripts/"*.sh
+            "${DEPLOY_PATH}/scripts/deploy.sh"
