@@ -5,13 +5,50 @@ on:
     inputs:
       image_tag:
         description: 배포할 이미지 태그
-        required: true
+        required: false
+        default: ""
+        type: string
+      api_image_tag:
+        description: API 이미지 태그
+        required: false
+        default: ""
+        type: string
+      nginx_image_tag:
+        description: Nginx 이미지 태그
+        required: false
+        default: ""
+        type: string
+      batch_image_tag:
+        description: Batch 이미지 태그
+        required: false
+        default: ""
+        type: string
+      crawler_image_tag:
+        description: Crawler 이미지 태그
+        required: false
+        default: ""
         type: string
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "배포할 이미지 태그 (예: latest 또는 git sha)"
-        required: true
+        description: "전체 공통 태그 (비우면 서비스별 태그 사용)"
+        required: false
+        default: ""
+      api_image_tag:
+        description: API 이미지 태그
+        required: false
+        default: latest
+      nginx_image_tag:
+        description: Nginx 이미지 태그
+        required: false
+        default: latest
+      batch_image_tag:
+        description: Batch 이미지 태그
+        required: false
+        default: latest
+      crawler_image_tag:
+        description: Crawler 이미지 태그
+        required: false
         default: latest
 
 permissions:
@@ -59,12 +96,34 @@ jobs:
         id: images
         env:
           IMAGE_TAG: ${{ inputs.image_tag }}
+          API_IMAGE_TAG: ${{ inputs.api_image_tag }}
+          NGINX_IMAGE_TAG: ${{ inputs.nginx_image_tag }}
+          BATCH_IMAGE_TAG: ${{ inputs.batch_image_tag }}
+          CRAWLER_IMAGE_TAG: ${{ inputs.crawler_image_tag }}
         run: |
           set -euo pipefail
-          echo "api-image=${IMAGE_PREFIX}/api:${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
-          echo "nginx-image=${IMAGE_PREFIX}/nginx:${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
-          echo "batch-image=${IMAGE_PREFIX}/batch:${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
-          echo "crawler-image=${IMAGE_PREFIX}/crawler:${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          resolve_tag() {
+            local specific_tag="$1"
+            if [[ -n "${specific_tag}" ]]; then
+              printf '%s' "${specific_tag}"
+            elif [[ -n "${IMAGE_TAG:-}" ]]; then
+              printf '%s' "${IMAGE_TAG}"
+            else
+              printf '%s' "latest"
+            fi
+          }
+
+          api_tag="$(resolve_tag "${API_IMAGE_TAG:-}")"
+          nginx_tag="$(resolve_tag "${NGINX_IMAGE_TAG:-}")"
+          batch_tag="$(resolve_tag "${BATCH_IMAGE_TAG:-}")"
+          crawler_tag="$(resolve_tag "${CRAWLER_IMAGE_TAG:-}")"
+
+          echo "api-image=${IMAGE_PREFIX}/api:${api_tag}" >> "$GITHUB_OUTPUT"
+          echo "nginx-image=${IMAGE_PREFIX}/nginx:${nginx_tag}" >> "$GITHUB_OUTPUT"
+          echo "batch-image=${IMAGE_PREFIX}/batch:${batch_tag}" >> "$GITHUB_OUTPUT"
+          echo "crawler-image=${IMAGE_PREFIX}/crawler:${crawler_tag}" >> "$GITHUB_OUTPUT"
+
+          echo "배포 태그: api=${api_tag}, nginx=${nginx_tag}, batch=${batch_tag}, crawler=${crawler_tag}"
 
       - name: 배포 파일 서버 전송
         uses: appleboy/scp-action@v0.1.7

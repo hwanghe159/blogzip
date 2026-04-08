@@ -5,6 +5,27 @@ on:
     branches:
       - master
   workflow_dispatch:
+    inputs:
+      build_api:
+        description: API 이미지 빌드
+        type: boolean
+        required: true
+        default: true
+      build_nginx:
+        description: Nginx 이미지 빌드
+        type: boolean
+        required: true
+        default: true
+      build_batch:
+        description: Batch 이미지 빌드
+        type: boolean
+        required: true
+        default: false
+      build_crawler:
+        description: Crawler 이미지 빌드
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -17,6 +38,11 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    outputs:
+      api_tag: ${{ steps.deploy-tags.outputs.api_tag }}
+      nginx_tag: ${{ steps.deploy-tags.outputs.nginx_tag }}
+      batch_tag: ${{ steps.deploy-tags.outputs.batch_tag }}
+      crawler_tag: ${{ steps.deploy-tags.outputs.crawler_tag }}
     steps:
       - name: 소스 코드 체크아웃
         uses: actions/checkout@v4
@@ -38,6 +64,48 @@ jobs:
             exit 1
           fi
 
+      - name: 빌드 대상 서비스 결정
+        id: targets
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_BUILD_API: ${{ inputs.build_api }}
+          INPUT_BUILD_NGINX: ${{ inputs.build_nginx }}
+          INPUT_BUILD_BATCH: ${{ inputs.build_batch }}
+          INPUT_BUILD_CRAWLER: ${{ inputs.build_crawler }}
+        run: |
+          set -euo pipefail
+
+          normalize_bool() {
+            case "${1:-}" in
+              true|TRUE|1|yes|YES|on|ON) echo "true" ;;
+              *) echo "false" ;;
+            esac
+          }
+
+          if [[ "${EVENT_NAME}" == "push" ]]; then
+            build_api=true
+            build_nginx=true
+            build_batch=true
+            build_crawler=true
+          else
+            build_api="$(normalize_bool "${INPUT_BUILD_API:-}")"
+            build_nginx="$(normalize_bool "${INPUT_BUILD_NGINX:-}")"
+            build_batch="$(normalize_bool "${INPUT_BUILD_BATCH:-}")"
+            build_crawler="$(normalize_bool "${INPUT_BUILD_CRAWLER:-}")"
+          fi
+
+          if [[ "${build_api}" != "true" && "${build_nginx}" != "true" && "${build_batch}" != "true" && "${build_crawler}" != "true" ]]; then
+            echo "최소 1개 이상의 서비스를 선택해야 합니다."
+            exit 1
+          fi
+
+          echo "build_api=${build_api}" >> "$GITHUB_OUTPUT"
+          echo "build_nginx=${build_nginx}" >> "$GITHUB_OUTPUT"
+          echo "build_batch=${build_batch}" >> "$GITHUB_OUTPUT"
+          echo "build_crawler=${build_crawler}" >> "$GITHUB_OUTPUT"
+
+          echo "빌드 대상: api=${build_api}, nginx=${build_nginx}, batch=${build_batch}, crawler=${build_crawler}"
+
       - name: Docker Buildx 설정
         uses: docker/setup-buildx-action@v3
 
@@ -55,58 +123,101 @@ jobs:
         id: images
         run: |
           echo "api-image=${IMAGE_PREFIX}/api:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          echo "api-latest-image=${IMAGE_PREFIX}/api:latest" >> "$GITHUB_OUTPUT"
           echo "nginx-image=${IMAGE_PREFIX}/nginx:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          echo "nginx-latest-image=${IMAGE_PREFIX}/nginx:latest" >> "$GITHUB_OUTPUT"
           echo "batch-image=${IMAGE_PREFIX}/batch:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          echo "batch-latest-image=${IMAGE_PREFIX}/batch:latest" >> "$GITHUB_OUTPUT"
           echo "crawler-image=${IMAGE_PREFIX}/crawler:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          echo "crawler-latest-image=${IMAGE_PREFIX}/crawler:latest" >> "$GITHUB_OUTPUT"
+
+      - name: 배포 태그 결정
+        id: deploy-tags
+        env:
+          BUILD_API: ${{ steps.targets.outputs.build_api }}
+          BUILD_NGINX: ${{ steps.targets.outputs.build_nginx }}
+          BUILD_BATCH: ${{ steps.targets.outputs.build_batch }}
+          BUILD_CRAWLER: ${{ steps.targets.outputs.build_crawler }}
+        run: |
+          set -euo pipefail
+
+          pick_tag() {
+            local should_build="$1"
+            if [[ "${should_build}" == "true" ]]; then
+              echo "${GITHUB_SHA}"
+            else
+              echo "latest"
+            fi
+          }
+
+          echo "api_tag=$(pick_tag "${BUILD_API}")" >> "$GITHUB_OUTPUT"
+          echo "nginx_tag=$(pick_tag "${BUILD_NGINX}")" >> "$GITHUB_OUTPUT"
+          echo "batch_tag=$(pick_tag "${BUILD_BATCH}")" >> "$GITHUB_OUTPUT"
+          echo "crawler_tag=$(pick_tag "${BUILD_CRAWLER}")" >> "$GITHUB_OUTPUT"
 
       - name: API 이미지 빌드 및 푸시
+        if: steps.targets.outputs.build_api == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
           file: deploy/docker/api.Dockerfile
           platforms: linux/arm64
           push: true
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
           tags: |
             ${{ steps.images.outputs.api-image }}
-            ${{ env.IMAGE_PREFIX }}/api:latest
+            ${{ steps.images.outputs.api-latest-image }}
 
       - name: Nginx 이미지 빌드 및 푸시
+        if: steps.targets.outputs.build_nginx == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
           file: deploy/docker/nginx.Dockerfile
           platforms: linux/arm64
           push: true
+          cache-from: type=gha,scope=nginx
+          cache-to: type=gha,scope=nginx,mode=max
           tags: |
             ${{ steps.images.outputs.nginx-image }}
-            ${{ env.IMAGE_PREFIX }}/nginx:latest
+            ${{ steps.images.outputs.nginx-latest-image }}
 
       - name: Batch 이미지 빌드 및 푸시
+        if: steps.targets.outputs.build_batch == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
           file: deploy/docker/batch.Dockerfile
           platforms: linux/arm64
           push: true
+          cache-from: type=gha,scope=batch
+          cache-to: type=gha,scope=batch,mode=max
           tags: |
             ${{ steps.images.outputs.batch-image }}
-            ${{ env.IMAGE_PREFIX }}/batch:latest
+            ${{ steps.images.outputs.batch-latest-image }}
 
       - name: Crawler 이미지 빌드 및 푸시
+        if: steps.targets.outputs.build_crawler == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
           file: deploy/docker/crawler.Dockerfile
           platforms: linux/arm64
           push: true
+          cache-from: type=gha,scope=crawler
+          cache-to: type=gha,scope=crawler,mode=max
           tags: |
             ${{ steps.images.outputs.crawler-image }}
-            ${{ env.IMAGE_PREFIX }}/crawler:latest
+            ${{ steps.images.outputs.crawler-latest-image }}
 
   deploy:
     needs:
       - build-and-push
     uses: ./.github/workflows/deploy.yml
     with:
-      image_tag: ${{ github.sha }}
+      api_image_tag: ${{ needs.build-and-push.outputs.api_tag }}
+      nginx_image_tag: ${{ needs.build-and-push.outputs.nginx_tag }}
+      batch_image_tag: ${{ needs.build-and-push.outputs.batch_tag }}
+      crawler_image_tag: ${{ needs.build-and-push.outputs.crawler_tag }}
     secrets: inherit

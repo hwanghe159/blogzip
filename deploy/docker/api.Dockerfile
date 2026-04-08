@@ -8,7 +8,7 @@ RUN chmod +x gradlew && ./gradlew --no-daemon api:bootJar
 
 FROM eclipse-temurin:21-jre
 
-ENV JAVA_TOOL_OPTIONS="-Xms256M -Xmx256M -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app/heapdumps -XX:OnOutOfMemoryError=kill -9 %p"
+ENV JAVA_TOOL_OPTIONS="-Xms256M -Xmx256M -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app/heapdumps -XX:+ExitOnOutOfMemoryError"
 
 WORKDIR /app
 
