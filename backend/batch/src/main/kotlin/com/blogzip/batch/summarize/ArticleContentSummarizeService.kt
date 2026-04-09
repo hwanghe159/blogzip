@@ -55,6 +55,7 @@ class ArticleContentSummarizeService(
         },
         onFailure = { articleId, throwable ->
           val exception = RuntimeException("$articleId 요약 실패", throwable)
+          log.error(exception.message, exception)
           slackSender.sendStackTraceAsync(SlackSender.SlackChannel.ERROR_LOG, exception)
         }
       )
