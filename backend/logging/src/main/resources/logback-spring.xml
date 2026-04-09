@@ -19,6 +19,13 @@
 
   <!--  local-prod 설정  -->
   <springProfile name="local-prod">
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder>
+        <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+        <charset>utf8</charset>
+      </encoder>
+    </appender>
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
       <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
         <fileNamePattern>backend/${MODULE_NAME}/logs/${APP_NAME}-%d{yyyy-MM}.log</fileNamePattern>
@@ -28,12 +35,20 @@
       </encoder>
     </appender>
     <root level="WARN">
+      <appender-ref ref="CONSOLE"/>
       <appender-ref ref="FILE"/>
     </root>
   </springProfile>
 
   <!--  prod 설정  -->
   <springProfile name="prod">
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder>
+        <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+        <charset>utf8</charset>
+      </encoder>
+    </appender>
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
       <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
         <fileNamePattern>backend/${MODULE_NAME}/logs/${APP_NAME}-%d{yyyy-MM}.log</fileNamePattern>
@@ -43,6 +58,7 @@
       </encoder>
     </appender>
     <root level="WARN">
+      <appender-ref ref="CONSOLE"/>
       <appender-ref ref="FILE"/>
     </root>
   </springProfile>

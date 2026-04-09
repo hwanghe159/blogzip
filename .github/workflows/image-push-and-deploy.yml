@@ -218,3 +218,183 @@ jobs:
       batch_image_tag: ${{ needs.build-and-push.outputs.batch_tag }}
       crawler_image_tag: ${{ needs.build-and-push.outputs.crawler_tag }}
     secrets: inherit
+
+  prune-old-images:
+    name: 오래된 이미지 정리
+    needs:
+      - build-and-push
+      - deploy
+    if: ${{ needs.build-and-push.result == 'success' && needs.deploy.result == 'success' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: latest + 최근 3개 SHA 태그만 유지
+        env:
+          KEEP_COUNT: "3"
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          missing=()
+          [[ -z "${REGISTRY_HOST}" ]] && missing+=("vars.REGISTRY_HOST")
+          [[ -z "${IMAGE_PREFIX}" ]] && missing+=("vars.IMAGE_PREFIX")
+          [[ -z "${REGISTRY_USERNAME}" ]] && missing+=("secrets.REGISTRY_USERNAME")
+          [[ -z "${REGISTRY_PASSWORD}" ]] && missing+=("secrets.REGISTRY_PASSWORD")
+          if (( ${#missing[@]} > 0 )); then
+            echo "Missing required settings:"
+            printf ' - %s\n' "${missing[@]}"
+            exit 1
+          fi
+
+          REPO_BASE="${IMAGE_PREFIX#${REGISTRY_HOST}/}"
+          if [[ "${REPO_BASE}" == "${IMAGE_PREFIX}" ]]; then
+            echo "IMAGE_PREFIX 형식이 올바르지 않습니다: ${IMAGE_PREFIX}" >&2
+            exit 1
+          fi
+
+          ACCEPT_MANIFEST="Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json"
+
+          get_digest_by_tag() {
+            local repo="$1"
+            local tag="$2"
+            curl -fsSI \
+              -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
+              -H "${ACCEPT_MANIFEST}" \
+              "https://${REGISTRY_HOST}/v2/${repo}/manifests/${tag}" \
+              | awk 'BEGIN{IGNORECASE=1} $1=="Docker-Content-Digest:"{gsub("\r","",$2); print $2}'
+          }
+
+          cleanup_repo() {
+            local service="$1"
+            local repo="${REPO_BASE}/${service}"
+            local tags_json sha_count
+            local meta_file
+            local created tag digest config_digest config_json manifest_json
+            local -a sha_tags keep_tags
+            local -A keep_map digest_by_tag protected_digest deleted_digest
+
+            echo ""
+            echo "== ${repo} 정리 시작 =="
+
+            tags_json="$(curl -fsSL -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" "https://${REGISTRY_HOST}/v2/${repo}/tags/list?n=10000")"
+            mapfile -t sha_tags < <(echo "${tags_json}" | jq -r '.tags[]? | select(test("^[0-9a-f]{40}$"))')
+
+            sha_count="${#sha_tags[@]}"
+            if (( sha_count <= KEEP_COUNT )); then
+              echo "SHA 태그 ${sha_count}개: 정리 불필요"
+              return 0
+            fi
+
+            meta_file="$(mktemp)"
+
+            for tag in "${sha_tags[@]}"; do
+              digest="$(get_digest_by_tag "${repo}" "${tag}" || true)"
+              if [[ -z "${digest}" ]]; then
+                echo "[warn] digest 조회 실패: ${repo}:${tag}"
+                continue
+              fi
+
+              manifest_json="$(curl -fsSL \
+                -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
+                -H "${ACCEPT_MANIFEST}" \
+                "https://${REGISTRY_HOST}/v2/${repo}/manifests/${tag}" || true)"
+              config_digest="$(echo "${manifest_json}" | jq -r '.config.digest // empty')"
+
+              created="1970-01-01T00:00:00Z"
+              if [[ -n "${config_digest}" ]]; then
+                config_json="$(curl -fsSL \
+                  -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
+                  "https://${REGISTRY_HOST}/v2/${repo}/blobs/${config_digest}" || true)"
+                created="$(echo "${config_json}" | jq -r '.created // "1970-01-01T00:00:00Z"')"
+              fi
+
+              printf '%s\t%s\t%s\n' "${created}" "${tag}" "${digest}" >> "${meta_file}"
+              digest_by_tag["${tag}"]="${digest}"
+            done
+
+            if [[ ! -s "${meta_file}" ]]; then
+              echo "[warn] 정리 메타데이터가 비어있어 건너뜁니다."
+              rm -f "${meta_file}"
+              return 0
+            fi
+
+            mapfile -t keep_tags < <(sort -r -k1,1 "${meta_file}" | head -n "${KEEP_COUNT}" | cut -f2)
+            for tag in "${keep_tags[@]}"; do
+              keep_map["${tag}"]="1"
+              digest="${digest_by_tag[${tag}]:-}"
+              if [[ -n "${digest}" ]]; then
+                protected_digest["${digest}"]="1"
+              fi
+            done
+
+            digest="$(get_digest_by_tag "${repo}" "latest" || true)"
+            if [[ -n "${digest}" ]]; then
+              protected_digest["${digest}"]="1"
+            fi
+
+            echo "보존 SHA 태그:"
+            printf ' - %s\n' "${keep_tags[@]}"
+            echo "latest 태그는 항상 보존"
+
+            local deleted_count=0
+            local skipped_count=0
+            local status
+            local body_file
+            body_file="$(mktemp)"
+
+            for tag in "${sha_tags[@]}"; do
+              if [[ -n "${keep_map[${tag}]:-}" ]]; then
+                continue
+              fi
+
+              digest="${digest_by_tag[${tag}]:-}"
+              if [[ -z "${digest}" ]]; then
+                echo "[warn] digest 없음으로 삭제 건너뜀: ${repo}:${tag}"
+                ((skipped_count+=1))
+                continue
+              fi
+
+              if [[ -n "${protected_digest[${digest}]:-}" ]]; then
+                echo "[skip] 보호 digest로 삭제 건너뜀: ${repo}:${tag} (${digest})"
+                ((skipped_count+=1))
+                continue
+              fi
+
+              if [[ -n "${deleted_digest[${digest}]:-}" ]]; then
+                echo "[skip] 이미 삭제된 digest: ${repo}:${tag} (${digest})"
+                ((skipped_count+=1))
+                continue
+              fi
+
+              status="$(curl -sS -o "${body_file}" -w '%{http_code}' \
+                -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
+                -X DELETE \
+                "https://${REGISTRY_HOST}/v2/${repo}/manifests/${digest}" || true)"
+
+              case "${status}" in
+                200|202)
+                  echo "[ok] 삭제: ${repo}:${tag} (${digest})"
+                  deleted_digest["${digest}"]="1"
+                  ((deleted_count+=1))
+                  ;;
+                404)
+                  echo "[skip] 이미 없음: ${repo}:${tag} (${digest})"
+                  ((skipped_count+=1))
+                  ;;
+                *)
+                  echo "[warn] 삭제 실패(${status}): ${repo}:${tag} (${digest})"
+                  cat "${body_file}" || true
+                  ((skipped_count+=1))
+                  ;;
+              esac
+            done
+
+            echo "정리 결과: deleted=${deleted_count}, skipped=${skipped_count}"
+            rm -f "${meta_file}" "${body_file}"
+          }
+
+          cleanup_repo "api"
+          cleanup_repo "nginx"
+          cleanup_repo "batch"
+          cleanup_repo "crawler"
