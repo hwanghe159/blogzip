@@ -11,28 +11,35 @@
 ## 기술 스택
 ### 백엔드
 - Kotlin, Java, Gradle
-- Spring Boot, JPA, MySQL
-- Spring Batch
-- Selenium, Jsoup
+- Spring Boot, Spring Data JPA, Spring Batch, OpenFeign
+- MySQL
+- RSS 파싱/HTML 가공(`crawler-client`): Rome, Jsoup
 - OpenAI API
 - Spring Mail, Thymeleaf
 ### 프론트엔드
 - React, TypeScript, Material-ui
+### 크롤러 서버
+- Node.js, Express
+- Playwright(Chromium)
 ### 인프라
-- OCI Compute, OCIR, OCI Vault
+- OCI Compute, OCIR, OCI Vault, OCI Email Delivery
 ### ETC
 - Google OAuth2, JWT
 
 ## CI/CD
-- `master` 브랜치에 머지되면 GitHub Actions가 `api`, `nginx`, `batch` Docker 이미지를 빌드해서 레지스트리에 업로드합니다.
-- 같은 워크플로우에서 운영 VM에 SSH로 접속해 최신 `api`, `nginx` 이미지를 `docker compose`로 재배포합니다.
-- `batch`는 파라미터가 필요한 일회성 잡이라 자동 상시 배포 대신, `Run Batch Job` 워크플로우에서 최신 이미지를 받아 실행합니다.
+- 이미지 빌드/푸시 + 서비스 배포는 `이미지 푸시 + 서비스 배포` 워크플로우에서 수행합니다.
+- `master` 푸시 시 `api`, `nginx`, `batch`, `crawler`, `scheduler` 이미지를 빌드/푸시하고 `배포` 재사용 워크플로우를 호출해 VM에 배포합니다.
+- 수동 실행 시에는 서비스별 이미지 빌드 여부를 선택할 수 있으며, 선택하지 않은 서비스는 `latest` 태그로 배포합니다.
+- 배치 수동 실행은 `배치 잡 실행` 워크플로우에서 수행하며, 이미지 빌드/푸시 없이 VM에서 `batch:latest`를 실행합니다.
+- 정기 배치는 GitHub Actions `cron`이 아니라 VM 내 `scheduler` 컨테이너의 cron으로 실행됩니다.
+- 정기 실행 시각(KST): `fetch-new-articles` 매일 00:00, `email-send` 매일 09:00
+- OCIR 이미지는 워크플로우에서 `latest + 최근 3개 SHA 태그`만 유지하도록 정리합니다.
 
 ### 한 번만 해두면 되는 서버 준비
 1. 운영 VM에 Docker Engine + Docker Compose plugin을 설치합니다.
 2. 운영 VM에 OCI CLI를 설치합니다.
 3. 운영 VM이 OCI Vault를 읽을 수 있도록 Instance Principal IAM 정책을 설정합니다.
-4. 80 포트를 외부에 열고, 필요하면 443은 로드밸런서나 리버스 프록시에서 종료합니다.
+4. 네트워크 보안 규칙에서 80/443 인바운드를 열고, SSH(22)는 운영자 IP로 제한합니다.
 5. `nginx` 컨테이너가 TLS 종료를 수행하므로 VM에 Certbot 인증서가 있어야 합니다.
 6. 아래 파일이 VM에 존재해야 합니다.
 - `/etc/letsencrypt/live/blogzip.co.kr/fullchain.pem`
@@ -90,8 +97,9 @@ flowchart TB
           Nginx["🟩 Nginx"]
           Web["⚛️ Web Static"]
           API["☕ API"]
-          Batch["🕒 Batch"]
           Crawler["🕷️ Crawler"]
+          Scheduler["⏰ Scheduler<br/>(daily 00:00 / 09:00 KST)"]
+          BatchRunner["🧪 Batch Runner<br/>(GitHub 수동 실행)"]
         end
       end
       subgraph PrivateSubnet["Private DB Subnet"]
@@ -117,15 +125,22 @@ flowchart TB
   API --> Email
   API --> Slack
 
-  Batch -->|"HTTP 8090"| Crawler
-  Batch -->|"3306"| MySQL
-  Batch --> OpenAI
-  Batch --> Email
-  Batch --> Slack
+  Scheduler -->|"HTTP 8090"| Crawler
+  Scheduler -->|"3306"| MySQL
+  Scheduler --> OpenAI
+  Scheduler --> Email
+  Scheduler --> Slack
 
-  GH -->|"Build & Push"| OCIR
+  BatchRunner -->|"HTTP 8090"| Crawler
+  BatchRunner -->|"3306"| MySQL
+  BatchRunner --> OpenAI
+  BatchRunner --> Email
+  BatchRunner --> Slack
+
+  GH -->|"이미지 빌드/푸시"| OCIR
   OCIR -->|"Pull image"| VM
-  GH -->|"SSH Deploy / Run Batch"| VM
+  GH -->|"배포 워크플로우(SSH)"| VM
+  GH -->|"배치 잡 실행 워크플로우(SSH)"| BatchRunner
   VM -->|"Secret 조회"| Vault
 
   classDef external fill:#f7f7f7,stroke:#7a7a7a,color:#111,stroke-width:1.2px;
@@ -135,17 +150,24 @@ flowchart TB
 
   class Client,DNS,GH,OCIR,OpenAI,Slack,Email,Vault external;
   class IGW infra;
-  class Nginx,Web,API,Batch,Crawler app;
+  class Nginx,Web,API,Crawler,Scheduler,BatchRunner app;
   class MySQL db;
 ```
 
 ## 백엔드 모듈 구조
 ```
 backend
+├── ai : OpenAI Responses 기반 요약/키워드 추출
 ├── api : API 서버 애플리케이션 모듈
 ├── batch : 배치 애플리케이션 모듈
+├── crawler-client : RSS/HTML 처리 및 크롤링 클라이언트 공용 모듈
 ├── domain : 도메인 로직과 DB과의 연결 담당
-├── crawler : 크롤링과 ChatGPT API 호출 담당
 ├── notification : 이메일 발송 담당
 └── logging : slack으로 로그 메시지 발송 담당
+```
+
+## 크롤러 서비스 구조
+```
+crawler
+└── Node.js + Playwright 기반 크롤링 HTTP 서버 (metadata/content fetch)
 ```
