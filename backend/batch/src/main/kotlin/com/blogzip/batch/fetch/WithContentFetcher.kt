@@ -19,24 +19,46 @@ class WithContentFetcher(
 
   val log = logger()
 
-  override fun fetchArticles(blog: Blog, from: LocalDate): List<Article> {
+  override fun fetchArticles(blog: Blog, from: LocalDate): FetchArticlesResult {
     if (blog.rss == null) {
       val errorMessage = "blog.rss가 없어 새 글 가져오기 실패. blog.id=${blog.id}"
       log.error(errorMessage)
       slackSender.sendMessageAsync(channel = ERROR_LOG, errorMessage)
-      return emptyList()
+      return FetchArticlesResult(
+        articles = emptyList(),
+        failures = listOf(
+          FetchFailure(
+            blogId = blog.id,
+            blogUrl = blog.url,
+            rssStatus = blog.rssStatus,
+            reason = "RSS_URL_MISSING",
+            detail = errorMessage,
+          )
+        )
+      )
     }
 
-    var articles: List<com.blogzip.crawler.dto.Article> = emptyList()
-    try {
-      articles = rssFeedFetcher.getArticles(blog.rss!!)
+    val articles = try {
+      rssFeedFetcher.getArticles(blog.rss!!)
     } catch (e: Exception) {
       val exception = RuntimeException("${blog.rss}의 글 가져오기 실패.", e)
       log.error(exception.message, exception)
       slackSender.sendStackTraceAsync(channel = ERROR_LOG, exception)
+      return FetchArticlesResult(
+        articles = emptyList(),
+        failures = listOf(
+          FetchFailure(
+            blogId = blog.id,
+            blogUrl = blog.url,
+            rssStatus = blog.rssStatus,
+            reason = "RSS_FETCH_FAILED",
+            detail = e.message,
+          )
+        )
+      )
     }
 
-    return articles
+    val newArticles = articles
       .filter {
         if (it.createdDate == null) {
           true
@@ -72,5 +94,6 @@ class WithContentFetcher(
           }
         )
       }
+    return FetchArticlesResult(articles = newArticles)
   }
 }

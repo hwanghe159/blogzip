@@ -1,32 +1,38 @@
 package com.blogzip.ai.summary
 
-import com.aallam.openai.api.BetaOpenAI
-import com.aallam.openai.api.assistant.AssistantId
-import com.aallam.openai.api.core.Role
-import com.aallam.openai.api.core.Status
-import com.aallam.openai.api.message.MessageContent
-import com.aallam.openai.api.message.MessageRequest
-import com.aallam.openai.api.run.RunRequest
-import com.aallam.openai.client.OpenAI
-import com.blogzip.ai.config.OpenAiProperties
 import com.fasterxml.jackson.databind.ObjectMapper
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
-import java.util.concurrent.TimeoutException
 
 @Component
 class ArticleContentSequentialSummarizer(
-  private val openAiProperties: OpenAiProperties,
+  private val openAiApiClient: OpenAiApiClient,
   private val objectMapper: ObjectMapper,
 ) : ArticleContentSummarizer {
 
   private val log = LoggerFactory.getLogger(ArticleContentSequentialSummarizer::class.java)
 
   companion object {
-    private const val RUN_POLL_INTERVAL_MS = 3_000L
-    private const val RUN_TIMEOUT_MS = 5 * 60 * 1_000L
+    private const val SUMMARY_MODEL = "ft:gpt-4o-mini-2024-07-18:personal::AT34qLAv"
+    private const val FORMAT_TYPE_JSON_SCHEMA = "json_schema"
+    private const val SUMMARY_SCHEMA_NAME = "summary_and_keywords"
+    private const val SYSTEM_PROMPT = "한국인을 대상으로 하는 테크블로그 내용 요약기 및 키워드 추출기"
+    private const val SUMMARY_DESCRIPTION =
+      "당신은 마크다운 형식의 텍스트를 5~8줄 정도의 간결한 요약문으로 변환하는 전문가입니다. " +
+        "요약 시 다음 지침을 따르세요:\n\n" +
+        "1. 친근하면서도 정중한 '~~요'체의 존댓말을 사용하세요.\n" +
+        "2. 요약 내용만을 직접적으로 제시하세요.\n" +
+        "3. 반말이나 명사로 끝나는 문장은 피하세요.\n" +
+        "4. 인사말, 자기소개, 블로그 소개 등은 생략하세요.\n" +
+        "5. \"네\", \"알겠어요\", \"요약해드릴게요\" 등의 불필요한 표현은 사용하지 마세요.\n" +
+        "6. 대화형 AI가 아닌 요약 전문가로서의 역할에 충실하세요.\n" +
+        "7. 응답은 마크다운 형식이 아닌 줄글로 응답하고, 절대 8줄을 넘기지 마세요.\n\n" +
+        "입력된 마크다운 텍스트의 핵심 내용을 정확하고 간결하게 전달하는 데 집중하세요. " +
+        "요약문은 독자가 원문의 주요 내용을 빠르게 파악할 수 있도록 작성되어야 합니다."
+    private const val KEYWORDS_DESCRIPTION =
+      "게시물과 관련된 키워드 목록입니다. 이 글의 분야, 대주제, 기술명 등이 될 수 있습니다. " +
+        "예를 들어 '백엔드','프론트엔드','AI','DevOps' 같이 분야가 될 수도 있고, " +
+        "'소프트스킬','자기개발' 등 주제가 될 수도 있습니다. 또는 'MySQL','Redis','Kafka','Spring' 같은 기술명이 될 수도 있습니다."
   }
 
   override fun summarizeAndGetKeywordsAll(articles: List<ArticleToSummarize>): List<SummarizedArticleResult> {
@@ -49,99 +55,70 @@ class ArticleContentSequentialSummarizer(
     }
   }
 
-  @OptIn(BetaOpenAI::class)
-  private fun summarize(content: String): SummarizeResult = runBlocking {
-    val openAI = OpenAI(openAiProperties.apiKey)
-    val threadId = openAI.thread().id
-    val assistantId = AssistantId(openAiProperties.assistantId)
-
-    // POST https://api.openai.com/v1/threads/{thread_id}/messages
-    // https://platform.openai.com/docs/api-reference/messages-v1/createMessage
-    openAI.message(
-      threadId = threadId,
-      request = MessageRequest(
-        role = Role.User,
-        content = content
-      )
-    )
-    // POST https://api.openai.com/v1/threads/{thread_id}/runs
-    // https://platform.openai.com/docs/api-reference/runs-v1/createRun
-    val run = openAI.createRun(
-      threadId,
-      request = RunRequest(
-        assistantId = assistantId
-      )
-    )
-
-    val startedAt = System.currentTimeMillis()
-    var pollCount = 0
-    while (true) {
-      delay(RUN_POLL_INTERVAL_MS)
-      pollCount++
-
-      // GET https://api.openai.com/v1/threads/{thread_id}/runs/{run_id}
-      // https://platform.openai.com/docs/api-reference/runs-v1/getRun
-      val retrievedRun = openAI.getRun(threadId = threadId, runId = run.id)
-      val elapsedMs = System.currentTimeMillis() - startedAt
-      val status = retrievedRun.status
-
-      if (status == Status.Completed) {
-        break
+  private fun summarize(content: String): SummarizeResult {
+    val response = openAiApiClient.createResponse(buildRequest(content))
+    val status = response.status
+    if (!status.isNullOrBlank() && status != "completed") {
+      val reason = buildString {
+        append("OpenAI responses 호출이 완료 상태가 아닙니다. ")
+        append("status=$status, ")
+        append("errorCode=${response.error?.code}, ")
+        append("errorMessage=${response.error?.message}, ")
+        append("incompleteDetails=${response.incompleteDetails}")
       }
-
-      if (status == Status.RequiresAction) {
-        val reason = buildString {
-          append("OpenAI run requires action. ")
-          append("runId=${run.id}, ")
-          append("status=$status, ")
-          append("requiredAction=${retrievedRun.requiredAction}, ")
-          append("lastError=${retrievedRun.lastError}")
-        }
-        log.error(reason)
-        throw IllegalStateException(reason)
-      }
-
-      if (status == Status.Failed || status == Status.Cancelled || status == Status.Expired) {
-        val reason = buildString {
-          append("OpenAI run terminated without completion. ")
-          append("runId=${run.id}, ")
-          append("status=$status, ")
-          append("lastError=${retrievedRun.lastError}")
-        }
-        log.error(reason)
-        throw IllegalStateException(reason)
-      }
-
-      if (elapsedMs >= RUN_TIMEOUT_MS) {
-        val reason = buildString {
-          append("OpenAI run polling timed out. ")
-          append("runId=${run.id}, ")
-          append("status=$status, ")
-          append("pollCount=$pollCount, ")
-          append("elapsedMs=$elapsedMs, ")
-          append("requiredAction=${retrievedRun.requiredAction}, ")
-          append("lastError=${retrievedRun.lastError}")
-        }
-        log.error(reason)
-        throw TimeoutException(reason)
-      }
-
-      if (pollCount % 10 == 0) {
-        log.info(
-          "OpenAI run is still in progress. runId=${run.id}, status=$status, pollCount=$pollCount, elapsedMs=$elapsedMs"
-        )
-      }
+      log.error(reason)
+      throw IllegalStateException(reason)
     }
 
-    // GET https://api.openai.com/v1/threads/{thread_id}/messages
-    // https://platform.openai.com/docs/api-reference/messages-v1/listMessages
-    val messages = openAI.messages(threadId)
-    val textContent = messages.first().content.first() as MessageContent.Text
-    val jsonResponse = objectMapper.readTree(textContent.text.value)
-    return@runBlocking SummarizeResult(
+    val outputText = response.outputText
+      ?.takeIf { it.isNotBlank() }
+      ?: response.output
+        .asSequence()
+        .flatMap { it.content.asSequence() }
+        .firstOrNull { it.type == "output_text" }
+        ?.text
+        ?.takeIf { it.isNotBlank() }
+      ?: throw IllegalStateException("OpenAI responses output_text가 비어 있습니다.")
+
+    val jsonResponse = objectMapper.readTree(outputText)
+    return SummarizeResult(
       summary = jsonResponse.get("summary").asText(),
       keywords = jsonResponse.get("keywords").map { it.asText() },
-      summarizedBy = run.model.id
+      summarizedBy = response.model ?: SUMMARY_MODEL
+    )
+  }
+
+  private fun buildRequest(content: String): OpenAiApiClient.ResponseCreateRequest {
+    val schema: Map<String, Any> = mapOf(
+      "type" to "object",
+      "properties" to mapOf(
+        "summary" to mapOf(
+          "type" to "string",
+          "description" to SUMMARY_DESCRIPTION,
+        ),
+        "keywords" to mapOf(
+          "type" to "array",
+          "description" to KEYWORDS_DESCRIPTION,
+          "items" to mapOf(
+            "type" to "string",
+          ),
+        ),
+      ),
+      "required" to listOf("summary", "keywords"),
+      "additionalProperties" to false,
+    )
+    return OpenAiApiClient.ResponseCreateRequest(
+      model = SUMMARY_MODEL,
+      instructions = SYSTEM_PROMPT,
+      input = content,
+      text = OpenAiApiClient.ResponseCreateRequest.Text(
+        format = OpenAiApiClient.ResponseCreateRequest.Text.Format(
+          type = FORMAT_TYPE_JSON_SCHEMA,
+          name = SUMMARY_SCHEMA_NAME,
+          strict = true,
+          schema = schema,
+        )
+      )
     )
   }
 

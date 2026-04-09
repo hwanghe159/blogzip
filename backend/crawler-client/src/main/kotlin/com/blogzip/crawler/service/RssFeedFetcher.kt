@@ -16,23 +16,25 @@ import java.time.ZoneId
 // contents 또는 description 이 500자 이하인 경우, 요약본으로 판단.
 private val SyndEntry.content: String?
   get() {
-    var result: String
-    if (this.contents.isEmpty()) {
-      if (this.description.value.length <= 500) {
-        return null
+    val result = when {
+      this.contents.isNotEmpty() -> {
+        val content = this.contents[0].value
+        if (content.isNullOrBlank() || content.length <= 500) {
+          return null
+        }
+        content
       }
-      result = this.description.value
-    } else {
-      val content = this.contents[0].value
-      if (content.length <= 500) {
-        return null
+      else -> {
+        val description = this.description?.value
+        if (description.isNullOrBlank() || description.length <= 500) {
+          return null
+        }
+        description
       }
-      result = content
     }
 
     val cDataRegex = "<!\\[CDATA\\[(.*?)]]>".toRegex(setOf(RegexOption.DOT_MATCHES_ALL))
-    result = cDataRegex.find(result)?.groups?.get(1)?.value ?: result
-    return result
+    return cDataRegex.find(result)?.groups?.get(1)?.value ?: result
   }
 
 class RssFeedFetcher private constructor(

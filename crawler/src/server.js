@@ -3,10 +3,41 @@ const { chromium } = require("playwright");
 
 const app = express();
 app.use(express.json({ limit: "2mb" }));
+
+function buildRequestPayloadLog(req) {
+  if (!req.body || typeof req.body !== "object") {
+    return "";
+  }
+
+  let payload;
+  if (req.path === "/articles/fetch") {
+    const articleUrls = Array.isArray(req.body.articleUrls) ? req.body.articleUrls : [];
+    payload = {
+      blogUrl: req.body.blogUrl || null,
+      cssSelector: req.body.cssSelector || null,
+      articleUrlsCount: articleUrls.length,
+      articleUrlsPreview: articleUrls.slice(0, 3),
+    };
+  } else if (req.path === "/metadata/fetch" || req.path === "/content/fetch") {
+    payload = {
+      url: req.body.url || null,
+    };
+  } else {
+    payload = req.body;
+  }
+
+  const serialized = JSON.stringify(payload);
+  if (serialized.length > 500) {
+    return ` payload=${serialized.slice(0, 500)}...(truncated)`;
+  }
+  return ` payload=${serialized}`;
+}
+
 app.use((req, res, next) => {
   const start = Date.now();
   const requestId = Math.random().toString(36).slice(2, 10);
-  console.log(`[crawler][${requestId}] -> ${req.method} ${req.originalUrl}`);
+  const payloadLog = buildRequestPayloadLog(req);
+  console.log(`[crawler][${requestId}] -> ${req.method} ${req.originalUrl}${payloadLog}`);
 
   res.on("finish", () => {
     const elapsed = Date.now() - start;

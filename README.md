@@ -58,8 +58,6 @@
 - `OCI_EMAIL_SMTP_USERNAME`
 - `OCI_EMAIL_SMTP_PASSWORD`
 - `OPEN_AI_API_KEY`
-- `OPEN_AI_ASSISTANT_ID`
-- `OPEN_AI_THREAD_ID`
 - `SLACK_WEBHOOK_URL`
 
 ### GitHub 설정
@@ -76,7 +74,70 @@
 - `DEPLOY_SSH_KEY`
 
 ## 인프라 아키텍쳐
-![infra_architecture.jpeg](images/infra_architecture.jpeg)
+```mermaid
+flowchart TB
+  Client["🖥️ Client"]
+  DNS["🌐 DNS<br/>Route53 / Gabia"]
+  GH["⚙️ GitHub Actions"]
+  OCIR["📦 OCIR"]
+  Vault["🔐 OCI Vault"]
+
+  subgraph OCI["OCI Cloud (ap-chuncheon-1)"]
+    IGW["🛜 Internet Gateway"]
+    subgraph VCN["VCN"]
+      subgraph PublicSubnet["Public Subnet"]
+        subgraph VM["VM.Standard.A1.Flex (Docker Compose)"]
+          Nginx["🟩 Nginx"]
+          Web["⚛️ Web Static"]
+          API["☕ API"]
+          Batch["🕒 Batch"]
+          Crawler["🕷️ Crawler"]
+        end
+      end
+      subgraph PrivateSubnet["Private DB Subnet"]
+        MySQL["🛢️ MySQL"]
+      end
+    end
+  end
+
+  subgraph Integrations["외부 연동 서비스"]
+    direction LR
+    OpenAI["🤖 OpenAI API"]
+    Email["✉️ OCI Email Delivery"]
+    Slack["💬 Slack"]
+  end
+
+  Client -->|"80/443"| DNS --> IGW --> Nginx
+  Nginx -->|"/"| Web
+  Nginx -->|"/api"| API
+
+  API -->|"HTTP 8090"| Crawler
+  API -->|"3306"| MySQL
+  API --> OpenAI
+  API --> Email
+  API --> Slack
+
+  Batch -->|"HTTP 8090"| Crawler
+  Batch -->|"3306"| MySQL
+  Batch --> OpenAI
+  Batch --> Email
+  Batch --> Slack
+
+  GH -->|"Build & Push"| OCIR
+  OCIR -->|"Pull image"| VM
+  GH -->|"SSH Deploy / Run Batch"| VM
+  VM -->|"Secret 조회"| Vault
+
+  classDef external fill:#f7f7f7,stroke:#7a7a7a,color:#111,stroke-width:1.2px;
+  classDef infra fill:#f0f7ff,stroke:#2f6feb,color:#111,stroke-width:1.2px;
+  classDef app fill:#eefaf0,stroke:#2da44e,color:#111,stroke-width:1.2px;
+  classDef db fill:#fff8e6,stroke:#b08800,color:#111,stroke-width:1.2px;
+
+  class Client,DNS,GH,OCIR,OpenAI,Slack,Email,Vault external;
+  class IGW infra;
+  class Nginx,Web,API,Batch,Crawler app;
+  class MySQL db;
+```
 
 ## 백엔드 모듈 구조
 ```

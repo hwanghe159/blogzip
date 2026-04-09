@@ -77,6 +77,11 @@ class BlogController(
       else Blog.RssStatus.WITHOUT_CONTENT
 
     if (rssStatus == Blog.RssStatus.NO_RSS) {
+      /**
+       * 아래는 모든 title 정보를 가져오는 js 코드
+       * const articles = document.querySelectorAll('...');
+       * const titles = Array.from(articles).map(article => article.textContent.trim())
+       */
       slackSender.sendMessageAsync(MONITORING, "url_css_selector 직접 추가 필요. url=$blogUrl")
     }
     val blog = blogService.save(
