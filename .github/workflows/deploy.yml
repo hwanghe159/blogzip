@@ -28,6 +28,11 @@ on:
         required: false
         default: ""
         type: string
+      scheduler_image_tag:
+        description: Scheduler 이미지 태그
+        required: false
+        default: ""
+        type: string
   workflow_dispatch:
     inputs:
       image_tag:
@@ -48,6 +53,10 @@ on:
         default: latest
       crawler_image_tag:
         description: Crawler 이미지 태그
+        required: false
+        default: latest
+      scheduler_image_tag:
+        description: Scheduler 이미지 태그
         required: false
         default: latest
 
@@ -100,6 +109,7 @@ jobs:
           NGINX_IMAGE_TAG: ${{ inputs.nginx_image_tag }}
           BATCH_IMAGE_TAG: ${{ inputs.batch_image_tag }}
           CRAWLER_IMAGE_TAG: ${{ inputs.crawler_image_tag }}
+          SCHEDULER_IMAGE_TAG: ${{ inputs.scheduler_image_tag }}
         run: |
           set -euo pipefail
           resolve_tag() {
@@ -117,13 +127,15 @@ jobs:
           nginx_tag="$(resolve_tag "${NGINX_IMAGE_TAG:-}")"
           batch_tag="$(resolve_tag "${BATCH_IMAGE_TAG:-}")"
           crawler_tag="$(resolve_tag "${CRAWLER_IMAGE_TAG:-}")"
+          scheduler_tag="$(resolve_tag "${SCHEDULER_IMAGE_TAG:-}")"
 
           echo "api-image=${IMAGE_PREFIX}/api:${api_tag}" >> "$GITHUB_OUTPUT"
           echo "nginx-image=${IMAGE_PREFIX}/nginx:${nginx_tag}" >> "$GITHUB_OUTPUT"
           echo "batch-image=${IMAGE_PREFIX}/batch:${batch_tag}" >> "$GITHUB_OUTPUT"
           echo "crawler-image=${IMAGE_PREFIX}/crawler:${crawler_tag}" >> "$GITHUB_OUTPUT"
+          echo "scheduler-image=${IMAGE_PREFIX}/scheduler:${scheduler_tag}" >> "$GITHUB_OUTPUT"
 
-          echo "배포 태그: api=${api_tag}, nginx=${nginx_tag}, batch=${batch_tag}, crawler=${crawler_tag}"
+          echo "배포 태그: api=${api_tag}, nginx=${nginx_tag}, batch=${batch_tag}, crawler=${crawler_tag}, scheduler=${scheduler_tag}"
 
       - name: 배포 파일 서버 전송
         uses: appleboy/scp-action@v0.1.7
@@ -135,13 +147,14 @@ jobs:
           target: /home/${{ secrets.DEPLOY_USER }}/blogzip
           strip_components: 1
 
-      - name: API·Crawler·Nginx 컨테이너 배포
+      - name: API·Crawler·Nginx·Scheduler 컨테이너 배포
         uses: appleboy/ssh-action@v1.2.0
         env:
           API_IMAGE: ${{ steps.images.outputs.api-image }}
           NGINX_IMAGE: ${{ steps.images.outputs.nginx-image }}
           BATCH_IMAGE: ${{ steps.images.outputs.batch-image }}
           CRAWLER_IMAGE: ${{ steps.images.outputs.crawler-image }}
+          SCHEDULER_IMAGE: ${{ steps.images.outputs.scheduler-image }}
           REGISTRY_HOST: ${{ env.REGISTRY_HOST }}
           REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
@@ -152,7 +165,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: API_IMAGE,NGINX_IMAGE,BATCH_IMAGE,CRAWLER_IMAGE,REGISTRY_HOST,REGISTRY_USERNAME,REGISTRY_PASSWORD,DEPLOY_PATH,OCI_REGION,OCI_VAULT_ID
+          envs: API_IMAGE,NGINX_IMAGE,BATCH_IMAGE,CRAWLER_IMAGE,SCHEDULER_IMAGE,REGISTRY_HOST,REGISTRY_USERNAME,REGISTRY_PASSWORD,DEPLOY_PATH,OCI_REGION,OCI_VAULT_ID
           script: |
             set -euo pipefail
             export PATH="$HOME/bin:$PATH"
@@ -178,6 +191,7 @@ jobs:
             NGINX_IMAGE=${NGINX_IMAGE}
             BATCH_IMAGE=${BATCH_IMAGE}
             CRAWLER_IMAGE=${CRAWLER_IMAGE}
+            SCHEDULER_IMAGE=${SCHEDULER_IMAGE}
             EOF
             echo "${REGISTRY_PASSWORD}" | docker login "${REGISTRY_HOST}" -u "${REGISTRY_USERNAME}" --password-stdin
             chmod +x "${DEPLOY_PATH}/scripts/"*.sh

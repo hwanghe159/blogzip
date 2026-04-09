@@ -26,6 +26,11 @@ on:
         type: boolean
         required: true
         default: false
+      build_scheduler:
+        description: Scheduler 이미지 빌드
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -43,6 +48,7 @@ jobs:
       nginx_tag: ${{ steps.deploy-tags.outputs.nginx_tag }}
       batch_tag: ${{ steps.deploy-tags.outputs.batch_tag }}
       crawler_tag: ${{ steps.deploy-tags.outputs.crawler_tag }}
+      scheduler_tag: ${{ steps.deploy-tags.outputs.scheduler_tag }}
     steps:
       - name: 소스 코드 체크아웃
         uses: actions/checkout@v4
@@ -72,6 +78,7 @@ jobs:
           INPUT_BUILD_NGINX: ${{ inputs.build_nginx }}
           INPUT_BUILD_BATCH: ${{ inputs.build_batch }}
           INPUT_BUILD_CRAWLER: ${{ inputs.build_crawler }}
+          INPUT_BUILD_SCHEDULER: ${{ inputs.build_scheduler }}
         run: |
           set -euo pipefail
 
@@ -87,14 +94,16 @@ jobs:
             build_nginx=true
             build_batch=true
             build_crawler=true
+            build_scheduler=true
           else
             build_api="$(normalize_bool "${INPUT_BUILD_API:-}")"
             build_nginx="$(normalize_bool "${INPUT_BUILD_NGINX:-}")"
             build_batch="$(normalize_bool "${INPUT_BUILD_BATCH:-}")"
             build_crawler="$(normalize_bool "${INPUT_BUILD_CRAWLER:-}")"
+            build_scheduler="$(normalize_bool "${INPUT_BUILD_SCHEDULER:-}")"
           fi
 
-          if [[ "${build_api}" != "true" && "${build_nginx}" != "true" && "${build_batch}" != "true" && "${build_crawler}" != "true" ]]; then
+          if [[ "${build_api}" != "true" && "${build_nginx}" != "true" && "${build_batch}" != "true" && "${build_crawler}" != "true" && "${build_scheduler}" != "true" ]]; then
             echo "최소 1개 이상의 서비스를 선택해야 합니다."
             exit 1
           fi
@@ -103,8 +112,9 @@ jobs:
           echo "build_nginx=${build_nginx}" >> "$GITHUB_OUTPUT"
           echo "build_batch=${build_batch}" >> "$GITHUB_OUTPUT"
           echo "build_crawler=${build_crawler}" >> "$GITHUB_OUTPUT"
+          echo "build_scheduler=${build_scheduler}" >> "$GITHUB_OUTPUT"
 
-          echo "빌드 대상: api=${build_api}, nginx=${build_nginx}, batch=${build_batch}, crawler=${build_crawler}"
+          echo "빌드 대상: api=${build_api}, nginx=${build_nginx}, batch=${build_batch}, crawler=${build_crawler}, scheduler=${build_scheduler}"
 
       - name: Docker Buildx 설정
         uses: docker/setup-buildx-action@v3
@@ -127,6 +137,8 @@ jobs:
           echo "batch-latest-image=${IMAGE_PREFIX}/batch:latest" >> "$GITHUB_OUTPUT"
           echo "crawler-image=${IMAGE_PREFIX}/crawler:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
           echo "crawler-latest-image=${IMAGE_PREFIX}/crawler:latest" >> "$GITHUB_OUTPUT"
+          echo "scheduler-image=${IMAGE_PREFIX}/scheduler:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          echo "scheduler-latest-image=${IMAGE_PREFIX}/scheduler:latest" >> "$GITHUB_OUTPUT"
 
       - name: 배포 태그 결정
         id: deploy-tags
@@ -135,6 +147,7 @@ jobs:
           BUILD_NGINX: ${{ steps.targets.outputs.build_nginx }}
           BUILD_BATCH: ${{ steps.targets.outputs.build_batch }}
           BUILD_CRAWLER: ${{ steps.targets.outputs.build_crawler }}
+          BUILD_SCHEDULER: ${{ steps.targets.outputs.build_scheduler }}
         run: |
           set -euo pipefail
 
@@ -151,6 +164,7 @@ jobs:
           echo "nginx_tag=$(pick_tag "${BUILD_NGINX}")" >> "$GITHUB_OUTPUT"
           echo "batch_tag=$(pick_tag "${BUILD_BATCH}")" >> "$GITHUB_OUTPUT"
           echo "crawler_tag=$(pick_tag "${BUILD_CRAWLER}")" >> "$GITHUB_OUTPUT"
+          echo "scheduler_tag=$(pick_tag "${BUILD_SCHEDULER}")" >> "$GITHUB_OUTPUT"
 
       - name: API 이미지 빌드 및 푸시
         if: steps.targets.outputs.build_api == 'true'
@@ -208,6 +222,20 @@ jobs:
             ${{ steps.images.outputs.crawler-image }}
             ${{ steps.images.outputs.crawler-latest-image }}
 
+      - name: Scheduler 이미지 빌드 및 푸시
+        if: steps.targets.outputs.build_scheduler == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/scheduler.Dockerfile
+          platforms: linux/arm64
+          push: true
+          cache-from: type=gha,scope=scheduler
+          cache-to: type=gha,scope=scheduler,mode=max
+          tags: |
+            ${{ steps.images.outputs.scheduler-image }}
+            ${{ steps.images.outputs.scheduler-latest-image }}
+
   deploy:
     needs:
       - build-and-push
@@ -217,6 +245,7 @@ jobs:
       nginx_image_tag: ${{ needs.build-and-push.outputs.nginx_tag }}
       batch_image_tag: ${{ needs.build-and-push.outputs.batch_tag }}
       crawler_image_tag: ${{ needs.build-and-push.outputs.crawler_tag }}
+      scheduler_image_tag: ${{ needs.build-and-push.outputs.scheduler_tag }}
     secrets: inherit
 
   prune-old-images:
@@ -253,14 +282,33 @@ jobs:
             exit 1
           fi
 
-          ACCEPT_MANIFEST="Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json"
+          MANIFEST_ACCEPT="application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json"
+          registry_auth_header="$(curl -sSI "https://${REGISTRY_HOST}/v2/" | tr -d '\r' | awk 'BEGIN{IGNORECASE=1} /^WWW-Authenticate:/{sub(/^WWW-Authenticate: /,""); print; exit}')"
+          registry_realm="$(echo "${registry_auth_header}" | sed -n 's/.*realm="\([^"]*\)".*/\1/p')"
+          registry_service="$(echo "${registry_auth_header}" | sed -n 's/.*service="\([^"]*\)".*/\1/p')"
+          if [[ -z "${registry_realm}" || -z "${registry_service}" ]]; then
+            echo "레지스트리 인증 정보를 파싱하지 못했습니다. cleanup 단계를 건너뜁니다."
+            exit 0
+          fi
+
+          get_registry_token() {
+            local repo="$1"
+            local token_json
+            token_json="$(curl -fsS --get \
+              -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
+              --data-urlencode "service=${registry_service}" \
+              --data-urlencode "scope=repository:${repo}:pull,push,delete" \
+              "${registry_realm}" || true)"
+            echo "${token_json}" | jq -r '.token // .access_token // empty'
+          }
 
           get_digest_by_tag() {
             local repo="$1"
             local tag="$2"
+            local token="$3"
             curl -fsSI \
-              -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
-              -H "${ACCEPT_MANIFEST}" \
+              -H "Authorization: Bearer ${token}" \
+              -H "Accept: ${MANIFEST_ACCEPT}" \
               "https://${REGISTRY_HOST}/v2/${repo}/manifests/${tag}" \
               | awk 'BEGIN{IGNORECASE=1} $1=="Docker-Content-Digest:"{gsub("\r","",$2); print $2}'
           }
@@ -268,7 +316,7 @@ jobs:
           cleanup_repo() {
             local service="$1"
             local repo="${REPO_BASE}/${service}"
-            local tags_json sha_count
+            local tags_json sha_count token
             local meta_file
             local created tag digest config_digest config_json manifest_json
             local -a sha_tags keep_tags
@@ -277,7 +325,19 @@ jobs:
             echo ""
             echo "== ${repo} 정리 시작 =="
 
-            tags_json="$(curl -fsSL -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" "https://${REGISTRY_HOST}/v2/${repo}/tags/list?n=10000")"
+            token="$(get_registry_token "${repo}")"
+            if [[ -z "${token}" ]]; then
+              echo "[warn] 토큰 발급 실패: ${repo} (cleanup skip)"
+              return 0
+            fi
+
+            tags_json="$(curl -fsSL \
+              -H "Authorization: Bearer ${token}" \
+              "https://${REGISTRY_HOST}/v2/${repo}/tags/list?n=10000" || true)"
+            if [[ -z "${tags_json}" ]]; then
+              echo "[warn] 태그 목록 조회 실패: ${repo} (cleanup skip)"
+              return 0
+            fi
             mapfile -t sha_tags < <(echo "${tags_json}" | jq -r '.tags[]? | select(test("^[0-9a-f]{40}$"))')
 
             sha_count="${#sha_tags[@]}"
@@ -289,22 +349,22 @@ jobs:
             meta_file="$(mktemp)"
 
             for tag in "${sha_tags[@]}"; do
-              digest="$(get_digest_by_tag "${repo}" "${tag}" || true)"
+              digest="$(get_digest_by_tag "${repo}" "${tag}" "${token}" || true)"
               if [[ -z "${digest}" ]]; then
                 echo "[warn] digest 조회 실패: ${repo}:${tag}"
                 continue
               fi
 
               manifest_json="$(curl -fsSL \
-                -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
-                -H "${ACCEPT_MANIFEST}" \
+                -H "Authorization: Bearer ${token}" \
+                -H "Accept: ${MANIFEST_ACCEPT}" \
                 "https://${REGISTRY_HOST}/v2/${repo}/manifests/${tag}" || true)"
               config_digest="$(echo "${manifest_json}" | jq -r '.config.digest // empty')"
 
               created="1970-01-01T00:00:00Z"
               if [[ -n "${config_digest}" ]]; then
                 config_json="$(curl -fsSL \
-                  -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
+                  -H "Authorization: Bearer ${token}" \
                   "https://${REGISTRY_HOST}/v2/${repo}/blobs/${config_digest}" || true)"
                 created="$(echo "${config_json}" | jq -r '.created // "1970-01-01T00:00:00Z"')"
               fi
@@ -328,7 +388,7 @@ jobs:
               fi
             done
 
-            digest="$(get_digest_by_tag "${repo}" "latest" || true)"
+            digest="$(get_digest_by_tag "${repo}" "latest" "${token}" || true)"
             if [[ -n "${digest}" ]]; then
               protected_digest["${digest}"]="1"
             fi
@@ -368,7 +428,7 @@ jobs:
               fi
 
               status="$(curl -sS -o "${body_file}" -w '%{http_code}' \
-                -u "${REGISTRY_USERNAME}:${REGISTRY_PASSWORD}" \
+                -H "Authorization: Bearer ${token}" \
                 -X DELETE \
                 "https://${REGISTRY_HOST}/v2/${repo}/manifests/${digest}" || true)"
 
@@ -398,3 +458,4 @@ jobs:
           cleanup_repo "nginx"
           cleanup_repo "batch"
           cleanup_repo "crawler"
+          cleanup_repo "scheduler"

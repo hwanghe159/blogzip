@@ -1,0 +1,8 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# 매일 00:00 KST: 신규 아티클 수집
+0 0 * * * /usr/bin/flock -n /tmp/fetch-new-articles.lock /usr/bin/java -jar /app/app.jar --spring.profiles.active=prod --server.port=8081 --spring.batch.job.name=fetch-new-articles >> /proc/1/fd/1 2>> /proc/1/fd/2
+
+# 매일 09:00 KST: 이메일 발송
+0 9 * * * /usr/bin/flock -n /tmp/email-send.lock /usr/bin/java -jar /app/app.jar --spring.profiles.active=prod --server.port=8081 --spring.batch.job.name=email-send >> /proc/1/fd/1 2>> /proc/1/fd/2

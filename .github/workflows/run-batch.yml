@@ -1,11 +1,6 @@
 name: 배치 잡 실행
 
 on:
-  schedule:
-    # 매일 KST 00:13 -> UTC 15:13
-    - cron: "13 15 * * *"
-    # 매일 KST 09:13 -> UTC 00:13
-    - cron: "13 0 * * *"
   workflow_dispatch:
     inputs:
       batch_job_name:
@@ -45,35 +40,12 @@ jobs:
       - name: 배치 실행 파라미터 결정
         id: params
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          EVENT_SCHEDULE: ${{ github.event.schedule }}
           INPUT_JOB_NAME: ${{ inputs.batch_job_name }}
           INPUT_JOB_ARGS: ${{ inputs.batch_arguments }}
-          DEFAULT_JOB_NAME: ${{ vars.BATCH_SCHEDULE_JOB_NAME }}
-          DEFAULT_JOB_ARGS: ${{ vars.BATCH_SCHEDULE_JOB_ARGS }}
-          DEFAULT_FETCH_ARGS: ${{ vars.BATCH_SCHEDULE_FETCH_NEW_ARTICLES_ARGS }}
-          DEFAULT_EMAIL_ARGS: ${{ vars.BATCH_SCHEDULE_EMAIL_SEND_ARGS }}
         run: |
           set -euo pipefail
-          if [[ "${EVENT_NAME}" == "schedule" ]]; then
-            case "${EVENT_SCHEDULE}" in
-              "13 15 * * *")
-                job_name="fetch-new-articles"
-                job_args="${DEFAULT_FETCH_ARGS:-}"
-                ;;
-              "13 0 * * *")
-                job_name="email-send"
-                job_args="${DEFAULT_EMAIL_ARGS:-}"
-                ;;
-              *)
-                job_name="${DEFAULT_JOB_NAME:-fetch-new-articles}"
-                job_args="${DEFAULT_JOB_ARGS:-}"
-                ;;
-            esac
-          else
-            job_name="${INPUT_JOB_NAME:-fetch-new-articles}"
-            job_args="${INPUT_JOB_ARGS:-}"
-          fi
+          job_name="${INPUT_JOB_NAME:-fetch-new-articles}"
+          job_args="${INPUT_JOB_ARGS:-}"
 
           echo "job_name=${job_name}" >> "${GITHUB_OUTPUT}"
           echo "job_args=${job_args}" >> "${GITHUB_OUTPUT}"

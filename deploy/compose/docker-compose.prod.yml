@@ -35,6 +35,19 @@ services:
     volumes:
       - ./data/heapdumps/batch:/app/heapdumps
 
+  scheduler:
+    image: ${SCHEDULER_IMAGE}
+    container_name: blogzip-scheduler
+    restart: unless-stopped
+    depends_on:
+      - crawler
+    env_file:
+      - .env.runtime
+    environment:
+      CRAWLER_BASE_URL: http://crawler:8090
+    volumes:
+      - ./data/heapdumps/batch:/app/heapdumps
+
   nginx:
     image: ${NGINX_IMAGE}
     container_name: blogzip-nginx

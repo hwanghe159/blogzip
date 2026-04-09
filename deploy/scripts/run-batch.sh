@@ -13,7 +13,15 @@ if [[ ! -f "${DEPLOY_ENV_FILE}" ]]; then
   exit 1
 fi
 
-"${ROOT_DIR}/scripts/fetch-vault-env.sh"
+if [[ -n "${OCI_VAULT_ID:-}" && -n "${OCI_REGION:-}" ]]; then
+  if [[ -n "${OCI_CLI_BIN:-}" || -x "${HOME}/bin/oci" ]] || command -v oci >/dev/null 2>&1; then
+    "${ROOT_DIR}/scripts/fetch-vault-env.sh"
+  else
+    echo "OCI CLI not found. Reusing existing runtime env: ${RUNTIME_ENV_FILE}"
+  fi
+else
+  echo "OCI_VAULT_ID or OCI_REGION is missing. Reusing existing runtime env: ${RUNTIME_ENV_FILE}"
+fi
 
 if [[ ! -f "${RUNTIME_ENV_FILE}" ]]; then
   echo ".env.runtime file is missing at ${RUNTIME_ENV_FILE}" >&2
@@ -34,11 +42,12 @@ if [[ -z "${CRAWLER_IMAGE:-}" ]]; then
   exit 1
 fi
 
-# run-batch는 batch/crawler만 사용하지만, compose 파일에 api/nginx 서비스가 존재해서
-# 전체 구성 검증 시 API_IMAGE/NGINX_IMAGE가 비어 있으면 실패할 수 있다.
+# run-batch는 batch/crawler만 사용하지만, compose 파일에 api/nginx/scheduler 서비스가 존재해서
+# 전체 구성 검증 시 API_IMAGE/NGINX_IMAGE/SCHEDULER_IMAGE가 비어 있으면 실패할 수 있다.
 # 실제 pull/run 대상은 batch/crawler이므로 placeholder 값을 채워 검증만 통과시킨다.
 export API_IMAGE="${API_IMAGE:-placeholder/api:latest}"
 export NGINX_IMAGE="${NGINX_IMAGE:-placeholder/nginx:latest}"
+export SCHEDULER_IMAGE="${SCHEDULER_IMAGE:-placeholder/scheduler:latest}"
 
 if [[ -n "${REGISTRY_HOST:-}" && -n "${REGISTRY_USERNAME:-}" && -n "${REGISTRY_PASSWORD:-}" ]]; then
   echo "${REGISTRY_PASSWORD}" | docker login "${REGISTRY_HOST}" -u "${REGISTRY_USERNAME}" --password-stdin
@@ -61,7 +70,11 @@ echo "Batch log file: ${LOG_FILE}"
 
 set +e
 {
-  docker compose --env-file "${DEPLOY_ENV_FILE}" -f "${COMPOSE_FILE}" --profile batch pull batch
+  if [[ "${BATCH_SKIP_PULL:-false}" != "true" ]]; then
+    docker compose --env-file "${DEPLOY_ENV_FILE}" -f "${COMPOSE_FILE}" --profile batch pull batch
+  else
+    echo "Skipping batch image pull because BATCH_SKIP_PULL=true"
+  fi
   docker compose --env-file "${DEPLOY_ENV_FILE}" -f "${COMPOSE_FILE}" --profile batch run --rm batch "$@"
 } 2>&1 | tee "${LOG_FILE}"
 RUN_EXIT_CODE="${PIPESTATUS[0]}"

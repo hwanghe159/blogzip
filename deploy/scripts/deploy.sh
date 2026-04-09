@@ -23,8 +23,8 @@ set -a
 source "${DEPLOY_ENV_FILE}"
 set +a
 
-if [[ -z "${API_IMAGE:-}" || -z "${NGINX_IMAGE:-}" || -z "${BATCH_IMAGE:-}" || -z "${CRAWLER_IMAGE:-}" ]]; then
-  echo "API_IMAGE, NGINX_IMAGE, BATCH_IMAGE, CRAWLER_IMAGE must be set in ${DEPLOY_ENV_FILE}" >&2
+if [[ -z "${API_IMAGE:-}" || -z "${NGINX_IMAGE:-}" || -z "${BATCH_IMAGE:-}" || -z "${CRAWLER_IMAGE:-}" || -z "${SCHEDULER_IMAGE:-}" ]]; then
+  echo "API_IMAGE, NGINX_IMAGE, BATCH_IMAGE, CRAWLER_IMAGE, SCHEDULER_IMAGE must be set in ${DEPLOY_ENV_FILE}" >&2
   exit 1
 fi
 
