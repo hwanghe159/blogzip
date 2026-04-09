@@ -6,6 +6,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="${ROOT_DIR}/compose/docker-compose.prod.yml"
 DEPLOY_ENV_FILE="${ROOT_DIR}/compose/.env.deploy"
 RUNTIME_ENV_FILE="${ROOT_DIR}/compose/.env.runtime"
+LOG_DIR="${ROOT_DIR}/logs/batch"
 
 if [[ ! -f "${DEPLOY_ENV_FILE}" ]]; then
   echo ".env.deploy file is missing at ${DEPLOY_ENV_FILE}" >&2
@@ -43,5 +44,32 @@ if [[ -n "${REGISTRY_HOST:-}" && -n "${REGISTRY_USERNAME:-}" && -n "${REGISTRY_P
   echo "${REGISTRY_PASSWORD}" | docker login "${REGISTRY_HOST}" -u "${REGISTRY_USERNAME}" --password-stdin
 fi
 
-docker compose --env-file "${DEPLOY_ENV_FILE}" -f "${COMPOSE_FILE}" --profile batch pull batch
-docker compose --env-file "${DEPLOY_ENV_FILE}" -f "${COMPOSE_FILE}" --profile batch run --rm batch "$@"
+mkdir -p "${LOG_DIR}"
+
+JOB_NAME="unknown"
+for arg in "$@"; do
+  if [[ "${arg}" == --spring.batch.job.name=* ]]; then
+    JOB_NAME="${arg#*=}"
+    break
+  fi
+done
+SAFE_JOB_NAME="${JOB_NAME//[^a-zA-Z0-9._-]/_}"
+TIMESTAMP="$(date '+%Y%m%d_%H%M%S')"
+LOG_FILE="${LOG_DIR}/${TIMESTAMP}_${SAFE_JOB_NAME}.log"
+
+echo "Batch log file: ${LOG_FILE}"
+
+set +e
+{
+  docker compose --env-file "${DEPLOY_ENV_FILE}" -f "${COMPOSE_FILE}" --profile batch pull batch
+  docker compose --env-file "${DEPLOY_ENV_FILE}" -f "${COMPOSE_FILE}" --profile batch run --rm batch "$@"
+} 2>&1 | tee "${LOG_FILE}"
+RUN_EXIT_CODE="${PIPESTATUS[0]}"
+set -e
+
+if [[ "${RUN_EXIT_CODE}" -ne 0 ]]; then
+  echo "Batch run failed. See log: ${LOG_FILE}" >&2
+  exit "${RUN_EXIT_CODE}"
+fi
+
+echo "Batch run completed. See log: ${LOG_FILE}"
