@@ -2,10 +2,10 @@ name: 배치 잡 실행
 
 on:
   schedule:
-    # 매일 KST 00:00 -> UTC 15:00
-    - cron: "0 15 * * *"
-    # 매일 KST 09:00 -> UTC 00:00
-    - cron: "0 0 * * *"
+    # 매일 KST 00:13 -> UTC 15:13
+    - cron: "13 15 * * *"
+    # 매일 KST 09:13 -> UTC 00:13
+    - cron: "13 0 * * *"
   workflow_dispatch:
     inputs:
       batch_job_name:
@@ -57,11 +57,11 @@ jobs:
           set -euo pipefail
           if [[ "${EVENT_NAME}" == "schedule" ]]; then
             case "${EVENT_SCHEDULE}" in
-              "0 15 * * *")
+              "13 15 * * *")
                 job_name="fetch-new-articles"
                 job_args="${DEFAULT_FETCH_ARGS:-}"
                 ;;
-              "0 0 * * *")
+              "13 0 * * *")
                 job_name="email-send"
                 job_args="${DEFAULT_EMAIL_ARGS:-}"
                 ;;
