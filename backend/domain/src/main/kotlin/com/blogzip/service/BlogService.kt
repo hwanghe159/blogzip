@@ -23,8 +23,26 @@ class BlogService(private val repository: BlogRepository) {
   }
 
   @Transactional(readOnly = true)
+  fun findByUrl(url: String): Blog {
+    val normalizedUrl = url.trim().trimEnd('/')
+    return repository.findByUrl(normalizedUrl)
+      ?: repository.findByUrl("$normalizedUrl/")
+      ?: repository.search(normalizedUrl)
+        .firstOrNull { it.url.trim().trimEnd('/') == normalizedUrl }
+      ?: throw DomainException(ErrorCode.BLOG_NOT_FOUND)
+  }
+
+  @Transactional(readOnly = true)
   fun findAll(): List<Blog> {
     return repository.findAll()
+  }
+
+  @Transactional(readOnly = true)
+  fun findAllByIds(ids: Collection<Long>): List<Blog> {
+    if (ids.isEmpty()) {
+      return emptyList()
+    }
+    return repository.findAllById(ids)
   }
 
   @Transactional

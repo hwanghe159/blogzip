@@ -1,8 +1,25 @@
 package com.blogzip.api.dto.admin
 
-data class BlogCssSelectorUpdateRequest(
-  val cssSelector: String,
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonProperty
+
+data class BlogCssSelectorUpdateRequest @JsonCreator(mode = JsonCreator.Mode.PROPERTIES) constructor(
+  @JsonProperty("cssSelector")
+  val cssSelector: String = "",
+  @JsonProperty("sampleSize")
   val sampleSize: Int = 5,
+  @JsonProperty("force")
+  val force: Boolean = false,
+)
+
+data class BlogCssSelectorUpdateByUrlRequest @JsonCreator(mode = JsonCreator.Mode.PROPERTIES) constructor(
+  @JsonProperty("blogUrl")
+  val blogUrl: String = "",
+  @JsonProperty("cssSelector")
+  val cssSelector: String = "",
+  @JsonProperty("sampleSize")
+  val sampleSize: Int = 5,
+  @JsonProperty("force")
   val force: Boolean = false,
 )
 

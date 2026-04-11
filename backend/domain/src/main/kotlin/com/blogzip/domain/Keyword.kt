@@ -34,7 +34,7 @@ class Keyword(
     return this.head == null
   }
 
-  fun follow(keyword: Keyword): Keyword {
+  fun follow(keyword: Keyword?): Keyword {
     this.head = keyword
     return this
   }

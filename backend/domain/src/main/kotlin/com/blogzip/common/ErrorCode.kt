@@ -2,6 +2,7 @@ package com.blogzip.common
 
 enum class ErrorCode(val message: String) {
   ARTICLE_NOT_FOUND("글을 찾을 수 없음"),
+  ARTICLE_REPORT_NOT_FOUND("글 신고를 찾을 수 없음"),
   ARTICLE_SUMMARY_NOT_FOUND("글 요약 이력을 찾을 수 없음"),
   BLOG_NOT_FOUND("블로그를 찾을 수 없음"),
   BLOG_URL_DUPLICATED("URL에 해당하는 블로그가 이미 존재합니다."),

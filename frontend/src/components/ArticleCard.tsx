@@ -1,4 +1,4 @@
-import { KeyboardEvent, ReactNode } from "react";
+import { KeyboardEvent, ReactNode, useEffect, useState } from "react";
 import { ArticleResponse, ReadLaterArticleResponse } from "../types";
 
 type BaseArticle = ArticleResponse | ReadLaterArticleResponse;
@@ -9,6 +9,7 @@ type ArticleCardProps = {
   onOpen: (article: BaseArticle) => void;
   onToggleReadLater?: (article: BaseArticle, nextValue: boolean) => void;
   blogAction?: ReactNode;
+  bottomAction?: ReactNode;
   busy?: boolean;
 };
 
@@ -26,8 +27,16 @@ export function ArticleCard({
   onOpen,
   onToggleReadLater,
   blogAction,
+  bottomAction,
   busy = false,
 }: ArticleCardProps) {
+  const normalizedImage = article.blog.image?.trim() || null;
+  const [isImageBroken, setIsImageBroken] = useState(false);
+
+  useEffect(() => {
+    setIsImageBroken(false);
+  }, [normalizedImage, article.blog.id]);
+
   function handleCardKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
@@ -46,11 +55,16 @@ export function ArticleCard({
       <header className="article-card__header">
         <div className="article-card__blog">
           <div className="article-card__image-wrap">
-            {article.blog.image ? (
-              <img src={article.blog.image} alt={article.blog.name} className="article-card__image" />
+            {normalizedImage && !isImageBroken ? (
+              <img
+                src={normalizedImage}
+                alt={article.blog.name}
+                className="article-card__image"
+                onError={() => setIsImageBroken(true)}
+              />
             ) : (
               <div className="article-card__image article-card__image--fallback">
-                {article.blog.name.slice(0, 1)}
+                {article.blog.name.slice(0, 1).toUpperCase()}
               </div>
             )}
           </div>
@@ -121,6 +135,15 @@ export function ArticleCard({
             <li key={keyword}>#{keyword}</li>
           ))}
         </ul>
+      ) : null}
+
+      {bottomAction ? (
+        <div
+          className="article-card__bottom-action"
+          onClick={(event) => event.stopPropagation()}
+        >
+          {bottomAction}
+        </div>
       ) : null}
 
     </article>

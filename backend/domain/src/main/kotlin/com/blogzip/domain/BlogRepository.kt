@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query
 interface BlogRepository : JpaRepository<Blog, Long> {
 
   fun existsByUrl(url: String): Boolean
+  fun findByUrl(url: String): Blog?
 
   @Query(
     """

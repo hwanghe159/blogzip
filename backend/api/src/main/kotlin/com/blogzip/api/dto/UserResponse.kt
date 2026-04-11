@@ -1,6 +1,7 @@
 package com.blogzip.api.dto
 
 import com.blogzip.api.auth.AuthenticatedUser
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.blogzip.domain.ReceiveDaysConverter
 import com.blogzip.domain.User
 import java.time.DayOfWeek
@@ -9,6 +10,7 @@ import java.time.LocalDateTime
 data class UserResponse private constructor(
   val id: Long,
   val email: String,
+  @get:JsonProperty("isAdmin")
   val isAdmin: Boolean,
   val receiveDays: List<DayOfWeek>,
   val createdAt: LocalDateTime,

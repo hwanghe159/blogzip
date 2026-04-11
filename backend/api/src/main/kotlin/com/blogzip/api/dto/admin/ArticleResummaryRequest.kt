@@ -2,10 +2,13 @@ package com.blogzip.api.dto.admin
 
 import com.blogzip.ai.summary.SummarizedArticleResult
 import com.blogzip.domain.Article
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonProperty
 import jakarta.validation.Valid
 
-data class ArticleResummaryPreviewRequest(
-  val articleIds: List<Long>,
+data class ArticleResummaryPreviewRequest @JsonCreator(mode = JsonCreator.Mode.PROPERTIES) constructor(
+  @JsonProperty("articleIds")
+  val articleIds: List<Long> = emptyList(),
 )
 
 data class ArticleResummaryPreviewResponse(
@@ -69,13 +72,17 @@ data class ArticleResummaryPreviewItemResponse(
   }
 }
 
-data class ArticleResummaryApplyRequest(
-  val items: List<@Valid ArticleResummaryApplyItem>,
+data class ArticleResummaryApplyRequest @JsonCreator(mode = JsonCreator.Mode.PROPERTIES) constructor(
+  @JsonProperty("items")
+  val items: List<@Valid ArticleResummaryApplyItem> = emptyList(),
 )
 
-data class ArticleResummaryApplyItem(
-  val articleSummaryId: Long,
+data class ArticleResummaryApplyItem @JsonCreator(mode = JsonCreator.Mode.PROPERTIES) constructor(
+  @JsonProperty("articleSummaryId")
+  val articleSummaryId: Long = 0,
+  @JsonProperty("keywords")
   val keywords: List<String> = emptyList(),
+  @JsonProperty("applyKeywords")
   val applyKeywords: Boolean = true,
 )
 

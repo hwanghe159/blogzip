@@ -11,12 +11,41 @@ import org.springframework.transaction.annotation.Transactional
 import java.util.Collections
 import java.util.Locale
 
+data class KeywordHeadUpdateResult(
+  val keywordId: Long,
+  val beforeHeadKeywordId: Long?,
+  val afterHeadKeywordId: Long?,
+)
+
 @Service
 class KeywordService(
   private val keywordRepository: KeywordRepository,
   private val articleKeywordRepository: ArticleKeywordRepository,
   private val articleRepository: ArticleRepository,
 ) {
+
+  @Transactional
+  fun createHeadKeyword(rawValue: String, isVisible: Boolean): Keyword {
+    val value = rawValue.trim()
+    if (value.isBlank()) {
+      throw DomainException(ErrorCode.KEYWORD_UPDATE_FAILED)
+    }
+
+    val existing = keywordRepository.findByValue(value)
+    if (existing != null) {
+      existing.follow(null)
+      existing.updateVisible(isVisible)
+      return existing
+    }
+
+    return keywordRepository.save(
+      Keyword(
+        value = value,
+        head = null,
+        isVisible = isVisible,
+      )
+    )
+  }
 
   @Transactional
   fun addArticleKeywords(articleId: Long, inputValues: List<String>) {
@@ -135,6 +164,18 @@ class KeywordService(
   }
 
   @Transactional
+  fun updateById(keywordId: Long, toBeValue: String?, visible: Boolean?) {
+    val target = keywordRepository.findByIdOrNull(keywordId)
+      ?: throw DomainException(ErrorCode.KEYWORD_NOT_FOUND)
+    if (toBeValue != null) {
+      updateValue(target, toBeValue)
+    }
+    if (visible != null) {
+      target.updateVisible(visible)
+    }
+  }
+
+  @Transactional
   fun merge(srcValue: String, destValue: String) {
     val source = keywordRepository.findByValue(srcValue)
       ?: throw DomainException(ErrorCode.KEYWORD_NOT_FOUND)
@@ -150,6 +191,55 @@ class KeywordService(
     val destination = keywordRepository.findByIdOrNull(destKeywordId)
       ?: throw DomainException(ErrorCode.KEYWORD_NOT_FOUND)
     merge(source, destination)
+  }
+
+  @Transactional
+  fun updateHead(keywordId: Long, headKeywordId: Long?): KeywordHeadUpdateResult {
+    val keyword = keywordRepository.findByIdOrNull(keywordId)
+      ?: throw DomainException(ErrorCode.KEYWORD_NOT_FOUND)
+    val beforeHeadKeywordId = keyword.head?.id
+
+    if (keyword.isHead()) {
+      if (headKeywordId == null) {
+        return KeywordHeadUpdateResult(
+          keywordId = keyword.id!!,
+          beforeHeadKeywordId = beforeHeadKeywordId,
+          afterHeadKeywordId = null,
+        )
+      }
+      val destination = keywordRepository.findByIdOrNull(headKeywordId)
+        ?: throw DomainException(ErrorCode.KEYWORD_NOT_FOUND)
+      if (!destination.isHead()) {
+        throw DomainException(ErrorCode.KEYWORD_UPDATE_FAILED)
+      }
+      merge(keyword, destination)
+      return KeywordHeadUpdateResult(
+        keywordId = keyword.id!!,
+        beforeHeadKeywordId = beforeHeadKeywordId,
+        afterHeadKeywordId = destination.id,
+      )
+    }
+
+    if (headKeywordId == null) {
+      keyword.follow(null)
+      return KeywordHeadUpdateResult(
+        keywordId = keyword.id!!,
+        beforeHeadKeywordId = beforeHeadKeywordId,
+        afterHeadKeywordId = null,
+      )
+    }
+
+    val destination = keywordRepository.findByIdOrNull(headKeywordId)
+      ?: throw DomainException(ErrorCode.KEYWORD_NOT_FOUND)
+    if (!destination.isHead()) {
+      throw DomainException(ErrorCode.KEYWORD_UPDATE_FAILED)
+    }
+    keyword.follow(destination)
+    return KeywordHeadUpdateResult(
+      keywordId = keyword.id!!,
+      beforeHeadKeywordId = beforeHeadKeywordId,
+      afterHeadKeywordId = destination.id,
+    )
   }
 
   private fun updateValue(keyword: Keyword, value: String) {

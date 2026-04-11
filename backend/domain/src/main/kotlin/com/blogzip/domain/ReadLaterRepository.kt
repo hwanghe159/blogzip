@@ -21,5 +21,7 @@ interface ReadLaterRepository : JpaRepository<ReadLater, Long> {
   )
   fun search(userId: Long, next: Long?, pageable: Pageable): List<ReadLater>
 
+  fun deleteAllByUserId(userId: Long)
+
   fun deleteAllByUserIdAndArticleId(userId: Long, articleId: Long)
 }

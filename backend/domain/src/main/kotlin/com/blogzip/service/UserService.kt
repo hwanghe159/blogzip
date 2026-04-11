@@ -2,6 +2,7 @@ package com.blogzip.service
 
 import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
+import com.blogzip.domain.ReadLaterRepository
 import com.blogzip.domain.ReceiveDaysConverter
 import com.blogzip.domain.SocialType
 import com.blogzip.domain.User
@@ -11,7 +12,10 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.DayOfWeek
 
 @Service
-class UserService(private val repository: UserRepository) {
+class UserService(
+  private val repository: UserRepository,
+  private val readLaterRepository: ReadLaterRepository,
+) {
 
   @Transactional(readOnly = true)
   fun findAll(): List<User> {
@@ -62,6 +66,7 @@ class UserService(private val repository: UserRepository) {
     if (user.isDeleted) {
       throw DomainException(ErrorCode.USER_WITHDRAWN)
     }
+    readLaterRepository.deleteAllByUserId(id)
     user.withdraw()
   }
 }

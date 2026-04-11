@@ -13,6 +13,17 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 
+data class AdminRecentArticle(
+  val article: Article,
+  val blog: Blog,
+  val appliedSummary: ArticleSummary?,
+)
+
+data class AdminRecentArticles(
+  val items: List<AdminRecentArticle>,
+  val next: Long?,
+)
+
 @Service
 class ArticleQueryService(
   private val articleRepository: ArticleRepository,
@@ -226,6 +237,35 @@ class ArticleQueryService(
   @Transactional(readOnly = true)
   fun findAllById(articleIds: List<Long>): List<Article> {
     return articleRepository.findAllById(articleIds)
+  }
+
+  @Transactional(readOnly = true)
+  fun searchRecentForAdmin(next: Long?, size: Int): AdminRecentArticles {
+    val articles = articleRepository.searchRecent(next, articlePageRequest(size))
+    if (articles.isEmpty()) {
+      return AdminRecentArticles(items = emptyList(), next = null)
+    }
+
+    val existsNext = articles.size == size + 1
+    val finalArticles = articles.take(size)
+    val blogsById = blogRepository.findAllById(finalArticles.map { it.blogId }.distinct())
+      .associateBy { it.id!! }
+    val appliedSummaries = articleSummaryRepository
+      .findAllByArticleIdInAndIsAppliedTrue(finalArticles.mapNotNull { it.id })
+      .associateBy { it.articleId }
+
+    val items = finalArticles.mapNotNull { article ->
+      val blog = blogsById[article.blogId] ?: return@mapNotNull null
+      AdminRecentArticle(
+        article = article,
+        blog = blog,
+        appliedSummary = article.id?.let { appliedSummaries[it] },
+      )
+    }
+    return AdminRecentArticles(
+      items = items,
+      next = if (existsNext) finalArticles.last().id else null,
+    )
   }
 
   private fun getHeadKeywordId(keywordId: Long): Long {

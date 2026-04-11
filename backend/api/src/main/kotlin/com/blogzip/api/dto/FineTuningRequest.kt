@@ -1,6 +1,11 @@
 package com.blogzip.api.dto
 
-data class FineTuningRequest(
-  val tunedSummary: String,
-  val keywords: List<String>,
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonProperty
+
+data class FineTuningRequest @JsonCreator(mode = JsonCreator.Mode.PROPERTIES) constructor(
+  @JsonProperty("tunedSummary")
+  val tunedSummary: String = "",
+  @JsonProperty("keywords")
+  val keywords: List<String> = emptyList(),
 )

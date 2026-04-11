@@ -16,6 +16,7 @@ private val ErrorCode.toHttpStatus: HttpStatus
   get() {
     return when (this) {
       ErrorCode.ARTICLE_NOT_FOUND -> HttpStatus.NOT_FOUND
+      ErrorCode.ARTICLE_REPORT_NOT_FOUND -> HttpStatus.NOT_FOUND
       ErrorCode.ARTICLE_SUMMARY_NOT_FOUND -> HttpStatus.NOT_FOUND
       ErrorCode.BLOG_NOT_FOUND -> HttpStatus.NOT_FOUND
       ErrorCode.BLOG_URL_DUPLICATED -> HttpStatus.CONFLICT

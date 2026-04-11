@@ -1,5 +1,6 @@
 package com.blogzip.api.dto.admin
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.blogzip.dto.KeywordOverview
 import java.time.LocalDateTime
 
@@ -44,6 +45,7 @@ data class KeywordOverviewResponse(
 data class HeadKeywordOverviewResponse(
   val id: Long,
   val value: String,
+  @get:JsonProperty("isVisible")
   val isVisible: Boolean,
   val articleCount: Int,
   val createdAt: LocalDateTime,
@@ -53,6 +55,7 @@ data class HeadKeywordOverviewResponse(
 data class FollowerKeywordOverviewResponse(
   val id: Long,
   val value: String,
+  @get:JsonProperty("isVisible")
   val isVisible: Boolean,
   val createdAt: LocalDateTime,
 )

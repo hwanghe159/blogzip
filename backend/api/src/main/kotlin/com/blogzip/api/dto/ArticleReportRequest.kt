@@ -1,15 +1,19 @@
 package com.blogzip.api.dto
 
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.blogzip.domain.ArticleReport
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 import java.time.LocalDateTime
 
-data class ArticleReportRequest(
+data class ArticleReportRequest @JsonCreator(mode = JsonCreator.Mode.PROPERTIES) constructor(
+  @JsonProperty("reason")
   @field:NotBlank(message = "reason은 필수입니다.")
   @field:Size(max = 100, message = "reason은 100자 이하여야 합니다.")
   val reason: String,
 
+  @JsonProperty("detail")
   @field:Size(max = 1000, message = "detail은 1000자 이하여야 합니다.")
   val detail: String? = null,
 )

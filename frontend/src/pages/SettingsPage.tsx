@@ -3,47 +3,22 @@ import {
   ApiError,
   createBlog,
   getAllBlogs,
-  getMyProfile,
   getSubscriptions,
   searchBlogs,
   subscribeBlog,
   unsubscribeBlog,
-  updateReceiveDays,
 } from "../api";
 import {
   BlogResponse,
-  DayOfWeek,
   SessionState,
   SubscriptionResponse,
-  UserResponse,
 } from "../types";
 import { EmptyState } from "../components/EmptyState";
 import { Toast } from "../components/Toast";
 
-const dayOrder: DayOfWeek[] = [
-  "MONDAY",
-  "TUESDAY",
-  "WEDNESDAY",
-  "THURSDAY",
-  "FRIDAY",
-  "SATURDAY",
-  "SUNDAY",
-];
-
-const dayLabels: Record<DayOfWeek, string> = {
-  MONDAY: "월",
-  TUESDAY: "화",
-  WEDNESDAY: "수",
-  THURSDAY: "목",
-  FRIDAY: "금",
-  SATURDAY: "토",
-  SUNDAY: "일",
-};
-
 type SettingsPageProps = {
   session: SessionState;
   loginUrl: string;
-  onUserUpdated: (nextUser: UserResponse) => void;
 };
 
 type SettingsToast = {
@@ -55,27 +30,56 @@ type SettingsToast = {
 
 const SUBSCRIPTION_COLLAPSE_COUNT = 8;
 
-export function SettingsPage({ session, loginUrl, onUserUpdated }: SettingsPageProps) {
+function BlogListMeta({ blog }: { blog: SubscriptionResponse["blog"] | BlogResponse }) {
+  const image = blog.image?.trim() || null;
+  const [isImageBroken, setIsImageBroken] = useState(false);
+
+  useEffect(() => {
+    setIsImageBroken(false);
+  }, [image]);
+
+  const shouldShowImage = !!image && !isImageBroken;
+  return (
+    <div className="blog-list-meta">
+      <div className="blog-list-meta__image-wrap">
+        {shouldShowImage ? (
+          <img
+            src={image as string}
+            alt={blog.name}
+            className="blog-list-meta__image"
+            onError={() => setIsImageBroken(true)}
+          />
+        ) : (
+          <div className="blog-list-meta__image blog-list-meta__image--fallback">
+            {blog.name.slice(0, 1).toUpperCase()}
+          </div>
+        )}
+      </div>
+      <div className="blog-list-meta__text">
+        <strong>{blog.name}</strong>
+        <p>{blog.url}</p>
+      </div>
+    </div>
+  );
+}
+
+export function SettingsPage({ session, loginUrl }: SettingsPageProps) {
   const [loading, setLoading] = useState<boolean>(false);
   const [toast, setToast] = useState<SettingsToast | null>(null);
-  const [dayNotice, setDayNotice] = useState<string | null>(null);
-  const [dayNoticeTone, setDayNoticeTone] = useState<"success" | "error">("success");
   const [subscriptions, setSubscriptions] = useState<SubscriptionResponse[]>([]);
   const [allBlogs, setAllBlogs] = useState<BlogResponse[]>([]);
   const [locallyUnsubscribedBlogIds, setLocallyUnsubscribedBlogIds] = useState<Set<number>>(new Set());
-  const [receiveDays, setReceiveDays] = useState<DayOfWeek[]>(session.user?.receiveDays ?? []);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [hasSearched, setHasSearched] = useState<boolean>(false);
   const [searchResults, setSearchResults] = useState<SubscriptionResponse["blog"][]>([]);
   const [searching, setSearching] = useState<boolean>(false);
   const [newBlogUrl, setNewBlogUrl] = useState<string>("");
   const [creatingBlog, setCreatingBlog] = useState<boolean>(false);
-  const [savingDays, setSavingDays] = useState<boolean>(false);
+  const [bulkSubscribing, setBulkSubscribing] = useState<boolean>(false);
   const [submittingBlogId, setSubmittingBlogId] = useState<number | null>(null);
   const [showAllSubscriptions, setShowAllSubscriptions] = useState<boolean>(false);
   const toastTimerRef = useRef<number | null>(null);
   const toastSeqRef = useRef<number>(0);
-  const dayNoticeTimerRef = useRef<number | null>(null);
 
   const token = session.token;
   const isAuthenticated = session.status === "authenticated" && !!token;
@@ -125,16 +129,9 @@ export function SettingsPage({ session, loginUrl, onUserUpdated }: SettingsPageP
   );
 
   useEffect(() => {
-    setReceiveDays(session.user?.receiveDays ?? []);
-  }, [session.user]);
-
-  useEffect(() => {
     return () => {
       if (toastTimerRef.current !== null) {
         window.clearTimeout(toastTimerRef.current);
-      }
-      if (dayNoticeTimerRef.current !== null) {
-        window.clearTimeout(dayNoticeTimerRef.current);
       }
     };
   }, []);
@@ -161,12 +158,7 @@ export function SettingsPage({ session, loginUrl, onUserUpdated }: SettingsPageP
       if (!token) return;
       setLoading(true);
       try {
-        const [profile, mySubscriptions] = await Promise.all([
-          getMyProfile(token),
-          getSubscriptions(token),
-        ]);
-        onUserUpdated(profile);
-        setReceiveDays(profile.receiveDays);
+        const mySubscriptions = await getSubscriptions(token);
         setLocallyUnsubscribedBlogIds(new Set());
         setSubscriptions(mySubscriptions);
         setShowAllSubscriptions(false);
@@ -188,52 +180,7 @@ export function SettingsPage({ session, loginUrl, onUserUpdated }: SettingsPageP
     }
 
     bootstrap();
-  }, [token, onUserUpdated]);
-
-  function toggleReceiveDay(day: DayOfWeek) {
-    setReceiveDays((prev) =>
-      prev.includes(day) ? prev.filter((item) => item !== day) : [...prev, day]
-    );
-  }
-
-  async function handleSaveReceiveDays() {
-    if (!token) return;
-    setSavingDays(true);
-    setDayNotice(null);
-    try {
-      const sorted = [...receiveDays].sort(
-        (a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b)
-      );
-      const updated = await updateReceiveDays(token, sorted);
-      onUserUpdated(updated);
-      setReceiveDays(updated.receiveDays);
-      setDayNotice("저장됨");
-      setDayNoticeTone("success");
-      if (dayNoticeTimerRef.current !== null) {
-        window.clearTimeout(dayNoticeTimerRef.current);
-      }
-      dayNoticeTimerRef.current = window.setTimeout(() => {
-        setDayNotice(null);
-        dayNoticeTimerRef.current = null;
-      }, 1800);
-    } catch (error) {
-      const message =
-        error instanceof ApiError
-          ? error.message
-          : "이메일 수신 요일 저장에 실패했습니다.";
-      setDayNotice(message);
-      setDayNoticeTone("error");
-      if (dayNoticeTimerRef.current !== null) {
-        window.clearTimeout(dayNoticeTimerRef.current);
-      }
-      dayNoticeTimerRef.current = window.setTimeout(() => {
-        setDayNotice(null);
-        dayNoticeTimerRef.current = null;
-      }, 2600);
-    } finally {
-      setSavingDays(false);
-    }
-  }
+  }, [token]);
 
   async function handleSearchBlogs() {
     const trimmed = searchQuery.trim();
@@ -343,12 +290,68 @@ export function SettingsPage({ session, loginUrl, onUserUpdated }: SettingsPageP
     }
   }
 
+  async function handleSubscribeAllRecommended() {
+    if (!token) return;
+    const targets = recommendedBlogs
+      .filter((blog) => !activeSubscribedBlogIds.has(blog.id))
+      .map((blog) => blog.id);
+    if (targets.length === 0) {
+      showToast("이미 모두 구독 중입니다.", "info");
+      return;
+    }
+
+    setBulkSubscribing(true);
+    try {
+      const results = await Promise.allSettled(
+        targets.map((blogId) => subscribeBlog(token, blogId))
+      );
+      const succeeded = results
+        .filter(
+          (result): result is PromiseFulfilledResult<SubscriptionResponse> =>
+            result.status === "fulfilled"
+        )
+        .map((result) => result.value);
+      const failedCount = results.length - succeeded.length;
+
+      if (succeeded.length > 0) {
+        setLocallyUnsubscribedBlogIds((prev) => {
+          const next = new Set(prev);
+          succeeded.forEach((subscription) => next.delete(subscription.blog.id));
+          return next;
+        });
+        setSubscriptions((prev) => {
+          const map = new Map(prev.map((subscription) => [subscription.blog.id, subscription]));
+          succeeded.forEach((subscription) => {
+            map.set(subscription.blog.id, subscription);
+          });
+          return Array.from(map.values());
+        });
+      }
+
+      if (failedCount === 0) {
+        showToast(`${succeeded.length}개 블로그를 모두 구독했어요.`, "success");
+      } else {
+        showToast(
+          `${succeeded.length}개 구독 완료, ${failedCount}개는 실패했어요.`,
+          "info",
+          3200
+        );
+      }
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : "전체 구독 처리에 실패했습니다.";
+      showToast(message, "error");
+    } finally {
+      setBulkSubscribing(false);
+    }
+  }
+
   if (!isAuthenticated) {
     return (
       <section className="page-section">
         <EmptyState
           title="로그인 후 설정할 수 있어요"
-          description="구독 설정과 이메일 수신 요일은 로그인한 사용자에게 저장됩니다."
+          description="구독 설정은 로그인한 사용자에게 저장됩니다."
           action={
             <a className="btn btn--primary" href={loginUrl}>
               Google로 로그인
@@ -364,59 +367,13 @@ export function SettingsPage({ session, loginUrl, onUserUpdated }: SettingsPageP
       <div className="page-head">
         <div>
           <p className="eyebrow">SETTINGS</p>
-          <h1>구독/이메일 설정</h1>
+          <h1>구독 설정</h1>
         </div>
       </div>
 
       {loading ? <p className="status-text">설정을 불러오는 중...</p> : null}
 
       <div className="settings-grid">
-        <section className="panel">
-          <h2>이메일 수신 요일</h2>
-          <p className="panel__description">
-            선택한 요일 오전 9시에 새로운 글을 요약해서 보내드려요.
-          </p>
-          <p className="panel__description panel__description--email">
-            수신 이메일: <strong>{session.user?.email}</strong>
-          </p>
-          <div className="day-picker">
-            {dayOrder.map((day) => {
-              const active = receiveDays.includes(day);
-              return (
-                <button
-                  key={day}
-                  type="button"
-                  className={active ? "day-chip day-chip--active" : "day-chip"}
-                  onClick={() => toggleReceiveDay(day)}
-                >
-                  {dayLabels[day]}
-                </button>
-              );
-            })}
-          </div>
-          <div className="day-save-row">
-            <button
-              type="button"
-              className="btn btn--primary btn--compact"
-              disabled={savingDays}
-              onClick={handleSaveReceiveDays}
-            >
-              {savingDays ? "저장 중..." : "저장"}
-            </button>
-            {dayNotice ? (
-              <span
-                className={
-                  dayNoticeTone === "success"
-                    ? "inline-hint inline-hint--success"
-                    : "inline-hint inline-hint--error"
-                }
-              >
-                {dayNotice}
-              </span>
-            ) : null}
-          </div>
-        </section>
-
         <section className="panel">
           <h2>구독중인 블로그</h2>
           <p className="panel__description">
@@ -425,16 +382,13 @@ export function SettingsPage({ session, loginUrl, onUserUpdated }: SettingsPageP
           {orderedSubscriptions.length === 0 ? (
             <EmptyState
               title="구독 블로그가 없습니다"
-              description="URL을 추가하거나 검색 결과에서 구독을 눌러 시작해 보세요."
+              description="아직 구독 중인 블로그가 없어요. 아래에서 블로그를 검색하거나 URL을 추가해 시작해 보세요."
             />
           ) : (
             <ul className="list">
               {visibleSubscriptions.map((subscription) => (
                 <li key={subscription.id} className="list__item">
-                  <div>
-                    <strong>{subscription.blog.name}</strong>
-                    <p>{subscription.blog.url}</p>
-                  </div>
+                  <BlogListMeta blog={subscription.blog} />
                   {activeSubscribedBlogIds.has(subscription.blog.id) ? (
                     <button
                       type="button"
@@ -503,10 +457,7 @@ export function SettingsPage({ session, loginUrl, onUserUpdated }: SettingsPageP
             <ul className="list">
               {searchResults.map((blog) => (
                 <li key={blog.id} className="list__item">
-                  <div>
-                    <strong>{blog.name}</strong>
-                    <p>{blog.url}</p>
-                  </div>
+                  <BlogListMeta blog={blog} />
                   {activeSubscribedBlogIds.has(blog.id) ? (
                     <button
                       type="button"
@@ -566,9 +517,21 @@ export function SettingsPage({ session, loginUrl, onUserUpdated }: SettingsPageP
 
       <section className="panel">
         <h2>이런 블로그는 어때요?</h2>
-        <p className="panel__description">
-          아직 구독하지 않은 블로그를 모아봤어요.
-        </p>
+        <div className="panel-head-inline">
+          <p className="panel__description">
+            아직 구독하지 않은 블로그를 모아봤어요.
+          </p>
+          {recommendedBlogs.length > 0 ? (
+            <button
+              type="button"
+              className="btn btn--primary btn--small"
+              disabled={bulkSubscribing}
+              onClick={handleSubscribeAllRecommended}
+            >
+              {bulkSubscribing ? "전체 구독 중..." : "전체 구독"}
+            </button>
+          ) : null}
+        </div>
         {recommendedBlogs.length === 0 ? (
           <EmptyState
             title="추천할 블로그가 없어요"
@@ -578,10 +541,7 @@ export function SettingsPage({ session, loginUrl, onUserUpdated }: SettingsPageP
           <ul className="list">
             {recommendedBlogs.map((blog) => (
               <li key={blog.id} className="list__item">
-                <div>
-                  <strong>{blog.name}</strong>
-                  <p>{blog.url}</p>
-                </div>
+                <BlogListMeta blog={blog} />
                 <button
                   type="button"
                   className="btn btn--primary btn--small"

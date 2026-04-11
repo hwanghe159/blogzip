@@ -30,6 +30,18 @@ interface ArticleRepository : JpaRepository<Article, Long> {
     """
             select article
             from Article article
+            where (:next is null or article.id <= :next)
+        """
+  )
+  fun searchRecent(
+    next: Long?,
+    pageable: Pageable,
+  ): List<Article>
+
+  @Query(
+    """
+            select article
+            from Article article
             where article.blogId in :blogIds
             and article.createdDate >= :from
             and article.createdDate <= :to

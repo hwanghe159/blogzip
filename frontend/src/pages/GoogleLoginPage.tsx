@@ -35,10 +35,12 @@ export function GoogleLoginPage({ onLoginSuccess }: GoogleLoginPageProps) {
       .catch((error) => {
         const messageText =
           error instanceof ApiError
-            ? error.message
+            ? error.code === "USER_WITHDRAWN"
+              ? "탈퇴한 계정은 다시 로그인할 수 없습니다."
+              : error.message
             : "구글 로그인 중 오류가 발생했습니다.";
         setMessage(messageText);
-        window.setTimeout(() => navigate("/"), 1000);
+        window.setTimeout(() => navigate("/"), 1400);
       });
   }, [location.search, navigate, onLoginSuccess]);
 

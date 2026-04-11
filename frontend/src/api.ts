@@ -1,4 +1,19 @@
 import {
+  AdminArticleReportResponse,
+  AdminArticleReportStatus,
+  AdminArticleCreatedDateUpdateResponse,
+  AdminArticleResummaryApplyResponse,
+  AdminArticleResummaryPreviewResponse,
+  AdminArticleResponse,
+  AdminArticleSummaryResponse,
+  AdminBlogCssSelectorUpdateResponse,
+  AdminCssSelectorSuggestResponse,
+  AdminCssSelectorTestResponse,
+  AdminKeywordHeadUpdateResponse,
+  AdminKeywordCreateResponse,
+  AdminKeywordOverviewResponse,
+  AdminRecentArticleResponse,
+  ArticleReportResponse,
   ApiErrorResponse,
   ArticleResponse,
   BlogResponse,
@@ -30,7 +45,7 @@ export class ApiError extends Error {
 }
 
 type RequestOptions = {
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   token?: string | null;
   query?: Record<string, string | number | null | undefined>;
@@ -112,6 +127,7 @@ export function buildGoogleAuthUrl(): string {
     response_type: "code",
     scope: "openid profile email",
     access_type: "offline",
+    prompt: "select_account",
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 }
@@ -134,6 +150,13 @@ export async function updateReceiveDays(
     method: "PUT",
     token,
     body: { receiveDays },
+  });
+}
+
+export async function withdrawMe(token: string): Promise<void> {
+  await request<void>("/api/v1/me", {
+    method: "DELETE",
+    token,
   });
 }
 
@@ -194,6 +217,22 @@ export async function markArticleRead(token: string, articleId: number): Promise
   });
 }
 
+export async function reportArticle(
+  token: string,
+  articleId: number,
+  reason: string,
+  detail?: string
+): Promise<ArticleReportResponse> {
+  return request<ArticleReportResponse>(`/api/v1/article/${articleId}/report`, {
+    method: "POST",
+    token,
+    body: {
+      reason,
+      detail,
+    },
+  });
+}
+
 export async function searchBlogs(query: string): Promise<SubscriptionResponse["blog"][]> {
   return request<SubscriptionResponse["blog"][]>("/api/v1/blog/search", {
     query: { query },
@@ -235,5 +274,293 @@ export async function unsubscribeBlog(token: string, blogId: number): Promise<vo
     method: "DELETE",
     token,
     body: { blogId },
+  });
+}
+
+export async function getAdminKeywordOverview(
+  token: string
+): Promise<AdminKeywordOverviewResponse> {
+  return request<AdminKeywordOverviewResponse>("/api/admin/keyword/overview", { token });
+}
+
+export async function updateAdminKeyword(
+  token: string,
+  currentValue: string,
+  payload: {
+    value?: string | null;
+    isVisible?: boolean | null;
+  }
+): Promise<void> {
+  await request<void>(`/api/admin/keyword/${encodeURIComponent(currentValue)}`, {
+    method: "PATCH",
+    token,
+    body: payload,
+  });
+}
+
+export async function updateAdminKeywordById(
+  token: string,
+  keywordId: number,
+  payload: {
+    value?: string | null;
+    isVisible?: boolean | null;
+  }
+): Promise<void> {
+  await request<void>(`/api/admin/keyword/id/${keywordId}`, {
+    method: "PATCH",
+    token,
+    body: payload,
+  });
+}
+
+export async function mergeAdminKeywords(
+  token: string,
+  src: string,
+  dest: string
+): Promise<void> {
+  await request<void>("/api/admin/keyword/merge", {
+    method: "POST",
+    token,
+    query: { src, dest },
+  });
+}
+
+export async function mergeAdminKeywordsById(
+  token: string,
+  srcKeywordId: number,
+  destKeywordId: number
+): Promise<void> {
+  await request<void>("/api/admin/keyword/merge/by-id", {
+    method: "POST",
+    token,
+    body: { srcKeywordId, destKeywordId },
+  });
+}
+
+export async function updateAdminKeywordHead(
+  token: string,
+  keywordId: number,
+  headKeywordId: number | null
+): Promise<AdminKeywordHeadUpdateResponse> {
+  return request<AdminKeywordHeadUpdateResponse>(`/api/admin/keyword/${keywordId}/head`, {
+    method: "PATCH",
+    token,
+    body: { headKeywordId },
+  });
+}
+
+export async function createAdminKeyword(
+  token: string,
+  payload: {
+    value: string;
+    isVisible?: boolean;
+  }
+): Promise<AdminKeywordCreateResponse> {
+  return request<AdminKeywordCreateResponse>("/api/admin/keyword", {
+    method: "POST",
+    token,
+    body: payload,
+  });
+}
+
+export async function getAdminRecentArticles(
+  token: string,
+  params: { next?: number | null; size?: number } = {}
+): Promise<PaginationResponse<AdminRecentArticleResponse>> {
+  return request<PaginationResponse<AdminRecentArticleResponse>>("/api/admin/article/recent", {
+    token,
+    query: {
+      next: params.next,
+      size: params.size ?? 20,
+    },
+  });
+}
+
+export async function getAdminArticleReports(
+  token: string,
+  articleId: number
+): Promise<AdminArticleReportResponse[]> {
+  return request<AdminArticleReportResponse[]>(`/api/admin/article/${articleId}/report`, {
+    token,
+  });
+}
+
+export async function getAdminReceivedReports(
+  token: string,
+  params: { next?: number | null; size?: number } = {}
+): Promise<PaginationResponse<AdminArticleReportResponse>> {
+  return request<PaginationResponse<AdminArticleReportResponse>>("/api/admin/report/received", {
+    token,
+    query: {
+      next: params.next,
+      size: params.size ?? 20,
+    },
+  });
+}
+
+export async function updateAdminArticleReportStatus(
+  token: string,
+  reportId: number,
+  status: AdminArticleReportStatus
+): Promise<AdminArticleReportResponse> {
+  return request<AdminArticleReportResponse>(`/api/admin/report/${reportId}/status`, {
+    method: "PATCH",
+    token,
+    body: { status },
+  });
+}
+
+export async function updateAdminArticleCreatedDate(
+  token: string,
+  articleId: number,
+  createdDate: string
+): Promise<AdminArticleCreatedDateUpdateResponse> {
+  return request<AdminArticleCreatedDateUpdateResponse>(
+    `/api/admin/article/${articleId}/created-date`,
+    {
+      method: "PATCH",
+      token,
+      body: { createdDate },
+    }
+  );
+}
+
+export async function updateAdminArticleCreatedDates(
+  token: string,
+  items: { articleId: number; createdDate: string }[]
+): Promise<AdminArticleCreatedDateUpdateResponse[]> {
+  return request<AdminArticleCreatedDateUpdateResponse[]>("/api/admin/article/created-date", {
+    method: "PATCH",
+    token,
+    body: { items },
+  });
+}
+
+export async function getAdminArticleSummaries(
+  token: string,
+  articleId: number
+): Promise<AdminArticleSummaryResponse[]> {
+  return request<AdminArticleSummaryResponse[]>(`/api/admin/article/${articleId}/summary`, {
+    token,
+  });
+}
+
+export async function applyAdminArticleSummary(
+  token: string,
+  summaryId: number
+): Promise<AdminArticleSummaryResponse> {
+  return request<AdminArticleSummaryResponse>(`/api/admin/article/summary/${summaryId}/apply`, {
+    method: "PATCH",
+    token,
+  });
+}
+
+export async function addAdminArticleKeywords(
+  token: string,
+  articleId: number,
+  values: string[]
+): Promise<AdminArticleResponse> {
+  return request<AdminArticleResponse>(`/api/admin/article/${articleId}/keyword`, {
+    method: "POST",
+    token,
+    body: { values },
+  });
+}
+
+export async function previewAdminArticleResummary(
+  token: string,
+  articleIds: number[]
+): Promise<AdminArticleResummaryPreviewResponse> {
+  return request<AdminArticleResummaryPreviewResponse>("/api/admin/article/re-summary/preview", {
+    method: "POST",
+    token,
+    body: { articleIds },
+  });
+}
+
+export async function applyAdminArticleResummary(
+  token: string,
+  items: {
+    articleSummaryId: number;
+    keywords: string[];
+    applyKeywords: boolean;
+  }[]
+): Promise<AdminArticleResummaryApplyResponse> {
+  return request<AdminArticleResummaryApplyResponse>("/api/admin/article/re-summary/apply", {
+    method: "POST",
+    token,
+    body: { items },
+  });
+}
+
+export async function testAdminCssSelector(
+  token: string,
+  payload: {
+    blogUrl: string;
+    cssSelector: string;
+    sampleSize?: number;
+  }
+): Promise<AdminCssSelectorTestResponse> {
+  return request<AdminCssSelectorTestResponse>("/api/admin/crawler/css-selector/test", {
+    method: "POST",
+    token,
+    body: payload,
+  });
+}
+
+export async function suggestAdminCssSelector(
+  token: string,
+  payload: {
+    blogUrl: string;
+    candidateLimit?: number;
+    sampleSize?: number;
+  }
+): Promise<AdminCssSelectorSuggestResponse> {
+  return request<AdminCssSelectorSuggestResponse>("/api/admin/crawler/css-selector/suggest", {
+    method: "POST",
+    token,
+    body: payload,
+  });
+}
+
+export async function updateAdminBlogCssSelector(
+  token: string,
+  blogId: number,
+  payload: {
+    cssSelector: string;
+    sampleSize?: number;
+    force?: boolean;
+  }
+): Promise<AdminBlogCssSelectorUpdateResponse> {
+  return request<AdminBlogCssSelectorUpdateResponse>(`/api/admin/blog/${blogId}/css-selector`, {
+    method: "PATCH",
+    token,
+    body: payload,
+  });
+}
+
+export async function updateAdminBlogCssSelectorByUrl(
+  token: string,
+  payload: {
+    blogUrl: string;
+    cssSelector: string;
+    sampleSize?: number;
+    force?: boolean;
+  }
+): Promise<AdminBlogCssSelectorUpdateResponse> {
+  return request<AdminBlogCssSelectorUpdateResponse>("/api/admin/blog/css-selector/by-url", {
+    method: "POST",
+    token,
+    body: payload,
+  });
+}
+
+export async function rerunAdminOpenAiBatch(
+  token: string,
+  batchId: string
+): Promise<boolean> {
+  return request<boolean>(`/api/admin/openai/batches/${encodeURIComponent(batchId)}/re-run`, {
+    method: "POST",
+    token,
   });
 }

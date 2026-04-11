@@ -1,8 +1,14 @@
 package com.blogzip.api.dto.admin
 
-data class CssSelectorTestRequest(
-  val blogUrl: String,
-  val cssSelector: String,
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonProperty
+
+data class CssSelectorTestRequest @JsonCreator(mode = JsonCreator.Mode.PROPERTIES) constructor(
+  @JsonProperty("blogUrl")
+  val blogUrl: String = "",
+  @JsonProperty("cssSelector")
+  val cssSelector: String = "",
+  @JsonProperty("sampleSize")
   val sampleSize: Int = 5,
 )
 

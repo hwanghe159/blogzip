@@ -15,14 +15,19 @@ import com.blogzip.logger
 import com.blogzip.notification.email.EmailSender
 import com.blogzip.service.ArticleQueryService
 import com.blogzip.slack.SlackSender
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonProperty
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.web.bind.annotation.*
 
-data class TestEmailRequest(
+data class TestEmailRequest @JsonCreator(mode = JsonCreator.Mode.PROPERTIES) constructor(
+  @JsonProperty("to")
   val to: String = "",
+  @JsonProperty("subject")
   val subject: String = "",
+  @JsonProperty("content")
   val content: String = "",
 )
 

@@ -1,8 +1,14 @@
 package com.blogzip.api.dto.admin
 
-data class CssSelectorSuggestRequest(
-  val blogUrl: String,
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonProperty
+
+data class CssSelectorSuggestRequest @JsonCreator(mode = JsonCreator.Mode.PROPERTIES) constructor(
+  @JsonProperty("blogUrl")
+  val blogUrl: String = "",
+  @JsonProperty("candidateLimit")
   val candidateLimit: Int = 10,
+  @JsonProperty("sampleSize")
   val sampleSize: Int = 5,
 )
 

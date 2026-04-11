@@ -31,14 +31,13 @@ class GoogleAuthService(
 
     val googleId = googleUserInfo.sub
     val email = googleUserInfo.email
-    var user = userService.findByEmailIncludingDeleted(email)
+    var user = userService.findByEmail(email)
     if (user != null) {
-      if (user.isDeleted) {
-        throw DomainException(ErrorCode.USER_WITHDRAWN)
-      }
       user.updateGoogleId(googleId)
       userService.save(user)
     } else {
+      val hasWithdrawnHistory = userService.findByEmailIncludingDeleted(email)
+        ?.isDeleted == true
       user = userService.save(
         User(
           email = email,
@@ -46,11 +45,12 @@ class GoogleAuthService(
           socialId = googleId,
           receiveDays = ReceiveDaysConverter.toString(DayOfWeek.entries),
         )
-      )
-      slackSender.sendMessageAsync(
-        MONITORING,
-        "회원가입 발생! email=${email}"
-      )
+      ).also {
+        slackSender.sendMessageAsync(
+          MONITORING,
+          if (hasWithdrawnHistory) "재가입 발생! email=${email}" else "회원가입 발생! email=${email}"
+        )
+      }
     }
     val accessToken = jwtService.createToken(user)
     return LoginResponse(

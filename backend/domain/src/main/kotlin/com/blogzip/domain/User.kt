@@ -96,6 +96,8 @@ class User(
     if (isDeleted) {
       return
     }
+    this.subscriptions.clear()
+    this.isAdmin = false
     isDeleted = true
     deletedAt = LocalDateTime.now()
   }

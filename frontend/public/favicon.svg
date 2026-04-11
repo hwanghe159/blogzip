@@ -1,0 +1,24 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="14" y1="10" x2="114" y2="118" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#24A76D"/>
+      <stop offset="1" stop-color="#0F7D52"/>
+    </linearGradient>
+    <linearGradient id="mail" x1="67" y1="60" x2="107" y2="96" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DCE9FF"/>
+      <stop offset="1" stop-color="#BFD7FF"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="8" y="8" width="112" height="112" rx="28" fill="url(#bg)"/>
+
+  <rect x="24" y="24" width="54" height="70" rx="12" fill="white" fill-opacity="0.96"/>
+  <rect x="34" y="40" width="34" height="5" rx="2.5" fill="#87C3A6"/>
+  <rect x="34" y="51" width="28" height="5" rx="2.5" fill="#A4D6BD"/>
+  <rect x="34" y="62" width="24" height="5" rx="2.5" fill="#B9E1CD"/>
+
+  <path d="M67 66C67 62.6863 69.6863 60 73 60H101C104.314 60 107 62.6863 107 66V89C107 92.3137 104.314 95 101 95H73C69.6863 95 67 92.3137 67 89V66Z" fill="url(#mail)"/>
+  <path d="M68.5 65.5L87 79.5L105.5 65.5" stroke="#5E86CC" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <path d="M91 30L93.6 35.4L99 38L93.6 40.6L91 46L88.4 40.6L83 38L88.4 35.4L91 30Z" fill="#F3FBF6"/>
+</svg>

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   addReadLater,
   ApiError,
   getArticles,
   getSubscriptions,
   markArticleRead,
+  reportArticle,
   removeReadLater,
   subscribeBlog,
 } from "../api";
@@ -21,6 +22,10 @@ type FeedPageProps = {
 
 const DEFAULT_FROM_DATE = "2000-01-01";
 const DEFAULT_TOAST_DURATION = 2800;
+const REPORT_REASON_OPTIONS = [
+  { value: "요약 결과가 이상해요.", label: "요약 결과가 이상해요." },
+  { value: "부적절한 내용이에요.", label: "부적절한 내용이에요." },
+] as const;
 
 type FeedToast = {
   id: number;
@@ -42,6 +47,10 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [toast, setToast] = useState<FeedToast | null>(null);
   const [readLaterPendingArticleId, setReadLaterPendingArticleId] = useState<number | null>(null);
+  const [reportingArticleId, setReportingArticleId] = useState<number | null>(null);
+  const [reportModalArticle, setReportModalArticle] = useState<ArticleResponse | null>(null);
+  const [reportReason, setReportReason] = useState<string>(REPORT_REASON_OPTIONS[0].value);
+  const [reportDetail, setReportDetail] = useState("");
   const [subscribedBlogIds, setSubscribedBlogIds] = useState<Set<number>>(new Set());
   const [subscribingBlogId, setSubscribingBlogId] = useState<number | null>(null);
   const toastTimerRef = useRef<number | null>(null);
@@ -196,6 +205,54 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
     }
   }
 
+  function openReportModal(article: ArticleResponse) {
+    if (!isAuthenticated || !session.token) {
+      const shouldMove = window.confirm(
+        "글 신고는 로그인 후 이용할 수 있어요.\n로그인 화면으로 이동할까요?"
+      );
+      if (shouldMove) {
+        window.location.href = loginUrl;
+      }
+      return;
+    }
+
+    setReportModalArticle(article);
+    setReportReason(REPORT_REASON_OPTIONS[0].value);
+    setReportDetail("");
+  }
+
+  function closeReportModal() {
+    if (reportingArticleId !== null) return;
+    setReportModalArticle(null);
+    setReportReason(REPORT_REASON_OPTIONS[0].value);
+    setReportDetail("");
+  }
+
+  async function submitReport() {
+    if (!isAuthenticated || !session.token || !reportModalArticle) return;
+    const articleId = reportModalArticle.id;
+
+    setReportingArticleId(articleId);
+    try {
+      await reportArticle(
+        session.token,
+        articleId,
+        reportReason,
+        reportDetail.trim() ? reportDetail.trim().slice(0, 1000) : undefined
+      );
+      setReportModalArticle(null);
+      setReportReason(REPORT_REASON_OPTIONS[0].value);
+      setReportDetail("");
+      showToast({ message: "신고가 접수되었습니다.", tone: "success" });
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : "신고 접수에 실패했습니다.";
+      showToast({ message, tone: "error" });
+    } finally {
+      setReportingArticleId(null);
+    }
+  }
+
   const title = useMemo(() => {
     if (mode === "my") return "내 피드";
     return "전체 피드";
@@ -256,6 +313,11 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
         <EmptyState
           title="아직 표시할 글이 없어요"
           description="설정 탭에서 블로그를 더 구독해 보세요."
+          action={
+            <Link to="/settings" className="btn btn--primary">
+              구독 설정으로 이동
+            </Link>
+          }
         />
       ) : (
         <div className="articles-grid">
@@ -283,6 +345,18 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
                     onClick={() => handleSubscribeBlog(article.blog.id)}
                   >
                     구독
+                  </button>
+                ) : null
+              }
+              bottomAction={
+                isAuthenticated ? (
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--tiny"
+                    disabled={reportingArticleId === article.id}
+                    onClick={() => openReportModal(article)}
+                  >
+                    문제 신고
                   </button>
                 ) : null
               }
@@ -325,6 +399,71 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
           }
           onClose={() => setToast(null)}
         />
+      ) : null}
+
+      {reportModalArticle ? (
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="report-modal-title"
+          onClick={() => closeReportModal()}
+        >
+          <div className="modal report-modal" onClick={(event) => event.stopPropagation()}>
+            <h2 id="report-modal-title">문제 신고</h2>
+            <p className="report-modal__target">{reportModalArticle.title}</p>
+
+            <label className="feed-report-form__label" htmlFor="report-modal-reason">
+              신고 유형
+            </label>
+            <select
+              id="report-modal-reason"
+              className="feed-report-form__select"
+              value={reportReason}
+              onChange={(event) => setReportReason(event.target.value)}
+              disabled={reportingArticleId === reportModalArticle.id}
+            >
+              {REPORT_REASON_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            <label className="feed-report-form__label" htmlFor="report-modal-detail">
+              상세 설명 (선택)
+            </label>
+            <textarea
+              id="report-modal-detail"
+              className="feed-report-form__textarea"
+              value={reportDetail}
+              maxLength={1000}
+              onChange={(event) => setReportDetail(event.target.value)}
+              placeholder="어떤 점이 문제인지 입력해 주세요."
+              disabled={reportingArticleId === reportModalArticle.id}
+            />
+
+            <div className="feed-report-form__actions">
+              <span className="feed-report-form__counter">{reportDetail.length}/1000</span>
+              <button
+                type="button"
+                className="btn btn--ghost btn--tiny"
+                onClick={() => closeReportModal()}
+                disabled={reportingArticleId === reportModalArticle.id}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className="btn btn--danger btn--tiny"
+                disabled={reportingArticleId === reportModalArticle.id}
+                onClick={() => void submitReport()}
+              >
+                {reportingArticleId === reportModalArticle.id ? "신고 중..." : "신고 접수"}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </section>
   );

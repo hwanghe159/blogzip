@@ -1,19 +1,25 @@
 package com.blogzip.api.dto.admin
 
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.blogzip.service.ArticleCreatedDateUpdateResult
 import java.time.LocalDate
 
-data class ArticleCreatedDateUpdateRequest(
-  val createdDate: LocalDate,
+data class ArticleCreatedDateUpdateRequest @JsonCreator(mode = JsonCreator.Mode.PROPERTIES) constructor(
+  @JsonProperty("createdDate")
+  val createdDate: LocalDate = LocalDate.MIN,
 )
 
-data class ArticleCreatedDateBulkUpdateRequest(
-  val items: List<ArticleCreatedDateBulkUpdateItem>,
+data class ArticleCreatedDateBulkUpdateRequest @JsonCreator(mode = JsonCreator.Mode.PROPERTIES) constructor(
+  @JsonProperty("items")
+  val items: List<ArticleCreatedDateBulkUpdateItem> = emptyList(),
 )
 
-data class ArticleCreatedDateBulkUpdateItem(
-  val articleId: Long,
-  val createdDate: LocalDate,
+data class ArticleCreatedDateBulkUpdateItem @JsonCreator(mode = JsonCreator.Mode.PROPERTIES) constructor(
+  @JsonProperty("articleId")
+  val articleId: Long = 0,
+  @JsonProperty("createdDate")
+  val createdDate: LocalDate = LocalDate.MIN,
 )
 
 data class ArticleCreatedDateUpdateResponse(

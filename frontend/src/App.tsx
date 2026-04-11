@@ -15,6 +15,8 @@ import { FeedPage } from "./pages/FeedPage";
 import { ReadLaterPage } from "./pages/ReadLaterPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { GoogleLoginPage } from "./pages/GoogleLoginPage";
+import { AccountPage } from "./pages/AccountPage";
+import { AdminPage } from "./pages/AdminPage";
 
 function toGuestSession(): SessionState {
   return {
@@ -97,12 +99,27 @@ export default function App() {
         />
         <Route
           path="/settings"
+          element={<SettingsPage session={session} loginUrl={loginUrl} />}
+        />
+        <Route
+          path="/account"
           element={
-            <SettingsPage
+            <AccountPage
               session={session}
               loginUrl={loginUrl}
+              onLogout={handleLogout}
               onUserUpdated={handleUserUpdated}
             />
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            session.status === "authenticated" && session.user?.isAdmin ? (
+              <AdminPage session={session} loginUrl={loginUrl} />
+            ) : (
+              <Navigate to="/" replace />
+            )
           }
         />
         <Route

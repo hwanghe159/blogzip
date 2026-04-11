@@ -2,6 +2,7 @@ package com.blogzip.service
 
 import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
+import com.blogzip.domain.ReadLaterRepository
 import com.blogzip.domain.SocialType
 import com.blogzip.domain.User
 import com.blogzip.domain.UserRepository
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.InjectMocks
 import org.mockito.Mock
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.mockito.junit.jupiter.MockitoSettings
 import java.util.Optional
@@ -22,6 +24,9 @@ class UserServiceTest {
 
   @Mock
   lateinit var userRepository: UserRepository
+
+  @Mock
+  lateinit var readLaterRepository: ReadLaterRepository
 
   @InjectMocks
   lateinit var userService: UserService
@@ -37,13 +42,16 @@ class UserServiceTest {
       receiveDays = "MONDAY",
       isDeleted = false,
     )
+    user.addSubscription(11L)
     `when`(userRepository.findById(1L))
       .thenReturn(Optional.of(user))
 
     userService.withdraw(1L)
 
+    verify(readLaterRepository).deleteAllByUserId(1L)
     assertTrue(user.isDeleted)
     assertNotNull(user.deletedAt)
+    assertTrue(user.subscriptions.isEmpty())
   }
 
   @DisplayName("이미 탈퇴한 회원은 다시 탈퇴할 수 없다.")

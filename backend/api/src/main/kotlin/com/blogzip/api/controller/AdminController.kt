@@ -8,14 +8,17 @@ import com.blogzip.ai.summary.OpenAiApiClient
 import com.blogzip.ai.summary.SummarizedArticle
 import com.blogzip.ai.summary.SummarizedArticleResult
 import com.blogzip.api.admin.AdminRequired
+import com.blogzip.api.dto.PaginationResponse
 import com.blogzip.api.dto.admin.*
 import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
 import com.blogzip.crawler.service.CrawlerHttpClient
+import com.blogzip.domain.ArticleReport
 import com.blogzip.domain.BlogUrl
 import com.blogzip.service.ArticleCommandService
 import com.blogzip.service.ArticleCreatedDateUpdateCommand
 import com.blogzip.service.ArticleQueryService
+import com.blogzip.service.ArticleReportService
 import com.blogzip.service.BlogService
 import com.blogzip.service.KeywordService
 import com.blogzip.slack.SlackSender
@@ -24,6 +27,7 @@ import jakarta.validation.Valid
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import java.net.URI
@@ -35,9 +39,11 @@ class AdminController(
   private val keywordService: KeywordService,
   private val openAiApiClient: OpenAiApiClient,
   private val jsonlConverter: JsonlConverter,
+  @Qualifier("jsonlObjectMapper")
   private val objectMapper: ObjectMapper,
   private val articleCommandService: ArticleCommandService,
   private val articleQueryService: ArticleQueryService,
+  private val articleReportService: ArticleReportService,
   private val articleContentSequentialSummarizer: ArticleContentSequentialSummarizer,
   private val blogService: BlogService,
   private val slackSender: SlackSender,
@@ -61,6 +67,27 @@ class AdminController(
   }
 
   @AdminRequired
+  @PatchMapping("/api/admin/keyword/id/{keywordId}")
+  fun updateKeywordById(
+    @PathVariable keywordId: Long,
+    @RequestBody request: KeywordUpdateRequest,
+  ) {
+    keywordService.updateById(keywordId, request.value, request.isVisible)
+  }
+
+  @AdminRequired
+  @PostMapping("/api/admin/keyword")
+  fun createKeyword(
+    @Valid @RequestBody request: KeywordCreateRequest,
+  ): ResponseEntity<KeywordCreateResponse> {
+    val created = keywordService.createHeadKeyword(
+      rawValue = request.value,
+      isVisible = request.isVisible,
+    )
+    return ResponseEntity.ok(KeywordCreateResponse.from(created))
+  }
+
+  @AdminRequired
   @PostMapping("/api/admin/keyword/merge")
   fun mergeKeywords(
     @RequestParam(required = true) src: String,
@@ -75,6 +102,112 @@ class AdminController(
     @RequestBody request: KeywordMergeByIdRequest,
   ) {
     keywordService.mergeById(request.srcKeywordId, request.destKeywordId)
+  }
+
+  @AdminRequired
+  @PatchMapping("/api/admin/keyword/{keywordId}/head")
+  fun updateKeywordHead(
+    @PathVariable keywordId: Long,
+    @RequestBody request: KeywordHeadUpdateRequest,
+  ): ResponseEntity<KeywordHeadUpdateResponse> {
+    val result = keywordService.updateHead(keywordId, request.headKeywordId)
+    return ResponseEntity.ok(KeywordHeadUpdateResponse.from(result))
+  }
+
+  @AdminRequired
+  @GetMapping("/api/admin/article/recent")
+  fun getRecentArticles(
+    @RequestParam(required = false) next: Long?,
+    @RequestParam(required = false, defaultValue = "20") size: Int,
+  ): ResponseEntity<PaginationResponse<AdminRecentArticleResponse>> {
+    val recentArticles = articleQueryService.searchRecentForAdmin(next, size)
+    val reportCounts = articleReportService.getCountsByArticleIds(
+      recentArticles.items.mapNotNull { it.article.id }
+    )
+    return ResponseEntity.ok(
+      PaginationResponse(
+        items = recentArticles.items.map { item ->
+          AdminRecentArticleResponse.from(
+            article = item.article,
+            blog = item.blog,
+            appliedSummary = item.appliedSummary,
+            reportCount = item.article.id?.let { reportCounts[it] },
+          )
+        },
+        next = recentArticles.next,
+      )
+    )
+  }
+
+  @AdminRequired
+  @GetMapping("/api/admin/article/{articleId}/report")
+  fun getArticleReports(
+    @PathVariable articleId: Long,
+  ): ResponseEntity<List<AdminArticleReportResponse>> {
+    val article = articleQueryService.findById(articleId)
+    val blog = blogService.findById(article.blogId)
+    val reports = articleReportService.getAllByArticleId(articleId)
+      .map { report ->
+        AdminArticleReportResponse.from(
+          report = report,
+          article = article,
+          blog = blog,
+        )
+      }
+    return ResponseEntity.ok(reports)
+  }
+
+  @AdminRequired
+  @GetMapping("/api/admin/report/received")
+  fun getReceivedReports(
+    @RequestParam(required = false) next: Long?,
+    @RequestParam(required = false, defaultValue = "20") size: Int,
+  ): ResponseEntity<PaginationResponse<AdminArticleReportResponse>> {
+    val pagedReports = articleReportService.getByStatus(
+      status = ArticleReport.Status.RECEIVED,
+      next = next,
+      size = size,
+    )
+    val articlesById = articleQueryService.findAllById(pagedReports.items.map { it.articleId }.distinct())
+      .associateBy { it.id!! }
+    val blogsById = blogService.findAllByIds(articlesById.values.map { it.blogId }.distinct())
+      .associateBy { it.id!! }
+
+    return ResponseEntity.ok(
+      PaginationResponse(
+        items = pagedReports.items.mapNotNull { report ->
+          val article = articlesById[report.articleId] ?: return@mapNotNull null
+          val blog = blogsById[article.blogId] ?: return@mapNotNull null
+          AdminArticleReportResponse.from(
+            report = report,
+            article = article,
+            blog = blog,
+          )
+        },
+        next = pagedReports.next,
+      )
+    )
+  }
+
+  @AdminRequired
+  @PatchMapping("/api/admin/report/{reportId}/status")
+  fun updateArticleReportStatus(
+    @PathVariable reportId: Long,
+    @RequestBody request: AdminArticleReportStatusUpdateRequest,
+  ): ResponseEntity<AdminArticleReportResponse> {
+    val updatedReport = articleReportService.updateStatus(
+      reportId = reportId,
+      status = request.status,
+    )
+    val article = articleQueryService.findById(updatedReport.articleId)
+    val blog = blogService.findById(article.blogId)
+    return ResponseEntity.ok(
+      AdminArticleReportResponse.from(
+        report = updatedReport,
+        article = article,
+        blog = blog,
+      )
+    )
   }
 
   @AdminRequired
@@ -340,70 +473,101 @@ class AdminController(
   }
 
   @AdminRequired
+  @PostMapping("/api/admin/blog/css-selector/by-url")
+  fun updateBlogCssSelectorByUrl(
+    @RequestBody request: BlogCssSelectorUpdateByUrlRequest,
+  ): ResponseEntity<BlogCssSelectorUpdateResponse> {
+    val normalizedBlogUrl = normalizeBlogUrl(request.blogUrl)
+    val blog = blogService.findByUrl(normalizedBlogUrl)
+    return ResponseEntity.ok(
+      buildBlogCssSelectorUpdateResponse(
+        blogId = blog.id!!,
+        blogUrl = blog.url,
+        cssSelector = request.cssSelector,
+        sampleSize = request.sampleSize,
+        force = request.force,
+      )
+    )
+  }
+
+  private fun buildBlogCssSelectorUpdateResponse(
+    blogId: Long,
+    blogUrl: String,
+    cssSelector: String,
+    sampleSize: Int,
+    force: Boolean,
+  ): BlogCssSelectorUpdateResponse {
+    val trimmedCssSelector = cssSelector.trim()
+    if (trimmedCssSelector.isBlank()) {
+      val testResult = failedCssSelectorTestResponse(
+        blogUrl = blogUrl,
+        cssSelector = trimmedCssSelector,
+        message = "cssSelector는 비어 있을 수 없습니다.",
+      )
+      return BlogCssSelectorUpdateResponse(
+        blogId = blogId,
+        blogUrl = blogUrl,
+        cssSelector = trimmedCssSelector,
+        saved = false,
+        testResult = testResult,
+        message = "저장하지 않았습니다.",
+      )
+    }
+    val document = getDocument(blogUrl)
+      ?: run {
+        val testResult = failedCssSelectorTestResponse(
+          blogUrl = blogUrl,
+          cssSelector = trimmedCssSelector,
+          message = "블로그 페이지 HTML을 가져오지 못했습니다.",
+        )
+        return BlogCssSelectorUpdateResponse(
+          blogId = blogId,
+          blogUrl = blogUrl,
+          cssSelector = trimmedCssSelector,
+          saved = false,
+          testResult = testResult,
+          message = "저장하지 않았습니다.",
+        )
+      }
+    val testResult = buildCssSelectorTestResponse(
+      document = document,
+      blogUrl = blogUrl,
+      cssSelector = trimmedCssSelector,
+      sampleSize = sampleSize,
+    )
+    val shouldSave = testResult.success || force
+    if (shouldSave) {
+      blogService.updateCssSelector(blogId, trimmedCssSelector)
+    }
+    return BlogCssSelectorUpdateResponse(
+      blogId = blogId,
+      blogUrl = blogUrl,
+      cssSelector = trimmedCssSelector,
+      saved = shouldSave,
+      testResult = testResult,
+      message = when {
+        shouldSave && !testResult.success -> "force=true 로 저장했습니다. selector 테스트는 실패 상태입니다."
+        shouldSave -> "selector를 저장했고 스모크 테스트도 통과했습니다."
+        else -> "테스트 실패로 저장하지 않았습니다. 강제 저장하려면 force=true 를 사용하세요."
+      },
+    )
+  }
+
+  @AdminRequired
   @PatchMapping("/api/admin/blog/{blogId}/css-selector")
-  fun updateBlogCssSelector(
+  fun updateBlogCssSelectorById(
     @PathVariable blogId: Long,
     @RequestBody request: BlogCssSelectorUpdateRequest,
   ): ResponseEntity<BlogCssSelectorUpdateResponse> {
     val blog = blogService.findById(blogId)
     val cssSelector = request.cssSelector.trim()
-    if (cssSelector.isBlank()) {
-      val testResult = failedCssSelectorTestResponse(
-        blogUrl = blog.url,
-        cssSelector = cssSelector,
-        message = "cssSelector는 비어 있을 수 없습니다.",
-      )
-      return ResponseEntity.ok(
-        BlogCssSelectorUpdateResponse(
-          blogId = blog.id!!,
-          blogUrl = blog.url,
-          cssSelector = cssSelector,
-          saved = false,
-          testResult = testResult,
-          message = "저장하지 않았습니다.",
-        )
-      )
-    }
-    val document = getDocument(blog.url)
-      ?: run {
-        val testResult = failedCssSelectorTestResponse(
-          blogUrl = blog.url,
-          cssSelector = cssSelector,
-          message = "블로그 페이지 HTML을 가져오지 못했습니다.",
-        )
-        return ResponseEntity.ok(
-          BlogCssSelectorUpdateResponse(
-            blogId = blog.id!!,
-            blogUrl = blog.url,
-            cssSelector = cssSelector,
-            saved = false,
-            testResult = testResult,
-            message = "저장하지 않았습니다.",
-          )
-        )
-      }
-    val testResult = buildCssSelectorTestResponse(
-      document = document,
-      blogUrl = blog.url,
-      cssSelector = cssSelector,
-      sampleSize = request.sampleSize,
-    )
-    val shouldSave = testResult.success || request.force
-    if (shouldSave) {
-      blogService.updateCssSelector(blog.id!!, cssSelector)
-    }
     return ResponseEntity.ok(
-      BlogCssSelectorUpdateResponse(
+      buildBlogCssSelectorUpdateResponse(
         blogId = blog.id!!,
         blogUrl = blog.url,
         cssSelector = cssSelector,
-        saved = shouldSave,
-        testResult = testResult,
-        message = when {
-          shouldSave && !testResult.success -> "force=true 로 저장했습니다. selector 테스트는 실패 상태입니다."
-          shouldSave -> "selector를 저장했고 스모크 테스트도 통과했습니다."
-          else -> "테스트 실패로 저장하지 않았습니다. 강제 저장하려면 force=true 를 사용하세요."
-        },
+        sampleSize = request.sampleSize,
+        force = request.force,
       )
     )
   }
