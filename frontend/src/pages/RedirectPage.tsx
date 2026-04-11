@@ -1,34 +1,37 @@
-import React, {useEffect} from 'react';
-import {useLocation, useNavigate} from 'react-router-dom';
-import Box from "@mui/material/Box";
-import {Api} from "../utils/Api";
+import React, { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Api } from '../utils/Api';
 
 function RedirectPage() {
   const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-  const url = searchParams.get('url');
-  const userId = searchParams.get('userId');
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (url === null || userId === null) {
-      alert("잘못된 요청입니다.")
-      navigate('/')
-      return
+    const searchParams = new URLSearchParams(location.search);
+    const url = searchParams.get('url');
+    const userId = searchParams.get('userId');
+
+    if (!url || !userId) {
+      alert('잘못된 요청입니다.');
+      navigate('/');
+      return;
     }
-    Api.post(`/api/v1/user/${userId}/read`, {articleUrl: url}, {})
-    .onSuccess(response => {
-    })
-    .on4XX((response) => {
-    })
-    .on5XX((response) => {
-    })
+
+    Api.post(`/api/v1/user/${userId}/read`, { articleUrl: url }, {})
+      .onSuccess(() => {})
+      .on4XX(() => {})
+      .on5XX(() => {});
+
     window.location.href = url;
-    // window.open(url, '_blank');
-  }, [url, navigate, location]);
+  }, [location.search, navigate]);
 
   return (
-      <Box></Box>
+    <section className="center-screen">
+      <div className="stack" style={{ justifyItems: 'center' }}>
+        <span className="dot-loader" />
+        <p className="page-subtitle">잠시만요. 원문으로 이동하고 있어요...</p>
+      </div>
+    </section>
   );
 }
 

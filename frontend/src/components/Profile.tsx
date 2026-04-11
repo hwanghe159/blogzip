@@ -1,80 +1,85 @@
-import * as React from "react";
-import Box from "@mui/material/Box";
-import {Avatar, IconButton, Menu, MenuItem} from "@mui/material";
-import Typography from "@mui/material/Typography";
-import {useNavigate} from "react-router-dom";
-import {getLoginUser, removeLoginUser} from "../utils/LoginUserHelper";
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getLoginUser, removeLoginUser } from '../utils/LoginUserHelper';
 
 function Profile() {
-
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const menus = [
-    {
-      name: '나중에 읽기', onClick: () => {
-        navigate('/bookmark')
+  useEffect(() => {
+    const onClickOutside = (event: MouseEvent) => {
+      if (!containerRef.current) {
+        return;
       }
-    },
-    {
-      name: '구독 설정', onClick: () => {
-        navigate('/subscription')
+
+      if (!containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
       }
-    },
-    {
-      name: '이메일 설정', onClick: () => {
-        navigate('/email')
-      }
-    },
-    {
-      name: '로그아웃', onClick: () => {
-        window.location.href = '/';
-        removeLoginUser()
-      }
+    };
+
+    if (open) {
+      document.addEventListener('mousedown', onClickOutside);
     }
+
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside);
+    };
+  }, [open]);
+
+  const menus: Array<{ name: string; onClick: () => void }> = [
+    {
+      name: '나중에 읽기',
+      onClick: () => navigate('/bookmark'),
+    },
+    {
+      name: '구독 설정',
+      onClick: () => navigate('/subscription'),
+    },
+    {
+      name: '이메일 설정',
+      onClick: () => navigate('/email'),
+    },
+    {
+      name: '로그아웃',
+      onClick: () => {
+        removeLoginUser();
+        window.location.href = '/';
+      },
+    },
   ];
 
-  const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(null);
-
-  const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorElUser(event.currentTarget);
-  };
-
-  const handleCloseUserMenu = () => {
-    setAnchorElUser(null);
-  };
+  const image = getLoginUser()?.image;
 
   return (
-      <Box sx={{flexGrow: 0}}>
-        <IconButton disableRipple={true} onClick={handleOpenUserMenu} sx={{p: 0}}>
-          <Avatar src={getLoginUser()?.image}/>
-        </IconButton>
-        <Menu
-            sx={{mt: '45px'}}
-            id="menu-appbar"
-            anchorEl={anchorElUser}
-            anchorOrigin={{
-              vertical: 'top',
-              horizontal: 'right',
-            }}
-            keepMounted
-            transformOrigin={{
-              vertical: 'top',
-              horizontal: 'right',
-            }}
-            open={Boolean(anchorElUser)}
-            onClose={handleCloseUserMenu}
-            transitionDuration={0}
-        >
+    <div ref={containerRef} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        className="avatar-button"
+        aria-label="프로필 메뉴"
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        {image ? <img src={image} alt="프로필" /> : <span className="avatar-fallback">ME</span>}
+      </button>
+
+      {open ? (
+        <div className="dropdown-menu">
           {menus.map((menu) => (
-              <MenuItem disableRipple={true} key={menu.name} onClick={() => {
-                handleCloseUserMenu();
+            <button
+              key={menu.name}
+              type="button"
+              className="dropdown-item"
+              onClick={() => {
+                setOpen(false);
                 menu.onClick();
-              }}>
-                <Typography textAlign="center">{menu.name}</Typography>
-              </MenuItem>
+              }}
+            >
+              {menu.name}
+            </button>
           ))}
-        </Menu>
-      </Box>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

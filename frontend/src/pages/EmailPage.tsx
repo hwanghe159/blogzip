@@ -1,158 +1,145 @@
-import React, {useEffect, useState} from "react";
-import {Api} from "../utils/Api";
-import {useNavigate} from "react-router-dom";
-import {getLoginUser} from "../utils/LoginUserHelper";
-import {
-  Card,
-  CardActions,
-  CardContent,
-  Checkbox,
-  FormControlLabel,
-  FormGroup,
-  TextField
-} from "@mui/material";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import {handleLogin} from "../components/GoogleLoginButton";
+import React, { useEffect, useMemo, useState } from 'react';
+import { Api } from '../utils/Api';
+import { getLoginUser } from '../utils/LoginUserHelper';
+import { UserResponse } from '../types';
+import { handleLogin } from '../components/GoogleLoginButton';
 
-export interface User {
-  id: number;
-  email: string,
-  receiveDays: string[],
-  createdAt: string,
-  updatedAt: string,
+interface DayOption {
+  kor: string;
+  eng: string;
+  isChecked: boolean;
 }
 
-function EmailPage() {
+const initialDays: DayOption[] = [
+  { kor: '월', eng: 'MONDAY', isChecked: false },
+  { kor: '화', eng: 'TUESDAY', isChecked: false },
+  { kor: '수', eng: 'WEDNESDAY', isChecked: false },
+  { kor: '목', eng: 'THURSDAY', isChecked: false },
+  { kor: '금', eng: 'FRIDAY', isChecked: false },
+  { kor: '토', eng: 'SATURDAY', isChecked: false },
+  { kor: '일', eng: 'SUNDAY', isChecked: false },
+];
 
-  const [user, setUser] = useState<User | null>(null);
-  const [daysOfWeek, setDaysOfWeek] = useState([
-    {kor: '월요일', eng: 'MONDAY', isChecked: false},
-    {kor: '화요일', eng: 'TUESDAY', isChecked: false},
-    {kor: '수요일', eng: 'WEDNESDAY', isChecked: false},
-    {kor: '목요일', eng: 'THURSDAY', isChecked: false},
-    {kor: '금요일', eng: 'FRIDAY', isChecked: false},
-    {kor: '토요일', eng: 'SATURDAY', isChecked: false},
-    {kor: '일요일', eng: 'SUNDAY', isChecked: false},
-  ]);
-  const navigate = useNavigate();
+function EmailPage() {
+  const [user, setUser] = useState<UserResponse | null>(null);
+  const [daysOfWeek, setDaysOfWeek] = useState<DayOption[]>(initialDays);
 
   useEffect(() => {
-        const accessToken = getLoginUser()?.accessToken
-
-        if (accessToken) {
-          Api.get(`/api/v1/me`, {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            }
-          })
-          .onSuccess((response) => {
-            setUser(response.data)
-            setDaysOfWeek(daysOfWeek.map((day) => ({
-              ...day,
-              isChecked: response.data.receiveDays.includes(day.eng),
-            })));
-          })
-        } else {
-          alert("로그인이 필요한 서비스입니다.")
-          handleLogin()
-          return
-        }
-      }, [navigate]
-  )
-
-
-  function handleSubmit() {
-    const receiveDays = daysOfWeek
-    .filter(d => d.isChecked)
-    const accessToken = getLoginUser()?.accessToken
-    if (accessToken) {
-      Api.put(`/api/v1/me`, {
-            receiveDays: receiveDays.map(d => d.eng)
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            }
-          })
-      .onSuccess(response => {
-        if (receiveDays.length === 0) {
-          alert(`수신거부 처리되었습니다.`);
-        } else if (receiveDays.length === 7) {
-          alert(`수정되었습니다.\n매일 아침 보내드릴게요!`);
-        } else {
-          alert(`수정되었습니다.\n${receiveDays.map(d => d.kor).join(', ')} 아침에만 메일을 보내드릴게요!`);
-        }
-      });
-    } else {
-      alert("로그인이 필요한 서비스입니다.")
-      handleLogin()
-      return
+    const loginUser = getLoginUser();
+    if (!loginUser) {
+      alert('로그인이 필요한 서비스입니다.');
+      handleLogin();
+      return;
     }
-  }
 
-  function handleDayChange(eng: string) {
-    setDaysOfWeek((prevDaysOfWeek) =>
-        prevDaysOfWeek.map((day) =>
-            day.eng === eng ? {...day, isChecked: !day.isChecked} : day
-        )
+    Api.get('/api/v1/me', {
+      headers: {
+        Authorization: `Bearer ${loginUser.accessToken}`,
+      },
+    })
+      .onSuccess((response) => {
+        const currentUser = response.data as UserResponse;
+        setUser(currentUser);
+        setDaysOfWeek(
+          initialDays.map((day) => ({
+            ...day,
+            isChecked: currentUser.receiveDays.includes(day.eng),
+          }))
+        );
+      })
+      .on4XX(() => {})
+      .on5XX(() => {});
+  }, []);
+
+  const selectedCount = useMemo(
+    () => daysOfWeek.filter((day) => day.isChecked).length,
+    [daysOfWeek]
+  );
+
+  const handleDayChange = (eng: string) => {
+    setDaysOfWeek((prevDays) =>
+      prevDays.map((day) => (day.eng === eng ? { ...day, isChecked: !day.isChecked } : day))
     );
-  }
+  };
+
+  const handleSubmit = () => {
+    const loginUser = getLoginUser();
+    if (!loginUser) {
+      alert('로그인이 필요한 서비스입니다.');
+      handleLogin();
+      return;
+    }
+
+    const receiveDays = daysOfWeek.filter((day) => day.isChecked).map((day) => day.eng);
+
+    Api.put(
+      '/api/v1/me',
+      {
+        receiveDays,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${loginUser.accessToken}`,
+        },
+      }
+    )
+      .onSuccess(() => {
+        if (receiveDays.length === 0) {
+          alert('수신 거부 처리되었습니다.');
+          return;
+        }
+
+        if (receiveDays.length === 7) {
+          alert('수정되었습니다. 매일 아침 보내드릴게요!');
+          return;
+        }
+
+        alert('수정되었습니다. 선택한 요일 아침에만 메일을 보내드릴게요!');
+      })
+      .on4XX(() => {})
+      .on5XX(() => {});
+  };
 
   return (
-      <Box sx={{maxWidth: 300, mx: 'auto', pt: 10}}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          이메일 설정
-        </Typography>
-        <Card sx={{p: 2}}>
-          <CardContent>
-            <form onSubmit={handleSubmit}>
-              <Box sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
-                <Box>
-                  <TextField
-                      id="email"
-                      type="email"
-                      value={user?.email || ''}
-                      fullWidth
-                      disabled
-                      InputProps={{
-                        readOnly: true,
-                      }}
-                  />
-                </Box>
+    <div className="stack">
+      <section className="surface panel">
+        <h1 className="page-title">이메일 설정</h1>
+        <p className="page-subtitle">아침 9시에 받아볼 요약 메일의 수신 요일을 선택할 수 있어요.</p>
+      </section>
 
-                <Box sx={{mt: 3}}>
-                  <Typography variant="subtitle1">이메일을 받고 싶은 요일을 선택해주세요.</Typography>
-                  <FormGroup sx={{mt: 0, display: 'grid', gridTemplateColumns: '1fr 1fr'}}>
-                    {daysOfWeek.map((day) => (
-                        <FormControlLabel
-                            key={day.kor}
-                            control={
-                              <Checkbox
-                                  id={day.kor}
-                                  checked={day.isChecked}
-                                  onChange={() => handleDayChange(day.eng)}
-                              />
-                            }
-                            label={day.kor}
-                        />
-                    ))}
-                  </FormGroup>
-                </Box>
+      <section className="surface-strong panel stack">
+        <div className="stack" style={{ gap: 8 }}>
+          <strong style={{ color: 'var(--text-strong)' }}>수신 이메일</strong>
+          <input className="input" value={user?.email ?? ''} readOnly />
+        </div>
 
-              </Box>
-            </form>
-          </CardContent>
+        <div className="stack" style={{ gap: 8 }}>
+          <strong style={{ color: 'var(--text-strong)' }}>수신 요일</strong>
+          <div className="day-grid">
+            {daysOfWeek.map((day) => (
+              <button
+                key={day.eng}
+                type="button"
+                className={`day-button ${day.isChecked ? 'active' : ''}`}
+                onClick={() => handleDayChange(day.eng)}
+              >
+                {day.kor}
+              </button>
+            ))}
+          </div>
+          <span className="page-subtitle" style={{ marginTop: 2 }}>
+            현재 {selectedCount}일 선택됨
+          </span>
+        </div>
 
-          <CardActions>
-            <Button type="submit" variant="contained" fullWidth onClick={handleSubmit}>
-              수정
-            </Button>
-          </CardActions>
-        </Card>
-      </Box>
-  )
+        <div className="modal-footer" style={{ padding: 0 }}>
+          <button type="button" className="btn btn-primary" onClick={handleSubmit}>
+            설정 저장
+          </button>
+        </div>
+      </section>
+    </div>
+  );
 }
 
 export default EmailPage;

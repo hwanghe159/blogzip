@@ -1,186 +1,204 @@
-import * as React from 'react';
-import Typography from "@mui/material/Typography";
-import {useEffect, useState} from "react";
-import {Api} from "../utils/Api";
-import styled from "styled-components";
-import InfiniteScroll from "react-infinite-scroll-component";
-import ArticlesWithDate from "../components/ArticlesWithDate";
-import {CircularProgress, Dialog} from "@mui/material";
-import Box from "@mui/material/Box";
-import {getLoginUser, isLogined, removeLoginUser} from "../utils/LoginUserHelper";
-import Tooltip from "@mui/material/Tooltip";
-import InfoIcon from '@mui/icons-material/Info';
-import OnboardingDialog from "../components/OnboardingDialog";
-
-export interface ArticleResponse {
-  id: number;
-  blog: BlogResponse;
-  title: string;
-  url: string;
-  summary: string;
-  isReadLater: boolean;
-  keywords: string[];
-  createdDate: string;
-}
-
-export interface BlogResponse {
-  id: number;
-  name: string;
-  url: string;
-  image: string | null;
-  rssStatus: string;
-  rss: string;
-  createdBy: number;
-  createdAt: string;
-}
-
-const Container = styled.nav`
-  width: 100%;
-  max-width: 900px;
-  margin-top: 50px;
-  margin-left: auto;
-  margin-right: auto;
-
-  @media screen and (max-width: 900px) {
-    width: calc(100% - 20px);
-    max-width: none;
-  }
-`;
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import InfiniteScroll from 'react-infinite-scroll-component';
+import ArticlesWithDate from '../components/ArticlesWithDate';
+import OnboardingDialog from '../components/OnboardingDialog';
+import { Api } from '../utils/Api';
+import { getLoginUser, isLogined, removeLoginUser } from '../utils/LoginUserHelper';
+import { ArticleResponse, PaginationResponse, SubscriptionResponse } from '../types';
 
 function MainPage() {
-
-  const [openTooltip, setOpenTooltip] = useState<boolean>(false);
-  const [openOnboarding, setOpenOnboarding] = useState<boolean>(false);
   const [articles, setArticles] = useState<ArticleResponse[]>([]);
-  const [hasMore, setHasMore] = useState<boolean>(true);
-  const past = new Date(new Date().setDate(new Date().getDate() - 7));
+  const [hasMore, setHasMore] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [openOnboarding, setOpenOnboarding] = useState(false);
 
-  useEffect(() => {
-    fetchData()
+  const nextCursorRef = useRef<number | null>(null);
+  const hasMoreRef = useRef(true);
+  const fetchingRef = useRef(false);
+
+  const fromDate = useMemo(() => {
+    const past = new Date();
+    past.setDate(past.getDate() - 7);
+    return past.toISOString().slice(0, 10);
   }, []);
 
-  function fetchData() {
-    let url: string;
-    let headers = {};
-    if (isLogined()) {
-      url = '/api/v1/my/article';
-      headers = {
-        Authorization: `Bearer ${getLoginUser()?.accessToken}`,
-      }
-    } else {
-      url = '/api/v1/article';
+  const fetchArticles = useCallback(() => {
+    if (fetchingRef.current || !hasMoreRef.current) {
+      return;
     }
-    Api.get(url, {
-      headers: headers,
-      params:
-          {
-            from: past.toLocaleDateString('en-CA'),
-            next: articles.length == 0 ? null : articles[articles.length - 1].id,
-          }
-    })
-    .onSuccess((response) => {
-      setArticles(prevArticles => {
-            const newItems = response.data.items
-            .filter((newItem: ArticleResponse) => !prevArticles.some(prevItem => prevItem.id === newItem.id))
-            return [...prevArticles, ...newItems]
-          }
-      )
-      if (response.data.next == null) {
-        setHasMore(false)
-      }
-    })
-    .on4XX((response) => {
-      removeLoginUser()
-      window.location.href = '/';
-    })
-    .on5XX((response) => {
-    });
 
-    if (isLogined()) {
-      Api.get(`/api/v1/subscription`, {
-        headers: {
-          Authorization: `Bearer ${getLoginUser()?.accessToken}`,
-        }
-      })
+    const loginUser = getLoginUser();
+    const endpoint = loginUser ? '/api/v1/my/article' : '/api/v1/article';
+
+    fetchingRef.current = true;
+    setIsFetching(true);
+
+    Api.get(endpoint, {
+      headers: loginUser
+        ? {
+            Authorization: `Bearer ${loginUser.accessToken}`,
+          }
+        : {},
+      params: {
+        from: fromDate,
+        next: nextCursorRef.current,
+        size: 20,
+      },
+    })
       .onSuccess((response) => {
-        if (response.data.length === 0) {
-          setOpenOnboarding(true)
+        const data = response.data as PaginationResponse<ArticleResponse>;
+
+        setArticles((prevArticles) => {
+          const deduplicated = data.items.filter(
+            (newArticle) => !prevArticles.some((existingArticle) => existingArticle.id === newArticle.id)
+          );
+          return [...prevArticles, ...deduplicated];
+        });
+
+        nextCursorRef.current = data.next;
+        const nextExists = data.next !== null;
+        hasMoreRef.current = nextExists;
+        setHasMore(nextExists);
+
+        setIsInitialLoading(false);
+        setIsFetching(false);
+        fetchingRef.current = false;
+      })
+      .on4XX(() => {
+        setIsInitialLoading(false);
+        setIsFetching(false);
+        fetchingRef.current = false;
+
+        if (loginUser) {
+          removeLoginUser();
+          window.location.href = '/';
         }
       })
-      .on4XX((response) => {
-      })
-      .on5XX((response) => {
-      })
-    }
-  }
+      .on5XX(() => {
+        setIsInitialLoading(false);
+        setIsFetching(false);
+        fetchingRef.current = false;
+      });
+  }, [fromDate]);
 
-  function groupArticlesByDate(articles: ArticleResponse[]): ArticleResponse[][] {
-    const groupedArticles: { [key: string]: ArticleResponse[] } = {};
+  const checkOnboarding = useCallback(() => {
+    const loginUser = getLoginUser();
+    if (!loginUser) {
+      return;
+    }
+
+    Api.get('/api/v1/subscription', {
+      headers: {
+        Authorization: `Bearer ${loginUser.accessToken}`,
+      },
+    })
+      .onSuccess((response) => {
+        const subscriptions = response.data as SubscriptionResponse[];
+        if (subscriptions.length === 0) {
+          setOpenOnboarding(true);
+        }
+      })
+      .on4XX(() => {})
+      .on5XX(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetchArticles();
+    if (isLogined()) {
+      checkOnboarding();
+    }
+  }, [checkOnboarding, fetchArticles]);
+
+  const groupedArticles = useMemo(() => {
+    const grouped = new Map<string, ArticleResponse[]>();
+
     articles.forEach((article) => {
-      const date = article.createdDate;
-      if (!groupedArticles[date.toString()]) {
-        groupedArticles[date.toString()] = [];
-      }
-      groupedArticles[date.toString()].push(article);
+      const currentGroup = grouped.get(article.createdDate) ?? [];
+      currentGroup.push(article);
+      grouped.set(article.createdDate, currentGroup);
     });
-    return Object.values(groupedArticles);
-  }
+
+    return Array.from(grouped.entries()).map(([date, groupedItems]) => ({
+      date,
+      items: groupedItems,
+    }));
+  }, [articles]);
 
   return (
-      <Box sx={{
-        width: {xs: 'calc(100% - 20px)', md: '100%'},
-        maxWidth: 900,
-        marginTop: 5,
-        marginLeft: 'auto',
-        marginRight: 'auto'
-      }}>
-        <Box display={"flex"} alignItems="center">
-          <Typography variant="h5" component="h5">최근 일주일간 올라온 새 글</Typography>
-          <Tooltip open={openTooltip} onClick={() => setOpenTooltip(!openTooltip)}
-                   title="GPT-4o를 사용하여 요약하였습니다." sx={{ml: 1}}>
-            <InfoIcon color={"action"}/>
-          </Tooltip>
-        </Box>
-        <InfiniteScroll
-            dataLength={articles.length}
-            next={fetchData}
-            hasMore={hasMore}
-            loader=
-                {
-                  <Box
-                      mt={10}
-                      display={'flex'}
-                      justifyContent={'center'}
-                  >
-                    <CircularProgress/>
-                  </Box>
-                }
-            endMessage={
-              <p style={{
-                textAlign: 'center',
-                marginTop: '50px',
-                marginBottom: '50px'
-              }}>
-                <b>더 올라온 글이 없어요</b>
-              </p>
-            }
-        >
-          {groupArticlesByDate(articles)
-          .map(articles =>
-              <ArticlesWithDate key={articles[0].createdDate}
-                                date={articles[0].createdDate}
-                                articles={articles}
-              />
-          )}
-        </InfiniteScroll>
-        <Dialog
-            open={openOnboarding}
-            onClose={() => setOpenOnboarding(false)}
-            fullWidth={true}
-        >
-          <OnboardingDialog onClose={() => setOpenOnboarding(false)}/>
-        </Dialog>
-      </Box>
+    <div className="stack">
+      <section className="surface hero">
+        <div>
+          <h1 className="page-title">최근 일주일간 올라온 새 글</h1>
+          <p className="page-subtitle">
+            읽기 편한 요약으로 빠르게 핵심만 확인하세요. 관심 글은 별표로 저장해두고 나중에 다시 볼 수 있어요.
+          </p>
+        </div>
+
+        <div className="hero__stats">
+          <div className="stat-card">
+            <h4>수집 기간</h4>
+            <p>최근 7일</p>
+          </div>
+          <div className="stat-card">
+            <h4>현재 표시 글</h4>
+            <p>{articles.length}개</p>
+          </div>
+          <div className="stat-card">
+            <h4>요약 모델</h4>
+            <p>GPT 기반</p>
+          </div>
+          <div className="stat-card">
+            <h4>상태</h4>
+            <p>{isLogined() ? '개인화 피드' : '공개 피드'}</p>
+          </div>
+        </div>
+      </section>
+
+      {isInitialLoading && articles.length === 0 ? (
+        <div className="loader">
+          <span className="dot-loader" />
+        </div>
+      ) : null}
+
+      {!isInitialLoading && articles.length === 0 ? (
+        <section className="list-empty">표시할 새 글이 없습니다. 잠시 후 다시 확인해 주세요.</section>
+      ) : null}
+
+      <InfiniteScroll
+        dataLength={articles.length}
+        next={fetchArticles}
+        hasMore={hasMore}
+        loader={
+          isFetching ? (
+            <div className="loader">
+              <span className="dot-loader" />
+            </div>
+          ) : (
+            <></>
+          )
+        }
+        endMessage={
+          articles.length > 0 ? (
+            <p className="list-empty">이번 주 새 글을 모두 확인했어요.</p>
+          ) : (
+            <></>
+          )
+        }
+      >
+        {groupedArticles.map((group) => (
+          <ArticlesWithDate key={group.date} date={group.date} articles={group.items} />
+        ))}
+      </InfiniteScroll>
+
+      {openOnboarding ? (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal-panel">
+            <OnboardingDialog onClose={() => setOpenOnboarding(false)} />
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

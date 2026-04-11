@@ -1,298 +1,134 @@
-import React, {useState, useEffect} from 'react';
-import {
-  Card,
-  CardContent,
-  CardMedia,
-  IconButton,
-  Box,
-  Typography,
-  Tooltip,
-  Divider, Chip, CircularProgress
-} from "@mui/material";
-import {Api} from "../utils/Api";
-import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
-import BookmarkIcon from '@mui/icons-material/Bookmark';
-import {getLoginUser} from "../utils/LoginUserHelper";
-import {handleLogin} from "../components/GoogleLoginButton";
-import {Link} from "react-router-dom";
-import Button from "@mui/material/Button";
-import InfiniteScroll from "react-infinite-scroll-component";
-
-interface ReadLater {
-  id: number
-  article: Article
-  isReadLater: boolean
-}
-
-interface Article {
-  id: number
-  blog: Blog
-  title: string
-  url: string
-  summary: string
-  keywords: string[]
-  createdDate: string
-}
-
-interface Blog {
-  id: number
-  name: string
-  url: string
-  image: string | null
-}
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import InfiniteScroll from 'react-infinite-scroll-component';
+import Article from '../components/Article';
+import { Api } from '../utils/Api';
+import { getLoginUser } from '../utils/LoginUserHelper';
+import { handleLogin } from '../components/GoogleLoginButton';
+import { PaginationResponse, ReadLaterResponse } from '../types';
 
 export default function ReadLaterPage() {
-  const [readLaters, setReadLaters] = useState<ReadLater[]>([]);
-  const [fetchCompleted, setFetchCompleted] = useState<boolean>(false);
-  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [readLaters, setReadLaters] = useState<ReadLaterResponse[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const nextCursorRef = useRef<number | null>(null);
+  const hasMoreRef = useRef(true);
+  const fetchingRef = useRef(false);
 
-  const fetchData = () => {
-    Api.get(`/api/v1/read-later`, {
+  const fetchReadLaters = useCallback(() => {
+    const loginUser = getLoginUser();
+    if (!loginUser) {
+      alert('로그인이 필요한 서비스입니다.');
+      handleLogin();
+      return;
+    }
+
+    if (fetchingRef.current || !hasMoreRef.current) {
+      return;
+    }
+
+    fetchingRef.current = true;
+    setIsFetching(true);
+
+    Api.get('/api/v1/read-later', {
       headers: {
-        Authorization: `Bearer ${getLoginUser()?.accessToken}`,
+        Authorization: `Bearer ${loginUser.accessToken}`,
       },
       params: {
-        next: readLaters.length == 0 ? null : readLaters[readLaters.length - 1].id,
+        next: nextCursorRef.current,
         size: 20,
-      }
-    }).onSuccess(response => {
-      setReadLaters(prevReadLaters => {
-            const newItems: ReadLater[] = response.data.items
-            .filter((newItem: ReadLater) => !prevReadLaters.some(prevItem => prevItem.id === newItem.id))
-            .map((newItem: ReadLater) => {
-              newItem.isReadLater = true
-              return newItem
-            })
-            return [...prevReadLaters, ...newItems]
-          }
-      )
-      if (response.data.next == null) {
-        setHasMore(false)
-      }
-      setFetchCompleted(true)
-    });
-  };
-
-  const addReadLater = (readLater: ReadLater) => {
-    Api.post(`/api/v1/read-later`, {
-      articleId: readLater.article.id
-    }, {
-      headers: {
-        Authorization: `Bearer ${getLoginUser()?.accessToken}`,
-      }
-    })
-    .onSuccess(response => {
-      setReadLaters(
-          readLaters.map((item) =>
-              item.id === readLater.id
-                  ? {...item, isReadLater: true}
-                  : item
-          )
-      )
-    }).on4XX((response) => {
-      if (response.code === 'LOGIN_FAILED') {
-        alert("로그인이 필요한 서비스입니다.")
-        handleLogin()
-      }
-    });
-
-  };
-
-  const deleteReadLater = async (readLater: ReadLater) => {
-    Api.delete(`/api/v1/read-later`, {
-      headers: {
-        Authorization: `Bearer ${getLoginUser()?.accessToken}`,
       },
-      data: {
-        articleId: readLater.article.id
-      }
     })
-    .onSuccess(response => {
-      setReadLaters(
-          readLaters.map((item) =>
-              item.id === readLater.id
-                  ? {...item, isReadLater: false}
-                  : item
-          )
-      )
-    })
-    .on4XX(response => {
-      if (response.code === 'LOGIN_FAILED') {
-        alert("로그인이 필요한 서비스입니다.")
-        handleLogin()
-      }
-    })
-    .on5XX(() => {
+      .onSuccess((response) => {
+        const data = response.data as PaginationResponse<ReadLaterResponse>;
 
-    })
-  };
+        setReadLaters((prevItems) => {
+          const deduplicated = data.items.filter(
+            (newItem) => !prevItems.some((existingItem) => existingItem.id === newItem.id)
+          );
+
+          return [...prevItems, ...deduplicated].map((item) => ({
+            ...item,
+            article: {
+              ...item.article,
+              isReadLater: true,
+            },
+          }));
+        });
+
+        nextCursorRef.current = data.next;
+        const nextExists = data.next !== null;
+        hasMoreRef.current = nextExists;
+        setHasMore(nextExists);
+
+        setIsLoading(false);
+        setIsFetching(false);
+        fetchingRef.current = false;
+      })
+      .on4XX(() => {
+        setIsLoading(false);
+        setIsFetching(false);
+        fetchingRef.current = false;
+      })
+      .on5XX(() => {
+        setIsLoading(false);
+        setIsFetching(false);
+        fetchingRef.current = false;
+      });
+  }, []);
+
+  useEffect(() => {
+    fetchReadLaters();
+  }, [fetchReadLaters]);
 
   return (
-      <Box sx={{
-        width: {xs: 'calc(100% - 20px)', md: '100%'},
-        maxWidth: 900,
-        marginTop: 5,
-        marginLeft: 'auto',
-        marginRight: 'auto'
-      }}>
-        <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between' // 아이템 사이 균일한 간격
-            }}
-        >
-          <Typography variant="h4" component="h4">나중에 읽기</Typography>
-        </Box>
-        {fetchCompleted && readLaters.length == 0 && (
-            <Box
-                display="flex"
-                flexDirection="column"
-                justifyContent="center"
-                alignItems="center"
-                minHeight="50vh"
-            >
-              <Typography variant="subtitle1" gutterBottom>나중에 읽을 글이 없습니다. 홈에서 추가해
-                보세요.</Typography>
-              <Button
-                  component={Link}
-                  to="/"
-                  variant="contained"
-                  color="primary"
-              >
-                홈으로 돌아가기
-              </Button>
-            </Box>
-        )}
-        <InfiniteScroll
-            dataLength={readLaters.length}
-            next={fetchData}
-            hasMore={hasMore}
-            loader=
-                {!fetchCompleted &&
-                    <Box
-                        mt={10}
-                        display={'flex'}
-                        justifyContent={'center'}
-                    >
-                      <CircularProgress/>
-                    </Box>
-                }
-        >
-          {readLaters.length > 0 && (
-              <Box>
-                {readLaters.map(readLater =>
-                    <Box key={readLater.id}>
-                      <Card
-                          sx={{
-                            boxShadow: 0,
-                            display: 'flex',
-                            flexDirection: {xs: 'column', md: 'row'},
-                            margin: 2,
-                            maxWidth: 800,
-                            cursor: 'pointer',
-                            position: 'relative'
-                          }}
-                          onClick={() => {
-                            Api.post(`/api/v1/article/${readLater.article.id}/read`, {},
-                                {
-                                  headers: {
-                                    Authorization: `Bearer ${getLoginUser()?.accessToken}`,
-                                  }
-                                })
-                            .onSuccess(response => {
-                            })
-                            .on4XX((response) => {
-                            })
-                            .on5XX((response) => {
-                            })
-                            window.open(readLater.article.url);
-                          }}
-                      >
-                        <Box sx={{
-                          position: 'relative',
-                          width: {xs: '100%', md: 200},
-                          height: {xs: '150px', md: 'auto'}
-                        }}>
-                          <CardMedia
-                              component="img"
-                              sx={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                              }}
-                              image={readLater.article.blog.image ?? "/default_blog_image.png"}
-                              alt={readLater.article.title}
-                          />
-                          <Typography
-                              component="div"
-                              sx={{
-                                position: 'absolute',
-                                bottom: 0,
-                                left: 0,
-                                width: '100%',
-                                color: 'white',
-                                backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                                paddingTop: '8px',
-                                paddingBottom: '8px',
-                                textAlign: 'center',
-                              }}
-                          >
-                            {readLater.article.blog.name}
-                          </Typography>
-                        </Box>
-                        <Box sx={{display: 'flex', flexDirection: 'column', flex: 1}}>
-                          <CardContent sx={{
-                            p: 2,
-                          }}>
-                            <Typography component="div" variant="h5">
-                              {readLater.article.title}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary"
-                                        sx={{fontSize: '15px'}}>
-                              {readLater.article.summary}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{mt: 1}}>
-                              {readLater.article.createdDate}
-                            </Typography>
-                            <Box pb={1}>
-                              {readLater.article.keywords.map(keyword =>
-                                  <Chip key={keyword} label={`# ${keyword}`} size={"small"}
-                                        sx={{mr: 1, mt: 1}}/>
-                              )}
-                            </Box>
-                            <Box
-                                py={1}
-                                textAlign={'left'}
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                              {readLater.isReadLater ?
-                                  <Tooltip title="나중에 읽기 제거" arrow={true}>
-                                    <IconButton onClick={() => deleteReadLater(readLater)}
-                                                sx={{p: 0}}>
-                                      <BookmarkIcon/>
-                                    </IconButton>
-                                  </Tooltip> :
-                                  <Tooltip title="나중에 읽기" arrow={true}>
-                                    <IconButton onClick={() => addReadLater(readLater)} sx={{p: 0}}>
-                                      <BookmarkBorderIcon/>
-                                    </IconButton>
-                                  </Tooltip>
-                              }
-                            </Box>
-                          </CardContent>
-                        </Box>
-                      </Card>
-                      <Divider/>
-                    </Box>
-                )
-                }</Box>
+    <div className="stack">
+      <section className="surface panel">
+        <h1 className="page-title">나중에 읽기</h1>
+        <p className="page-subtitle">저장해 둔 글을 한곳에서 모아보고, 읽은 후에는 바로 정리할 수 있어요.</p>
+      </section>
+
+      {!isLoading && readLaters.length === 0 ? (
+        <section className="list-empty stack">
+          <p>아직 저장된 글이 없습니다.</p>
+          <Link to="/" className="btn btn-primary" style={{ width: 'fit-content', margin: '0 auto' }}>
+            홈에서 글 보러가기
+          </Link>
+        </section>
+      ) : null}
+
+      <InfiniteScroll
+        dataLength={readLaters.length}
+        next={fetchReadLaters}
+        hasMore={hasMore}
+        loader={
+          isFetching ? (
+            <div className="loader">
+              <span className="dot-loader" />
+            </div>
+          ) : (
+            <></>
           )
-          }
-        </InfiniteScroll>
-      </Box>
+        }
+      >
+        <div className="article-list">
+          {readLaters.map((readLater) => (
+            <Article
+              key={readLater.id}
+              article={readLater.article}
+              onReadLaterChange={(articleId, isReadLater) => {
+                if (!isReadLater) {
+                  setReadLaters((prevItems) =>
+                    prevItems.filter((currentItem) => currentItem.article.id !== articleId)
+                  );
+                }
+              }}
+            />
+          ))}
+        </div>
+      </InfiniteScroll>
+    </div>
   );
 }

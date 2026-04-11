@@ -1,5 +1,4 @@
 import React from 'react';
-import Button from "@mui/material/Button";
 
 export function handleLogin() {
   const queryParams = {
@@ -10,21 +9,15 @@ export function handleLogin() {
     access_type: 'offline',
   };
 
-  // API 설명 : https://developers.google.com/identity/protocols/oauth2/web-server#creatingclient
   window.location.href =
-      `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams(queryParams).toString()}`
+    `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams(queryParams).toString()}`;
 }
 
 function GoogleLoginButton() {
-
   return (
-      <Button
-          onClick={handleLogin}
-          size="large"
-          disableRipple={true}
-      >
-        로그인
-      </Button>
+    <button type="button" className="btn btn-ghost" onClick={handleLogin}>
+      로그인
+    </button>
   );
 }
 

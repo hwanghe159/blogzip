@@ -1,175 +1,122 @@
-import * as React from 'react';
-import {Card, CardContent, CardMedia, Chip, Divider, IconButton} from "@mui/material";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
-import BookmarkIcon from '@mui/icons-material/Bookmark';
-import Tooltip from '@mui/material/Tooltip';
-import {ArticleResponse} from "../pages/MainPage";
-import {Api} from "../utils/Api";
-import {getLoginUser} from "../utils/LoginUserHelper";
-import {handleLogin} from "./GoogleLoginButton";
+import React, { useState } from 'react';
+import { Api } from '../utils/Api';
+import { getLoginUser } from '../utils/LoginUserHelper';
+import { handleLogin } from './GoogleLoginButton';
+import { ArticleResponse } from '../types';
 
 interface ArticleProps {
-  article: ArticleResponse
+  article: ArticleResponse;
+  onReadLaterChange?: (articleId: number, isReadLater: boolean) => void;
 }
 
-function Article({article: initialArticle}: ArticleProps) {
-  const [article, setArticle] = React.useState(initialArticle);
+function Article({ article: initialArticle, onReadLaterChange }: ArticleProps) {
+  const [article, setArticle] = useState<ArticleResponse>(initialArticle);
 
+  const openOriginalArticle = () => {
+    const accessToken = getLoginUser()?.accessToken;
 
-  function toOriginalUrl() {
-    Api.post(`/api/v1/article/${article.id}/read`, {},
+    if (accessToken) {
+      Api.post(
+        `/api/v1/article/${article.id}/read`,
+        {},
         {
           headers: {
-            Authorization: `Bearer ${getLoginUser()?.accessToken}`,
-          }
-        })
-    .onSuccess(response => {
-    })
-    .on4XX((response) => {
-    })
-    .on5XX((response) => {
-    })
-    window.open(article.url, '_blank');
-  }
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+    }
 
-  const addReadLater = async (e: React.FormEvent) => {
-    e.preventDefault();
+    window.open(article.url, '_blank', 'noopener,noreferrer');
+  };
 
-    Api.post(`/api/v1/read-later`, {
-          articleId: article.id
+  const toggleReadLater = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+
+    const accessToken = getLoginUser()?.accessToken;
+    if (!accessToken) {
+      alert('로그인이 필요한 서비스입니다.');
+      handleLogin();
+      return;
+    }
+
+    if (article.isReadLater) {
+      Api.delete('/api/v1/read-later', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
         },
-        {
-          headers: {
-            Authorization: `Bearer ${getLoginUser()?.accessToken}`,
-          }
+        data: {
+          articleId: article.id,
+        },
+      })
+        .onSuccess(() => {
+          setArticle((prevArticle) => ({ ...prevArticle, isReadLater: false }));
+          onReadLaterChange?.(article.id, false);
         })
-    .onSuccess((response) => {
-      setArticle(prevArticle => ({...prevArticle, isReadLater: true}));
-    })
-    .on4XX((response) => {
-      if (response.code === 'LOGIN_FAILED') {
-        alert("로그인이 필요한 서비스입니다.")
-        handleLogin()
-      }
-    })
-    .on5XX((response) => {
+        .on4XX(() => {})
+        .on5XX(() => {});
+      return;
+    }
 
-    })
-  }
-
-  const deleteReadLater = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    Api.delete(`/api/v1/read-later`, {
-      headers: {
-        Authorization: `Bearer ${getLoginUser()?.accessToken}`,
+    Api.post(
+      '/api/v1/read-later',
+      {
+        articleId: article.id,
       },
-      data: {
-        articleId: article.id
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       }
-    })
-    .onSuccess((response) => {
-      setArticle(prevArticle => ({...prevArticle, isReadLater: false}));
-    })
-    .on4XX((response) => {
-      if (response.code === 'LOGIN_FAILED') {
-        alert("로그인이 필요한 서비스입니다.")
-        handleLogin()
-      }
-    })
-    .on5XX((response) => {
-
-    })
-  }
-
-  const blogImageUrl = article.blog.image ?? "/default_blog_image.png";
+    )
+      .onSuccess(() => {
+        setArticle((prevArticle) => ({ ...prevArticle, isReadLater: true }));
+        onReadLaterChange?.(article.id, true);
+      })
+      .on4XX(() => {})
+      .on5XX(() => {});
+  };
 
   return (
-      <div>
-        <Card
-            sx={{
-              boxShadow: 0,
-              display: 'flex',
-              flexDirection: {xs: 'column', md: 'row'},
-              margin: 2,
-              maxWidth: 800,
-              cursor: 'pointer',
-              position: 'relative'
-            }}
-            onClick={toOriginalUrl}
-        >
-          <Box sx={{
-            position: 'relative',
-            width: {xs: '100%', md: 200},
-            height: {xs: '150px', md: 'auto'}
-          }}>
-            <CardMedia
-                component="img"
-                sx={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                }}
-                image={blogImageUrl}
-                alt={article.title}
-            />
-            <Typography
-                component="div"
-                sx={{
-                  position: 'absolute',
-                  bottom: 0,
-                  left: 0,
-                  width: '100%',
-                  color: 'white',
-                  backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                  paddingTop: '8px',
-                  paddingBottom: '8px',
-                  textAlign: 'center',
-                }}
-            >
-              {article.blog.name}
-            </Typography>
-          </Box>
-          <Box sx={{display: 'flex', flexDirection: 'column', flex: 1}}>
-            <CardContent sx={{
-              p: 2,
-            }}>
-              <Typography component="div" variant="h5">
-                {article.title}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{fontSize: '15px'}}>
-                {article.summary}
-              </Typography>
-              <Box pb={1}>
-                {article.keywords.map(keyword =>
-                    <Chip key={keyword} label={`# ${keyword}`} size={"small"} sx={{mr: 1, mt: 1}}/>
-                )}
-              </Box>
-              <Box
-                  py={1}
-                  textAlign={'left'}
-                  onClick={(e) => e.stopPropagation()}
-              >
-                {article.isReadLater ?
-                    <Tooltip title="나중에 읽기 제거" arrow={true}>
-                      <IconButton onClick={deleteReadLater} sx={{p: 0}}>
-                        <BookmarkIcon/>
-                      </IconButton>
-                    </Tooltip> :
-                    <Tooltip title="나중에 읽기" arrow={true}>
-                      <IconButton onClick={addReadLater} sx={{p: 0}}>
-                        <BookmarkBorderIcon/>
-                      </IconButton>
-                    </Tooltip>
-                }
-              </Box>
-            </CardContent>
-          </Box>
-        </Card>
-        <Divider/>
+    <article className="article-card" onClick={openOriginalArticle}>
+      <div className="article-card__cover">
+        <img src={article.blog.image ?? '/default_blog_image.png'} alt={article.title} />
+        <span className="article-card__blog">{article.blog.name}</span>
       </div>
+
+      <div className="article-card__body">
+        <h3 className="article-card__title">{article.title}</h3>
+        <p className="article-card__summary">{article.summary}</p>
+
+        {article.keywords.length > 0 ? (
+          <div className="tag-list">
+            {article.keywords.map((keyword) => (
+              <span key={`${article.id}-${keyword}`} className="tag">
+                #{keyword}
+              </span>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="article-card__meta">
+          <span className="article-card__date">{article.createdDate}</span>
+          <div className="article-actions" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="btn btn-ghost" onClick={openOriginalArticle}>
+              원문 보기
+            </button>
+            <button
+              type="button"
+              className={`icon-action ${article.isReadLater ? 'active' : ''}`}
+              onClick={toggleReadLater}
+              aria-label={article.isReadLater ? '나중에 읽기 제거' : '나중에 읽기 추가'}
+              title={article.isReadLater ? '나중에 읽기 제거' : '나중에 읽기 추가'}
+            >
+              {article.isReadLater ? '★' : '☆'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
   );
 }
 

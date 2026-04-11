@@ -1,27 +1,22 @@
-import * as React from 'react';
-import Typography from "@mui/material/Typography";
-import {ArticleResponse} from "../pages/MainPage";
-import Article from "./Article";
-import Box from "@mui/material/Box";
+import React from 'react';
+import Article from './Article';
+import { ArticleResponse } from '../types';
 
 interface ArticlesWithDateProps {
-  date: string,
-  articles: ArticleResponse[]
+  date: string;
+  articles: ArticleResponse[];
 }
 
-function ArticlesWithDate({date, articles}: ArticlesWithDateProps) {
-
+function ArticlesWithDate({ date, articles }: ArticlesWithDateProps) {
   return (
-      <Box sx={{
-        marginY: '50px',
-      }}>
-        <Typography component="h6" variant="h6">
-          {date}
-        </Typography>
-        {articles.map(article =>
-            <Article key={article.id} article={article}/>
-        )}
-      </Box>
+    <section className="date-group">
+      <span className="date-chip">{date}</span>
+      <div className="article-list">
+        {articles.map((article) => (
+          <Article key={article.id} article={article} />
+        ))}
+      </div>
+    </section>
   );
 }
 

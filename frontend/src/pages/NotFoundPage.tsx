@@ -1,33 +1,17 @@
 import React from 'react';
-import Button from "@mui/material/Button";
-import {Link} from 'react-router-dom';
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
+import { Link } from 'react-router-dom';
 
 function NotFoundPage() {
   return (
-      <Box
-          display="flex"
-          flexDirection="column"
-          justifyContent="center"
-          alignItems="center"
-          minHeight="100vh"
-      >
-        <Typography variant="h4" component="h1" gutterBottom>
-          404 Not Found
-        </Typography>
-        <Typography variant="subtitle1" gutterBottom>
-          죄송합니다. 요청하신 페이지를 찾을 수 없습니다.
-        </Typography>
-        <Button
-            component={Link}
-            to="/"
-            variant="contained"
-            color="primary"
-        >
+    <section className="center-screen">
+      <div className="surface-strong panel stack" style={{ maxWidth: 560, width: '100%', textAlign: 'center' }}>
+        <h1 className="page-title">404</h1>
+        <p className="page-subtitle">요청하신 페이지를 찾을 수 없습니다.</p>
+        <Link to="/" className="btn btn-primary" style={{ width: 'fit-content', margin: '0 auto' }}>
           홈으로 돌아가기
-        </Button>
-      </Box>
+        </Link>
+      </div>
+    </section>
   );
 }
 

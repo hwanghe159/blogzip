@@ -1,4 +1,4 @@
-interface LoginUser {
+export interface LoginUser {
   id: number;
   accessToken: string;
   email: string;
@@ -6,36 +6,53 @@ interface LoginUser {
 }
 
 const localStorageKey = 'loginUser';
+const loginUserChangeEvent = 'login-user-changed';
+
+const dispatchLoginUserChanged = (): void => {
+  window.dispatchEvent(new Event(loginUserChangeEvent));
+};
+
+export const subscribeLoginUserChange = (listener: () => void): (() => void) => {
+  window.addEventListener(loginUserChangeEvent, listener);
+  window.addEventListener('storage', listener);
+
+  return () => {
+    window.removeEventListener(loginUserChangeEvent, listener);
+    window.removeEventListener('storage', listener);
+  };
+};
 
 export const isLogined = (): boolean => {
-  const loginUser = getLoginUser()
+  const loginUser = getLoginUser();
   return loginUser !== null && loginUser.accessToken.trim() !== '';
 };
 
-// 로그인 사용자 정보를 가져오는 함수
 export const getLoginUser = (): LoginUser | null => {
   const storedUser = localStorage.getItem(localStorageKey);
-  if (storedUser) {
-    return JSON.parse(storedUser);
+  if (!storedUser) {
+    return null;
   }
-  return null;
+
+  return JSON.parse(storedUser) as LoginUser;
 };
 
-// 로그인 사용자 정보를 저장하는 함수
 export const setLoginUser = (user: LoginUser): void => {
   localStorage.setItem(localStorageKey, JSON.stringify(user));
+  dispatchLoginUserChanged();
 };
 
-// 로그인 사용자 정보를 수정하는 함수
 export const updateLoginUser = (updatedFields: Partial<LoginUser>): void => {
   const storedUser = getLoginUser();
-  if (storedUser) {
-    const updatedUser = {...storedUser, ...updatedFields};
-    localStorage.setItem(localStorageKey, JSON.stringify(updatedUser));
+  if (!storedUser) {
+    return;
   }
+
+  const updatedUser = { ...storedUser, ...updatedFields };
+  localStorage.setItem(localStorageKey, JSON.stringify(updatedUser));
+  dispatchLoginUserChanged();
 };
 
-// 로그인 사용자 정보를 제거하는 함수
 export const removeLoginUser = (): void => {
   localStorage.removeItem(localStorageKey);
+  dispatchLoginUserChanged();
 };
