@@ -6,14 +6,11 @@ import com.blogzip.domain.Article
 import com.blogzip.domain.Blog
 import com.blogzip.logger
 import com.blogzip.service.ArticleQueryService
-import com.blogzip.slack.SlackSender
-import com.blogzip.slack.SlackSender.SlackChannel.ERROR_LOG
 import org.springframework.stereotype.Component
 import java.time.LocalDate
 
 @Component
 class NoRssContentFetcher(
-  private val slackSender: SlackSender,
   private val htmlCompressor: HtmlCompressor,
   private val articleQueryService: ArticleQueryService,
   private val chromeWebScrapper: WebScrapper,
@@ -25,7 +22,6 @@ class NoRssContentFetcher(
     if (blog.urlCssSelector == null) {
       val errorMessage = "css selector가 없어 새 글 가져오기 실패. url=${blog.url}"
       log.error(errorMessage)
-      slackSender.sendMessageAsync(channel = ERROR_LOG, errorMessage)
       return FetchArticlesResult(
         articles = emptyList(),
         failures = listOf(
@@ -42,11 +38,12 @@ class NoRssContentFetcher(
     val articleUrls = articleQueryService.findAllByBlogId(blog.id!!)
       .map { it.url }
       .toSet()
+    val urlCssSelector = blog.urlCssSelector!!
     val scrapResult =
-      chromeWebScrapper.getArticles(blog.url, blog.urlCssSelector!!, articleUrls)
+      chromeWebScrapper.getArticles(blog.url, urlCssSelector, articleUrls)
+    val cssSelectorInvalidOrChanged = isCssSelectorInvalidOrChanged(scrapResult, urlCssSelector)
     if (scrapResult.isFailed()) {
-      slackSender.sendMessageAsync(ERROR_LOG, "${blog.url} 크롤링 부분/전체 실패")
-      slackSender.sendStackTraceAsync(ERROR_LOG, scrapResult.failCause!!)
+      log.error("${blog.url} 크롤링 부분/전체 실패", scrapResult.failCause)
     }
     val failures = mutableListOf<FetchFailure>()
     if (scrapResult.isFailed()) {
@@ -54,7 +51,10 @@ class NoRssContentFetcher(
         blogId = blog.id,
         blogUrl = blog.url,
         rssStatus = blog.rssStatus,
-        reason = "ARTICLE_LIST_CRAWL_FAILED",
+        reason = if (cssSelectorInvalidOrChanged)
+          "CSS_SELECTOR_INVALID_OR_CHANGED"
+        else
+          "ARTICLE_LIST_CRAWL_FAILED",
         detail = scrapResult.failCause?.message,
       )
     }
@@ -77,5 +77,21 @@ class NoRssContentFetcher(
       articles = newArticles,
       failures = failures,
     )
+  }
+
+  private fun isCssSelectorInvalidOrChanged(
+    scrapResult: WebScrapper.ScrapResult,
+    cssSelector: String
+  ): Boolean {
+    val message = scrapResult.failCause?.message?.lowercase() ?: return false
+    val selectorText = cssSelector.lowercase()
+
+    if (!message.contains("selector")) {
+      return false
+    }
+
+    return message.contains("waiting for selector")
+      || message.contains("valid selector")
+      || message.contains(selectorText)
   }
 }

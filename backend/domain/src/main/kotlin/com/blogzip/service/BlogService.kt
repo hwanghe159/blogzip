@@ -46,6 +46,26 @@ class BlogService(private val repository: BlogRepository) {
   }
 
   @Transactional
+  fun updateMetadata(
+    blogId: Long,
+    name: String?,
+    image: String?,
+    rss: String?,
+    rssStatus: Blog.RssStatus?,
+  ) {
+    val previous = repository.findById(blogId)
+      .orElseThrow { DomainException(ErrorCode.BLOG_NOT_FOUND) }
+
+    repository.updateMetadataById(
+      blogId = blogId,
+      name = name ?: previous.name,
+      image = image ?: previous.image,
+      rss = rss ?: previous.rss,
+      rssStatus = rssStatus ?: previous.rssStatus,
+    )
+  }
+
+  @Transactional
   fun save(
     name: String,
     url: String,

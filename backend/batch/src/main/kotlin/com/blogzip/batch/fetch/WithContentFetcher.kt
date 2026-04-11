@@ -5,14 +5,11 @@ import com.blogzip.crawler.service.RssFeedFetcher
 import com.blogzip.domain.Article
 import com.blogzip.domain.Blog
 import com.blogzip.logger
-import com.blogzip.slack.SlackSender
-import com.blogzip.slack.SlackSender.SlackChannel.ERROR_LOG
 import org.springframework.stereotype.Component
 import java.time.LocalDate
 
 @Component
 class WithContentFetcher(
-  private val slackSender: SlackSender,
   private val rssFeedFetcher: RssFeedFetcher,
   private val htmlCompressor: HtmlCompressor,
 ) : NewArticlesFetcher {
@@ -23,7 +20,6 @@ class WithContentFetcher(
     if (blog.rss == null) {
       val errorMessage = "blog.rss가 없어 새 글 가져오기 실패. blog.id=${blog.id}"
       log.error(errorMessage)
-      slackSender.sendMessageAsync(channel = ERROR_LOG, errorMessage)
       return FetchArticlesResult(
         articles = emptyList(),
         failures = listOf(
@@ -43,7 +39,6 @@ class WithContentFetcher(
     } catch (e: Exception) {
       val exception = RuntimeException("${blog.rss}의 글 가져오기 실패.", e)
       log.error(exception.message, exception)
-      slackSender.sendStackTraceAsync(channel = ERROR_LOG, exception)
       return FetchArticlesResult(
         articles = emptyList(),
         failures = listOf(
@@ -58,6 +53,7 @@ class WithContentFetcher(
       )
     }
 
+    val contentMissingUrls = mutableListOf<String>()
     val newArticles = articles
       .filter {
         if (it.createdDate == null) {
@@ -68,7 +64,7 @@ class WithContentFetcher(
       }
       .filter { article ->
         if (article.content == null) {
-          slackSender.sendMessageAsync(ERROR_LOG, "${article.url} 의 content가 없어 필터링")
+          contentMissingUrls.add(article.url)
           false
         } else {
           true
@@ -94,6 +90,20 @@ class WithContentFetcher(
           }
         )
       }
-    return FetchArticlesResult(articles = newArticles)
+    val failures = mutableListOf<FetchFailure>()
+    if (contentMissingUrls.isNotEmpty()) {
+      failures += FetchFailure(
+        blogId = blog.id,
+        blogUrl = blog.url,
+        rssStatus = blog.rssStatus,
+        reason = "ARTICLE_CONTENT_MISSING_IN_RSS",
+        detail = "missingCount=${contentMissingUrls.size}, sampleUrls=${contentMissingUrls.take(3)}${if (contentMissingUrls.size > 3) "..." else ""}",
+      )
+    }
+
+    return FetchArticlesResult(
+      articles = newArticles,
+      failures = failures,
+    )
   }
 }

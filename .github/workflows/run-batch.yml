@@ -9,6 +9,7 @@ on:
         options:
           - fetch-new-articles
           - email-send
+          - refresh-blog-metadata
           - test
         required: true
         default: fetch-new-articles

@@ -20,8 +20,10 @@ WORKDIR /app
 COPY --from=build /workspace/backend/batch/build/libs/*.jar /app/app.jar
 COPY deploy/scheduler/crontab /app/crontab
 COPY deploy/scheduler/entrypoint.sh /app/entrypoint.sh
+COPY deploy/scheduler/run-batch-job.sh /app/run-batch-job.sh
 
 RUN chmod +x /app/entrypoint.sh \
+  && chmod +x /app/run-batch-job.sh \
   && chmod 0644 /app/crontab \
   && mkdir -p /app/heapdumps
 
