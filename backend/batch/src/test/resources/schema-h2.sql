@@ -5,6 +5,9 @@ create table `user`
     social_type  varchar(10)                        not null,
     social_id    varchar(100)                       not null,
     receive_days varchar(100)                       not null,
+    is_admin     boolean   default false            not null,
+    is_deleted   boolean   default false            not null,
+    deleted_at   datetime,
     created_at   datetime default CURRENT_TIMESTAMP not null,
     updated_at   datetime default CURRENT_TIMESTAMP not null,
     unique (email)
@@ -42,14 +45,40 @@ create table article
     blog_id       bigint                              not null,
     title         varchar(1000)                       not null,
     content       clob                                not null,
-    summary       varchar(2000),
-    summarized_by varchar(100),
     url           varchar(700)                        not null,
     created_date  date                                not null,
     created_at    timestamp default CURRENT_TIMESTAMP not null,
     unique (url)
 );
 create index idx_created_date on article (created_date);
+
+create table article_summary
+(
+    id            bigint auto_increment primary key,
+    article_id    bigint                              not null,
+    summary       varchar(2000)                       not null,
+    summarized_by varchar(100)                        not null,
+    is_applied    boolean   default false             not null,
+    created_at    timestamp default CURRENT_TIMESTAMP not null,
+    updated_at    timestamp default CURRENT_TIMESTAMP not null
+);
+create index idx_article_summary_article_id on article_summary (article_id);
+create index idx_article_summary_article_id_is_applied on article_summary (article_id, is_applied);
+
+create table article_report
+(
+    id         bigint auto_increment primary key,
+    article_id bigint                              not null,
+    user_id    bigint                              not null,
+    reason     varchar(100)                        not null,
+    detail     varchar(1000),
+    status     varchar(30)                         not null,
+    created_at timestamp default CURRENT_TIMESTAMP not null,
+    updated_at timestamp default CURRENT_TIMESTAMP not null,
+    constraint udx_article_report_user_article unique (article_id, user_id)
+);
+create index idx_article_report_article_id on article_report (article_id);
+create index idx_article_report_user_id on article_report (user_id);
 
 insert into `user`(email, social_type, social_id, receive_days)
 values ('hwanghe159@gmail.com', 'GOOGLE', 1,

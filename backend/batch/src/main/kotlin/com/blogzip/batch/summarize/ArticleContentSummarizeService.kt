@@ -33,7 +33,7 @@ class ArticleContentSummarizeService(
     val articles = articleQueryService.findAllSummarizeTarget(startDate = startDate)
     if (articles.isEmpty()) {
       val noTargetMessage =
-        "요약 대상 없음: startDate=$startDate, 조건=(createdDate >= startDate AND summary is null)"
+        "요약 대상 없음: startDate=$startDate, 조건=(createdDate >= startDate AND applied summary 없음)"
       log.info(noTargetMessage)
       slackSender.sendMessageAsync(SlackSender.SlackChannel.MONITORING, noTargetMessage)
       return

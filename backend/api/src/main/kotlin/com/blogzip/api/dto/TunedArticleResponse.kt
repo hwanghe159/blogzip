@@ -12,23 +12,23 @@ data class TunedArticleResponse private constructor(
   val keywords: List<String>,
 ) {
   companion object {
-    fun of(fineTuning: FineTuning, article: Article): TunedArticleResponse {
+    fun of(fineTuning: FineTuning, article: Article, summary: String?): TunedArticleResponse {
       return TunedArticleResponse(
         articleId = article.id!!,
         title = article.title,
         url = article.url,
-        summary = article.summary,
+        summary = summary,
         tunedSummary = fineTuning.summary,
         keywords = fineTuning.keywords.split(",").map { it.trim() },
       )
     }
 
-    fun from(article: Article): TunedArticleResponse {
+    fun from(article: Article, summary: String?): TunedArticleResponse {
       return TunedArticleResponse(
         articleId = article.id!!,
         title = article.title,
         url = article.url,
-        summary = article.summary,
+        summary = summary,
         tunedSummary = null,
         keywords = emptyList(),
       )

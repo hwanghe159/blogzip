@@ -31,8 +31,11 @@ class GoogleAuthService(
 
     val googleId = googleUserInfo.sub
     val email = googleUserInfo.email
-    var user = userService.findByEmail(email)
+    var user = userService.findByEmailIncludingDeleted(email)
     if (user != null) {
+      if (user.isDeleted) {
+        throw DomainException(ErrorCode.USER_WITHDRAWN)
+      }
       user.updateGoogleId(googleId)
       userService.save(user)
     } else {

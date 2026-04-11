@@ -64,4 +64,10 @@ class BlogService(private val repository: BlogRepository) {
     return (repository.search(trimmedQuery) + repository.search(normalizedQuery))
       .distinctBy { it.id }
   }
+
+  @Transactional
+  fun updateCssSelector(blogId: Long, cssSelector: String?) {
+    val blog = findById(blogId)
+    blog.updateUrlCssSelector(cssSelector)
+  }
 }

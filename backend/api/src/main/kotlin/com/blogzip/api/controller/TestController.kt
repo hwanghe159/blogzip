@@ -4,7 +4,7 @@ import com.blogzip.ai.summary.ArticleContentBatchSummarizer
 import com.blogzip.ai.summary.ArticleToSummarize
 import com.blogzip.ai.summary.OpenAiApiClient
 import com.blogzip.ai.summary.SummarizedArticleResult
-import com.blogzip.api.admin.AdminTokenRequired
+import com.blogzip.api.admin.AdminRequired
 import com.blogzip.crawler.dto.Article
 import com.blogzip.crawler.dto.BlogMetadata
 import com.blogzip.crawler.service.CrawlerHttpClient
@@ -117,9 +117,9 @@ class TestController(
     return articleContentBatchSummarizer.summarizeAndGetKeywordsAll(articles)
   }
 
-  @AdminTokenRequired
-  @GetMapping("/api/v1/test/admin-token")
-  fun adminTokenTest(): String {
+  @AdminRequired
+  @GetMapping("/api/v1/test/admin-required")
+  fun adminRequiredTest(): String {
     return "success"
   }
 }

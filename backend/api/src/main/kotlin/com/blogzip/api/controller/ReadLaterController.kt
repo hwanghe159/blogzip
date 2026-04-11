@@ -3,6 +3,9 @@ package com.blogzip.api.controller
 import com.blogzip.api.auth.Authenticated
 import com.blogzip.api.auth.AuthenticatedUser
 import com.blogzip.api.dto.*
+import com.blogzip.common.DomainException
+import com.blogzip.common.ErrorCode
+import com.blogzip.service.ArticleCommandService
 import com.blogzip.service.KeywordService
 import com.blogzip.service.ReadLaterService
 import io.swagger.v3.oas.annotations.Parameter
@@ -14,6 +17,7 @@ import org.springframework.web.bind.annotation.*
 class ReadLaterController(
   private val readLaterService: ReadLaterService,
   private val keywordService: KeywordService,
+  private val articleCommandService: ArticleCommandService,
 ) {
 
   @GetMapping("/api/v1/read-later")
@@ -47,10 +51,13 @@ class ReadLaterController(
     @RequestBody request: ReadLaterCreateRequest,
   ): ResponseEntity<ReadLaterResponse> {
     val readLaterAndArticle = readLaterService.save(user.id, request.articleId)
+    val appliedSummary = articleCommandService.getAppliedSummary(readLaterAndArticle.article.id!!)
+      ?: throw DomainException(ErrorCode.ARTICLE_SUMMARY_NOT_FOUND)
     return ResponseEntity.ok(
       ReadLaterResponse.of(
         readLaterAndArticle.readLater,
-        readLaterAndArticle.article
+        readLaterAndArticle.article,
+        summary = appliedSummary.summary,
       )
     )
   }

@@ -5,6 +5,7 @@ import com.blogzip.logger
 import com.blogzip.notification.email.Article
 import com.blogzip.notification.email.EmailSender
 import com.blogzip.notification.email.User
+import com.blogzip.service.ArticleCommandService
 import com.blogzip.service.ArticleQueryService
 import com.blogzip.service.BlogService
 import com.blogzip.service.KeywordService
@@ -28,6 +29,7 @@ import java.time.LocalDate
 class EmailSendJobConfig(
   private val userService: UserService,
   private val articleQueryService: ArticleQueryService,
+  private val articleCommandService: ArticleCommandService,
   private val blogService: BlogService,
   private val keywordService: KeywordService,
   private val jobResultNotifier: JobResultNotifier,
@@ -70,24 +72,24 @@ class EmailSendJobConfig(
           val blogIds = user.getAllSubscribingBlogIds()
           val newArticles = articleQueryService
             .findAllByBlogIdsAndCreatedDates(blogIds, accumulatedDates)
-            .filter {
-              if (it.summary == null) {
-                val errorMessage = "요약되지 않아 전송 과정에서 걸러짐. article.id=${it.id}"
-                log.error(errorMessage)
-                slackSender.sendMessageAsync(channel = ERROR_LOG, errorMessage)
-              }
-              it.summary != null
-            }
+          val summaries = articleCommandService.getAppliedSummaries(newArticles.mapNotNull { it.id })
 
           val articleIds = newArticles.map { it.id!! }.toSet()
           val keywords = keywordService.getAllByArticleIds(articleIds)
 
           val articlesToSend = newArticles
-            .map {
+            .mapNotNull {
+              val summary = summaries[it.id!!]
+              if (summary == null) {
+                val errorMessage = "요약되지 않아 전송 과정에서 걸러짐. article.id=${it.id}"
+                log.error(errorMessage)
+                slackSender.sendMessageAsync(channel = ERROR_LOG, errorMessage)
+                return@mapNotNull null
+              }
               Article(
                 title = it.title,
                 url = it.url,
-                summary = it.summary!!,
+                summary = summary.summary,
                 blogName = blogs[it.blogId]?.name!!,
                 keywords = keywords[it.id!!]?.map { it.value } ?: emptyList(),
                 createdDate = it.createdDate!!,

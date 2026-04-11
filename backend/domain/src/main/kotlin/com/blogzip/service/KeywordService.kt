@@ -4,10 +4,12 @@ import com.blogzip.common.DomainException
 import com.blogzip.common.ErrorCode
 import com.blogzip.domain.*
 import com.blogzip.dto.HeadKeyword
+import com.blogzip.dto.KeywordOverview
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.util.*
+import java.util.Collections
+import java.util.Locale
 
 @Service
 class KeywordService(
@@ -64,6 +66,48 @@ class KeywordService(
     return Collections.unmodifiableMap(result)
   }
 
+  @Transactional(readOnly = true)
+  fun getOverview(): KeywordOverview {
+    val keywords = keywordRepository.findAllWithHead()
+    val mappingCountByHeadKeywordId = articleKeywordRepository.countMappingsByHeadKeywordId()
+      .associate { it.headKeywordId to it.mappingCount.toInt() }
+
+    val headKeywords = keywords
+      .filter { it.isHead() }
+      .sortedBy { it.value.lowercase(Locale.ROOT) }
+    val followersByHeadKeywordId = keywords
+      .filterNot { it.isHead() }
+      .groupBy { it.head!!.id!! }
+
+    return KeywordOverview(
+      totalKeywordCount = keywords.size,
+      headKeywordCount = headKeywords.size,
+      followerKeywordCount = keywords.size - headKeywords.size,
+      visibleKeywordCount = keywords.count { it.isVisible },
+      hiddenKeywordCount = keywords.count { !it.isVisible },
+      headKeywords = headKeywords.map { headKeyword ->
+        KeywordOverview.HeadKeywordOverview(
+          id = headKeyword.id!!,
+          value = headKeyword.value,
+          isVisible = headKeyword.isVisible,
+          articleCount = mappingCountByHeadKeywordId[headKeyword.id] ?: 0,
+          createdAt = headKeyword.createdAt,
+          followers = followersByHeadKeywordId[headKeyword.id]
+            .orEmpty()
+            .sortedBy { it.value.lowercase(Locale.ROOT) }
+            .map {
+              KeywordOverview.FollowerKeywordOverview(
+                id = it.id!!,
+                value = it.value,
+                isVisible = it.isVisible,
+                createdAt = it.createdAt,
+              )
+            }
+        )
+      }
+    )
+  }
+
   private fun saveAllIfNotExist(keywordValues: List<String>): List<Keyword> {
     val existing = keywordRepository.findAllByValueIn(keywordValues)
       .map { it.value to it }
@@ -96,8 +140,16 @@ class KeywordService(
       ?: throw DomainException(ErrorCode.KEYWORD_NOT_FOUND)
     val destination = keywordRepository.findByValue(destValue)
       ?: throw DomainException(ErrorCode.KEYWORD_NOT_FOUND)
-    source.mergeInto(destination)
-    moveMapping(source.id!!, destination.id!!)
+    merge(source, destination)
+  }
+
+  @Transactional
+  fun mergeById(srcKeywordId: Long, destKeywordId: Long) {
+    val source = keywordRepository.findByIdOrNull(srcKeywordId)
+      ?: throw DomainException(ErrorCode.KEYWORD_NOT_FOUND)
+    val destination = keywordRepository.findByIdOrNull(destKeywordId)
+      ?: throw DomainException(ErrorCode.KEYWORD_NOT_FOUND)
+    merge(source, destination)
   }
 
   private fun updateValue(keyword: Keyword, value: String) {
@@ -120,5 +172,13 @@ class KeywordService(
         articleKeyword.changeHeadKeywordId(destKeywordId)
       }
     }
+  }
+
+  private fun merge(source: Keyword, destination: Keyword) {
+    if (source.id == destination.id) {
+      throw DomainException(ErrorCode.KEYWORD_UPDATE_FAILED)
+    }
+    source.mergeInto(destination)
+    moveMapping(source.id!!, destination.id!!)
   }
 }

@@ -16,12 +16,14 @@ private val ErrorCode.toHttpStatus: HttpStatus
   get() {
     return when (this) {
       ErrorCode.ARTICLE_NOT_FOUND -> HttpStatus.NOT_FOUND
+      ErrorCode.ARTICLE_SUMMARY_NOT_FOUND -> HttpStatus.NOT_FOUND
       ErrorCode.BLOG_NOT_FOUND -> HttpStatus.NOT_FOUND
       ErrorCode.BLOG_URL_DUPLICATED -> HttpStatus.CONFLICT
       ErrorCode.BLOG_URL_NOT_VALID -> HttpStatus.BAD_REQUEST
       ErrorCode.EMAIL_NOT_FOUND -> HttpStatus.NOT_FOUND
       ErrorCode.LOGIN_FAILED -> HttpStatus.UNAUTHORIZED
       ErrorCode.USER_NOT_FOUND -> HttpStatus.NOT_FOUND
+      ErrorCode.USER_WITHDRAWN -> HttpStatus.FORBIDDEN
       ErrorCode.KEYWORD_NOT_FOUND -> HttpStatus.NOT_FOUND
       ErrorCode.KEYWORD_UPDATE_FAILED -> HttpStatus.BAD_REQUEST
     }

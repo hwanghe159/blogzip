@@ -11,7 +11,20 @@ interface ArticleRepository : JpaRepository<Article, Long> {
 
   fun findByUrl(url: String): Article?
 
-  fun findAllByCreatedDateGreaterThanEqualAndSummaryIsNull(createdDate: LocalDate): List<Article>
+  @Query(
+    """
+            select article
+            from Article article
+            where article.createdDate >= :createdDate
+            and not exists (
+                select articleSummary.id
+                from ArticleSummary articleSummary
+                where articleSummary.articleId = article.id
+                and articleSummary.isApplied = true
+            )
+        """
+  )
+  fun findAllByCreatedDateGreaterThanEqualAndNoAppliedSummary(createdDate: LocalDate): List<Article>
 
   @Query(
     """
@@ -21,7 +34,12 @@ interface ArticleRepository : JpaRepository<Article, Long> {
             and article.createdDate >= :from
             and article.createdDate <= :to
             and (:next is null or article.id <= :next)
-            and article.summary is not null
+            and exists (
+                select articleSummary.id
+                from ArticleSummary articleSummary
+                where articleSummary.articleId = article.id
+                and articleSummary.isApplied = true
+            )
         """
   )
   fun search(
@@ -30,6 +48,32 @@ interface ArticleRepository : JpaRepository<Article, Long> {
     to: LocalDate,
     next: Long?,
     pageable: Pageable
+  ): List<Article>
+
+  @Query(
+    """
+            select article
+            from Article article
+            where article.blogId in :blogIds
+            and (:next is null or article.id <= :next)
+            and article.id in (
+                select articleKeyword.articleId
+                from ArticleKeyword articleKeyword
+                where articleKeyword.headKeywordId = :headKeywordId
+            )
+            and exists (
+                select articleSummary.id
+                from ArticleSummary articleSummary
+                where articleSummary.articleId = article.id
+                and articleSummary.isApplied = true
+            )
+        """
+  )
+  fun searchByHeadKeyword(
+    headKeywordId: Long,
+    blogIds: Collection<Long>,
+    next: Long?,
+    pageable: Pageable,
   ): List<Article>
 
   fun findAllByBlogIdInAndCreatedDateIn(

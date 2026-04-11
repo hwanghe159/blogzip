@@ -19,10 +19,6 @@ class Article(
 
   val url: String,
 
-  var summary: String? = null,
-
-  var summarizedBy: String? = null,
-
   var createdDate: LocalDate? = null,
 ) {
 
@@ -34,6 +30,6 @@ class Article(
   }
 
   override fun toString(): String {
-    return "Article(id=$id, blogId=$blogId, title='$title', content='$content', url='$url', summary=$summary, summarizedBy=$summarizedBy, createdDate=$createdDate)"
+    return "Article(id=$id, blogId=$blogId, title='$title', content='$content', url='$url', createdDate=$createdDate)"
   }
 }

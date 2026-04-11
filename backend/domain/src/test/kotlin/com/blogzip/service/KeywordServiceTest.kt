@@ -1,6 +1,10 @@
 package com.blogzip.service
 
+import com.blogzip.common.DomainException
+import com.blogzip.common.ErrorCode
 import com.blogzip.domain.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.DisplayName
 
 import org.junit.jupiter.api.Test
@@ -51,5 +55,53 @@ class KeywordServiceTest {
     verify(keywordRepository, times(1)).save(any())
     verify(articleKeywordRepository, times(1))
       .saveAll(argThat<Iterable<ArticleKeyword>> { it.count() == 2 })
+  }
+
+  @DisplayName("키워드 개요 조회 시 head/follower/노출 상태와 아티클 매핑 수를 집계한다.")
+  @Test
+  fun getOverview() {
+    val headKeyword1 = Keyword(id = 1, value = "backend", isVisible = true)
+    val followerKeyword = Keyword(id = 2, value = "server", head = headKeyword1, isVisible = false)
+    val headKeyword2 = Keyword(id = 3, value = "frontend", isVisible = false)
+
+    `when`(keywordRepository.findAllWithHead())
+      .thenReturn(listOf(headKeyword1, followerKeyword, headKeyword2))
+    `when`(articleKeywordRepository.countMappingsByHeadKeywordId())
+      .thenReturn(
+        listOf(
+          object : ArticleKeywordRepository.HeadKeywordMappingCount {
+            override val headKeywordId: Long = 1L
+            override val mappingCount: Long = 3L
+          }
+        )
+      )
+
+    val overview = keywordService.getOverview()
+
+    assertEquals(3, overview.totalKeywordCount)
+    assertEquals(2, overview.headKeywordCount)
+    assertEquals(1, overview.followerKeywordCount)
+    assertEquals(1, overview.visibleKeywordCount)
+    assertEquals(2, overview.hiddenKeywordCount)
+
+    val backendKeyword = overview.headKeywords.first { it.id == 1L }
+    assertEquals(3, backendKeyword.articleCount)
+    assertEquals(1, backendKeyword.followers.size)
+    assertEquals(false, backendKeyword.followers.first().isVisible)
+  }
+
+  @DisplayName("같은 키워드끼리 머지하려는 경우, 머지에 실패한다.")
+  @Test
+  fun mergeById_WithSameKeyword() {
+    val keyword = Keyword(id = 1, value = "backend")
+    `when`(keywordRepository.findById(1L))
+      .thenReturn(Optional.of(keyword))
+
+    val exception = assertThrows(DomainException::class.java) {
+      keywordService.mergeById(1L, 1L)
+    }
+
+    assertEquals(ErrorCode.KEYWORD_UPDATE_FAILED, exception.errorCode)
+    verify(articleKeywordRepository, never()).findAllByHeadKeywordId(anyLong())
   }
 }

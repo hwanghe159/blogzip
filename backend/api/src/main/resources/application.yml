@@ -18,7 +18,6 @@ oauth2:
 logging:
   level:
     org.hibernate.SQL: info
-admin-token: ${ADMIN_TOKEN}
 crawler:
   base-url: ${CRAWLER_BASE_URL:http://localhost:8090}
 

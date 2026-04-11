@@ -58,7 +58,6 @@
 - Vault Secret 이름은 아래 환경변수 키와 동일하게 생성해야 합니다.
 - `JWT_SECRET_KEY`
 - `GOOGLE_CLIENT_SECRET`
-- `ADMIN_TOKEN`
 - `MYSQL_HOST`
 - `MYSQL_USERNAME`
 - `MYSQL_PASSWORD`

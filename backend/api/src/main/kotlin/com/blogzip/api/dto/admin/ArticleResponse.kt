@@ -16,7 +16,12 @@ data class ArticleResponse private constructor(
   val keywords: List<HeadKeywordResponse>,
 ) {
   companion object {
-    fun from(article: Article, headKeywords: List<HeadKeyword>): ArticleResponse {
+    fun from(
+      article: Article,
+      headKeywords: List<HeadKeyword>,
+      summary: String?,
+      summarizedBy: String?,
+    ): ArticleResponse {
       val keywords = headKeywords
         .map {
           HeadKeywordResponse(
@@ -39,8 +44,8 @@ data class ArticleResponse private constructor(
         title = article.title,
         content = article.content,
         url = article.url,
-        summary = article.summary,
-        summarizedBy = article.summarizedBy,
+        summary = summary,
+        summarizedBy = summarizedBy,
         createdDate = article.createdDate,
         keywords = keywords
       )

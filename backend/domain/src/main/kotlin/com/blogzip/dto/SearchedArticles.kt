@@ -50,6 +50,8 @@ data class SearchedArticles private constructor(
       fun of(
         article: com.blogzip.domain.Article,
         blog: com.blogzip.domain.Blog,
+        summary: String,
+        summarizedBy: String,
         isReadLater: Boolean,
       ): Article {
         return Article(
@@ -58,8 +60,8 @@ data class SearchedArticles private constructor(
           title = article.title,
           content = article.content,
           url = article.url,
-          summary = article.summary!!,
-          summarizedBy = article.summarizedBy!!,
+          summary = summary,
+          summarizedBy = summarizedBy,
           isReadLater = isReadLater,
           createdDate = article.createdDate!!,
         )
@@ -72,15 +74,21 @@ data class SearchedArticles private constructor(
       articleAndBlogs: List<ArticleAndBlog>,
       next: Long?,
       readLaterArticleIds: Set<Long>,
+      appliedSummaries: Map<Long, com.blogzip.domain.ArticleSummary>,
     ): SearchedArticles {
       return SearchedArticles(
-        articles = articleAndBlogs.map {
+        articles = articleAndBlogs.mapNotNull {
+          val summary = appliedSummaries[it.article.id!!]
+            ?: return@mapNotNull null
           Article.of(
             article = it.article,
             blog = it.blog,
-            readLaterArticleIds.contains(it.article.id)
+            summary = summary.summary,
+            summarizedBy = summary.summarizedBy,
+            isReadLater = readLaterArticleIds.contains(it.article.id)
           )
-        }, next = next
+        },
+        next = next
       )
     }
   }

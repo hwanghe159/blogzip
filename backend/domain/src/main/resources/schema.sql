@@ -11,6 +11,9 @@ create table user
     id                           bigint auto_increment primary key,
     email                        varchar(200) not null comment '이메일 주소',
     receive_days                 varchar(100) not null comment '수신 희망 요일',
+    is_admin                     boolean      not null default false comment '어드민 여부',
+    is_deleted                   boolean      not null default false comment '탈퇴 여부',
+    deleted_at                   datetime              default null comment '탈퇴 시각',
     verification_code_expired_at datetime     not null default current_timestamp comment '이메일 인증코드 만료시각',
     created_at                   datetime     not null default current_timestamp comment '생성 시각',
     updated_at                   datetime     not null default current_timestamp comment '수정 시각',
@@ -47,12 +50,38 @@ create table article
     blog_id       bigint       not null comment 'blog.id',
     title         varchar(200) not null comment '제목',
     content       longtext     not null comment '내용',
-    summary       varchar(1000) null comment '요약된 내용',
-    summarized_by varchar(100) null comment '요약된 내용 제공자',
     url           varchar(700) not null comment 'URL',
     created_date  date         not null comment '생성 날짜',
     unique index udx_url (url)
 ) comment '블로그 글';
+
+create table article_summary
+(
+    id            bigint auto_increment primary key,
+    article_id    bigint        not null comment '요약 대상 article.id',
+    summary       varchar(2000) not null comment '요약 내용',
+    summarized_by varchar(100)  not null comment '요약 제공 모델',
+    is_applied    boolean       not null default false comment '현재 적용 여부',
+    created_at    datetime      not null default current_timestamp comment '생성 시각',
+    updated_at    datetime      not null default current_timestamp comment '수정 시각',
+    index         idx_article_summary_article_id (article_id),
+    index         idx_article_summary_article_id_is_applied (article_id, is_applied)
+) comment '게시글 요약 이력';
+
+create table article_report
+(
+    id         bigint auto_increment primary key,
+    article_id bigint        not null comment '신고 대상 article.id',
+    user_id    bigint        not null comment '신고자 user.id',
+    reason     varchar(100)  not null comment '신고 사유',
+    detail     varchar(1000) null comment '신고 상세 내용',
+    status     varchar(30)   not null comment '신고 상태',
+    created_at datetime      not null default current_timestamp comment '생성 시각',
+    updated_at datetime      not null default current_timestamp comment '수정 시각',
+    unique index udx_article_report_user_article (article_id, user_id),
+    index      idx_article_report_article_id (article_id),
+    index      idx_article_report_user_id (user_id)
+) comment '게시글 신고';
 
 insert into user(email, verification_code, is_verified, receive_days)
 values ('hwanghe159@gmail.com', '', true,

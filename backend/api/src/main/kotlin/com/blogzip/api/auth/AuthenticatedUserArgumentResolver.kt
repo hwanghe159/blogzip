@@ -33,11 +33,15 @@ class AuthenticatedUserArgumentResolver(
     }
     val token = authorizationHeader.substring(7)
     val email = jwtService.getEmail(token) ?: throw DomainException(ErrorCode.LOGIN_FAILED)
-    val user =
-      userService.findByEmail(email) ?: throw DomainException(ErrorCode.LOGIN_FAILED)
+    val user = userService.findByEmailIncludingDeleted(email)
+      ?: throw DomainException(ErrorCode.LOGIN_FAILED)
+    if (user.isDeleted) {
+      throw DomainException(ErrorCode.USER_WITHDRAWN)
+    }
     return AuthenticatedUser(
       id = user.id!!,
       email = user.email,
+      isAdmin = user.isAdmin,
       socialType = user.socialType,
       socialId = user.socialId,
       receiveDays = user.receiveDays,

@@ -24,6 +24,12 @@ class User(
 
   var receiveDays: String,
 
+  var isAdmin: Boolean = false,
+
+  var isDeleted: Boolean = false,
+
+  var deletedAt: LocalDateTime? = null,
+
   @OneToMany(
     mappedBy = "user",
     fetch = FetchType.LAZY,
@@ -84,5 +90,13 @@ class User(
   fun updateGoogleId(googleId: String) {
     this.socialType = SocialType.GOOGLE
     this.socialId = googleId
+  }
+
+  fun withdraw() {
+    if (isDeleted) {
+      return
+    }
+    isDeleted = true
+    deletedAt = LocalDateTime.now()
   }
 }

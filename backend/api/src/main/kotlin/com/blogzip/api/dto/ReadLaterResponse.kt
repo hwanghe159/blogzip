@@ -9,10 +9,10 @@ data class ReadLaterResponse private constructor(
   val article: ArticleResponse,
 ) {
   companion object {
-    fun of(readLater: ReadLater, article: Article): ReadLaterResponse {
+    fun of(readLater: ReadLater, article: Article, summary: String): ReadLaterResponse {
       return ReadLaterResponse(
         id = readLater.id!!,
-        article = ArticleResponse.from(article)
+        article = ArticleResponse.from(article, summary)
       )
     }
 
@@ -33,13 +33,13 @@ data class ReadLaterResponse private constructor(
     var createdDate: LocalDate,
   ) {
     companion object {
-      fun from(article: Article): ArticleResponse {
+      fun from(article: Article, summary: String): ArticleResponse {
         return ArticleResponse(
           id = article.id!!,
           blogId = article.blogId,
           title = article.title,
           url = article.url,
-          summary = article.summary!!,
+          summary = summary,
           createdDate = article.createdDate!!,
         )
       }

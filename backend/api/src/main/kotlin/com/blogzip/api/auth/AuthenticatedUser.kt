@@ -6,6 +6,7 @@ import java.time.LocalDateTime
 data class AuthenticatedUser(
   val id: Long,
   val email: String,
+  val isAdmin: Boolean,
   val socialType: SocialType,
   val socialId: String,
   val receiveDays: String,

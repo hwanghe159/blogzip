@@ -5,6 +5,7 @@ import com.blogzip.ai.tuning.FineTuningDataset
 import com.blogzip.api.dto.FineTuningRequest
 import com.blogzip.api.dto.TunedArticleResponse
 import com.blogzip.dto.FineTuningAndArticle
+import com.blogzip.service.ArticleCommandService
 import com.blogzip.service.ArticleQueryService
 import com.blogzip.service.FineTuningService
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -19,6 +20,7 @@ import java.io.ByteArrayInputStream
 @RestController
 class FineTuningController(
   private val articleQueryService: ArticleQueryService,
+  private val articleCommandService: ArticleCommandService,
   private val fineTuningService: FineTuningService,
   private val jsonlObjectMapper: ObjectMapper,
   private val jsonlConverter: JsonlConverter,
@@ -27,15 +29,26 @@ class FineTuningController(
   @GetMapping("/api/v1/article/{id}/fine-tuning")
   fun getFineTuning(@PathVariable id: Long): ResponseEntity<TunedArticleResponse> {
     val article = articleQueryService.findById(id)
+    val appliedSummary = articleCommandService.getAppliedSummary(id)?.summary
     val fineTuning = fineTuningService.findByArticleId(id)
-      ?: return ResponseEntity.ok(TunedArticleResponse.from(article))
-    return ResponseEntity.ok(TunedArticleResponse.of(fineTuning, article))
+      ?: return ResponseEntity.ok(TunedArticleResponse.from(article, appliedSummary))
+    return ResponseEntity.ok(TunedArticleResponse.of(fineTuning, article, appliedSummary))
   }
 
   @GetMapping("/api/v1/fine-tuning")
   fun getAll(): ResponseEntity<List<TunedArticleResponse>> {
-    val response = fineTuningService.findAll()
-      .map { TunedArticleResponse.of(it.fineTuning, it.article) }
+    val fineTunings = fineTuningService.findAll()
+    val appliedSummariesByArticleId = articleCommandService.getAppliedSummaries(
+      fineTunings.map { it.article.id!! }
+    )
+    val response = fineTunings
+      .map {
+        TunedArticleResponse.of(
+          fineTuning = it.fineTuning,
+          article = it.article,
+          summary = appliedSummariesByArticleId[it.article.id!!]?.summary,
+        )
+      }
     return ResponseEntity.ok(response)
   }
 
@@ -46,10 +59,12 @@ class FineTuningController(
   ): ResponseEntity<TunedArticleResponse> {
     val fineTuningAndArticle =
       fineTuningService.update(id, request.tunedSummary, request.keywords)
+    val appliedSummary = articleCommandService.getAppliedSummary(id)?.summary
     return ResponseEntity.ok(
       TunedArticleResponse.of(
         fineTuningAndArticle.fineTuning,
-        fineTuningAndArticle.article
+        fineTuningAndArticle.article,
+        appliedSummary,
       )
     )
   }

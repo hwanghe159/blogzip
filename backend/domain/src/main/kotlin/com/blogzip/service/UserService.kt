@@ -15,16 +15,21 @@ class UserService(private val repository: UserRepository) {
 
   @Transactional(readOnly = true)
   fun findAll(): List<User> {
-    return repository.findAll()
+    return repository.findAllByIsDeletedFalse()
   }
 
   @Transactional(readOnly = true)
   fun findById(id: Long): User? {
-    return repository.findById(id).orElse(null)
+    return repository.findByIdAndIsDeletedFalse(id)
   }
 
   @Transactional(readOnly = true)
   fun findByEmail(email: String): User? {
+    return repository.findByEmailAndIsDeletedFalse(email)
+  }
+
+  @Transactional(readOnly = true)
+  fun findByEmailIncludingDeleted(email: String): User? {
     return repository.findByEmail(email)
   }
 
@@ -40,13 +45,23 @@ class UserService(private val repository: UserRepository) {
 
   @Transactional(readOnly = true)
   fun findByGoogleId(googleId: String): User? {
-    return repository.findBySocialTypeAndSocialId(SocialType.GOOGLE, googleId)
+    return repository.findBySocialTypeAndSocialIdAndIsDeletedFalse(SocialType.GOOGLE, googleId)
   }
 
   @Transactional
   fun update(id: Long, receiveDays: List<String>): User {
-    return repository.findById(id)
+    return repository.findByIdAndIsDeletedFalse(id)
+      ?.updateReceiveDays(ReceiveDaysConverter.toString(receiveDays.map { DayOfWeek.valueOf(it) }))
+      ?: throw DomainException(ErrorCode.USER_NOT_FOUND)
+  }
+
+  @Transactional
+  fun withdraw(id: Long) {
+    val user = repository.findById(id)
       .orElseThrow { DomainException(ErrorCode.USER_NOT_FOUND) }
-      .updateReceiveDays(ReceiveDaysConverter.toString(receiveDays.map { DayOfWeek.valueOf(it) }))
+    if (user.isDeleted) {
+      throw DomainException(ErrorCode.USER_WITHDRAWN)
+    }
+    user.withdraw()
   }
 }

@@ -16,6 +16,7 @@ class ReadLaterService(
   private val readLaterRepository: ReadLaterRepository,
   private val userRepository: UserRepository,
   private val articleRepository: ArticleRepository,
+  private val articleSummaryRepository: ArticleSummaryRepository,
   private val blogRepository: BlogRepository,
 ) {
 
@@ -25,8 +26,10 @@ class ReadLaterService(
       readLaterRepository.findAllByUserId(userId, Sort.by(Sort.Direction.DESC, "id"))
     val articleIds = readLaters.map { it.articleId }.toSet()
     val articles = articleRepository.findAllById(articleIds).map { it.id to it }.toMap()
+    val summaries = articleSummaryRepository.findAllByArticleIdInAndIsAppliedTrue(articleIds)
+      .associateBy { it.articleId }
     return readLaters
-      .filter { articles[it.articleId] != null }
+      .filter { articles[it.articleId] != null && summaries[it.articleId] != null }
       .map { ReadLaterAndArticle(it, articles[it.articleId]!!) }
   }
 
@@ -43,6 +46,8 @@ class ReadLaterService(
 
     val articleIds = readLaters.map { it.articleId }.toSet()
     val articles = articleRepository.findAllById(articleIds).map { it.id to it }.toMap()
+    val summaries = articleSummaryRepository.findAllByArticleIdInAndIsAppliedTrue(articleIds)
+      .associateBy { it.articleId }
     val blogIds = articles.values.map { it.blogId }.toSet()
     val blogs = blogRepository.findAllById(blogIds).map { it.id to it }.toMap()
 
@@ -51,9 +56,10 @@ class ReadLaterService(
 
     return SearchedReadLaters(
       readLaters = finalReadLaters
-        .map {
-          val article = articles[it.articleId]!!
-          val blog = blogs[article.blogId]!!
+        .mapNotNull {
+          val article = articles[it.articleId] ?: return@mapNotNull null
+          val summary = summaries[it.articleId] ?: return@mapNotNull null
+          val blog = blogs[article.blogId] ?: return@mapNotNull null
 
           com.blogzip.dto.ReadLater(
             id = it.id!!,
@@ -63,8 +69,8 @@ class ReadLaterService(
               title = article.title,
               content = article.content,
               url = article.url,
-              summary = article.summary!!,
-              summarizedBy = article.summarizedBy!!,
+              summary = summary.summary,
+              summarizedBy = summary.summarizedBy,
               createdDate = article.createdDate!!,
             )
           )

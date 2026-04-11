@@ -29,7 +29,7 @@ class Blog(
 
   val rss: String?,
 
-  val urlCssSelector: String? = null,
+  var urlCssSelector: String? = null,
 
   val isShowOnMain: Boolean,
 
@@ -41,6 +41,10 @@ class Blog(
 
   fun isNew(): Boolean {
     return this.articleIds.isEmpty()
+  }
+
+  fun updateUrlCssSelector(urlCssSelector: String?) {
+    this.urlCssSelector = urlCssSelector
   }
 
   enum class RssStatus {

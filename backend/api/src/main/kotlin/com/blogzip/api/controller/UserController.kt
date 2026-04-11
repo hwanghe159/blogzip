@@ -39,6 +39,14 @@ class UserController(
     return ResponseEntity.ok(UserResponse.from(updatedUser))
   }
 
+  @DeleteMapping("/api/v1/me")
+  fun withdraw(
+    @Parameter(hidden = true) @Authenticated user: AuthenticatedUser,
+  ): ResponseEntity<Void> {
+    userService.withdraw(user.id)
+    return ResponseEntity.noContent().build()
+  }
+
   @GetMapping("/api/v1/user/{day}")
   fun getByDay(@PathVariable day: DayOfWeek): ResponseEntity<List<UserResponse>> {
     val response = userService.findAllByDayOfWeek(day)
