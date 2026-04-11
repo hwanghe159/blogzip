@@ -51,6 +51,17 @@ class BlogService(private val repository: BlogRepository) {
 
   @Transactional(readOnly = true)
   fun search(query: String): List<Blog> {
-    return repository.search(query)
+    val trimmedQuery = query.trim()
+    val normalizedQuery = trimmedQuery.trimEnd('/')
+
+    if (trimmedQuery.isBlank()) {
+      return repository.search(trimmedQuery)
+    }
+    if (normalizedQuery == trimmedQuery) {
+      return repository.search(trimmedQuery)
+    }
+
+    return (repository.search(trimmedQuery) + repository.search(normalizedQuery))
+      .distinctBy { it.id }
   }
 }

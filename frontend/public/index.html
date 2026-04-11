@@ -1,54 +1,28 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#1f8f5f" />
+    <meta
+      name="description"
+      content="blogzip - 구독 블로그 글을 한 곳에서 보고 요약 메일로 받아보는 서비스"
+    />
+    <meta
+      property="og:description"
+      content="구독한 블로그 아티클을 읽고, 요약 메일로 받아보세요."
+    />
+    <meta
+      name="twitter:description"
+      content="구독한 블로그 아티클을 읽고, 요약 메일로 받아보세요."
+    />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-
-    <meta name="description" content="블로그를 구독하고, 매일 새로 올라오는 글의 요약본을 메일로 받아볼 수 있는 서비스입니다."/>
-    <meta name="twitter:description" content="블로그를 구독하고, 매일 새로 올라오는 글의 요약본을 메일로 받아볼 수 있는 서비스입니다."/>
-    <meta property="og:description" content="블로그를 구독하고, 매일 새로 올라오는 글의 요약본을 메일로 받아볼 수 있는 서비스입니다."/>
-
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
-
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
-    -->
     <title>blogzip</title>
   </head>
-
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-489TQX1J71"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-
-    gtag('config', 'G-489TQX1J71');
-  </script>
-
   <body>
+    <noscript>JavaScript를 활성화하면 blogzip을 사용할 수 있습니다.</noscript>
     <div id="root"></div>
-    <!--
-      This HTML file is a template.
-      If you open it directly in the browser, you will see an empty page.
-
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
-
-      To begin the development, run `npm start` or `yarn start`.
-      To create a production bundle, use `npm run build` or `yarn build`.
-    -->
   </body>
 </html>

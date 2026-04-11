@@ -1,47 +1,55 @@
-import * as React from "react";
-import {useEffect} from "react";
-import {Api} from "../utils/Api";
-import {useLocation, useNavigate} from "react-router-dom";
-import Typography from "@mui/material/Typography";
-import Box from "@mui/material/Box";
-import {setLoginUser} from "../utils/LoginUserHelper";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ApiError, loginWithGoogleCode } from "../api";
+import { LoginResponse } from "../types";
 
-export function GoogleLoginPage() {
+type GoogleLoginPageProps = {
+  onLoginSuccess: (response: LoginResponse) => Promise<void>;
+};
 
+export function GoogleLoginPage({ onLoginSuccess }: GoogleLoginPageProps) {
   const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-  const code = searchParams.get('code');
   const navigate = useNavigate();
+  const [message, setMessage] = useState("로그인 처리 중입니다...");
+  const processedRef = useRef(false);
 
   useEffect(() => {
-    if (code == null) {
-      alert("구글 로그인에 실패했습니다.")
-      navigate("/")
-      return
+    if (processedRef.current) return;
+    processedRef.current = true;
+
+    const searchParams = new URLSearchParams(location.search);
+    const code = searchParams.get("code");
+
+    if (!code) {
+      setMessage("구글 로그인에 실패했습니다.");
+      window.setTimeout(() => navigate("/"), 700);
+      return;
     }
-    Api.get(`/api/v1/login/google?code=${code}`)
-    .onSuccess((response) => {
-      setLoginUser({
-        id: response.data.id,
-        accessToken: response.data.accessToken,
-        email: response.data.email,
-        image: response.data.image,
+
+    loginWithGoogleCode(code)
+      .then(async (response) => {
+        await onLoginSuccess(response);
+        setMessage("로그인 성공! 홈으로 이동합니다.");
+        window.location.href = "/";
       })
-      window.location.href = '/';
-    })
-  }, [code, navigate, location]);
+      .catch((error) => {
+        const messageText =
+          error instanceof ApiError
+            ? error.message
+            : "구글 로그인 중 오류가 발생했습니다.";
+        setMessage(messageText);
+        window.setTimeout(() => navigate("/"), 1000);
+      });
+  }, [location.search, navigate, onLoginSuccess]);
 
   return (
-      <Box
-          display="flex"
-          flexDirection="column"
-          justifyContent="center"
-          alignItems="center"
-          minHeight="100vh"
-      >
-        <Typography component="h6" variant="h6">
-          로그인 중..
-        </Typography>
-      </Box>
-  )
+    <section className="auth-progress">
+      <div className="auth-progress__spinner" />
+      <div className="auth-progress__copy">
+        <p className="eyebrow">LOGIN</p>
+        <h1>로그인 처리 중입니다</h1>
+        <p>{message}</p>
+      </div>
+    </section>
+  );
 }
