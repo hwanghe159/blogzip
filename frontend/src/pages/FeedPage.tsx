@@ -1,0 +1,331 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  addReadLater,
+  ApiError,
+  getArticles,
+  getSubscriptions,
+  markArticleRead,
+  removeReadLater,
+  subscribeBlog,
+} from "../api";
+import { ArticleResponse, SessionState } from "../types";
+import { ArticleCard } from "../components/ArticleCard";
+import { EmptyState } from "../components/EmptyState";
+import { Toast } from "../components/Toast";
+
+type FeedPageProps = {
+  session: SessionState;
+  loginUrl: string;
+};
+
+const DEFAULT_FROM_DATE = "2000-01-01";
+const DEFAULT_TOAST_DURATION = 2800;
+
+type FeedToast = {
+  id: number;
+  message: string;
+  tone: "success" | "error" | "info";
+  actionLabel?: string;
+  action?: "moveReadLater";
+  durationMs?: number;
+};
+
+export function FeedPage({ session, loginUrl }: FeedPageProps) {
+  const navigate = useNavigate();
+  const [mode, setMode] = useState<"my" | "all">(
+    session.status === "authenticated" ? "my" : "all"
+  );
+  const [items, setItems] = useState<ArticleResponse[]>([]);
+  const [nextCursor, setNextCursor] = useState<number | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
+  const [toast, setToast] = useState<FeedToast | null>(null);
+  const [readLaterPendingArticleId, setReadLaterPendingArticleId] = useState<number | null>(null);
+  const [subscribedBlogIds, setSubscribedBlogIds] = useState<Set<number>>(new Set());
+  const [subscribingBlogId, setSubscribingBlogId] = useState<number | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
+  const toastSeqRef = useRef<number>(0);
+
+  const isAuthenticated = session.status === "authenticated" && !!session.token;
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current !== null) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
+
+  function showToast(nextToast: Omit<FeedToast, "id">, autoHide = true) {
+    if (toastTimerRef.current !== null) {
+      window.clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    const next = { id: toastSeqRef.current + 1, ...nextToast };
+    toastSeqRef.current = next.id;
+    setToast(next);
+    if (!autoHide) return;
+    const durationMs = nextToast.durationMs ?? DEFAULT_TOAST_DURATION;
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast(null);
+      toastTimerRef.current = null;
+    }, durationMs);
+  }
+
+  useEffect(() => {
+    if (!isAuthenticated && mode === "my") {
+      setMode("all");
+    }
+  }, [isAuthenticated, mode]);
+
+  useEffect(() => {
+    async function loadSubscriptions() {
+      if (!isAuthenticated || !session.token) {
+        setSubscribedBlogIds(new Set());
+        return;
+      }
+      try {
+        const subscriptions = await getSubscriptions(session.token);
+        setSubscribedBlogIds(new Set(subscriptions.map((subscription) => subscription.blog.id)));
+      } catch (_) {
+        // 구독 정보 조회 실패 시 피드 동작을 막지 않음
+      }
+    }
+    loadSubscriptions();
+  }, [isAuthenticated, session.token]);
+
+  const canLoadMyFeed = mode === "all" || isAuthenticated;
+
+  async function fetchPage(append: boolean) {
+    if (!canLoadMyFeed) return;
+
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      const response = await getArticles({
+        token: session.token,
+        from: DEFAULT_FROM_DATE,
+        next: append ? nextCursor : null,
+        size: 20,
+        myOnly: mode === "my",
+      });
+
+      setItems((prev) => (append ? [...prev, ...response.items] : response.items));
+      setNextCursor(response.next);
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "피드를 불러오는 중 오류가 발생했습니다.";
+      showToast({ message, tone: "error" });
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchPage(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, session.token]);
+
+  async function handleToggleReadLater(article: ArticleResponse, nextValue: boolean) {
+    if (!isAuthenticated || !session.token) {
+      const shouldMove = window.confirm(
+        "나중에 읽기는 로그인 후 사용할 수 있어요.\n로그인 화면으로 이동할까요?"
+      );
+      if (shouldMove) {
+        window.location.href = loginUrl;
+      }
+      return;
+    }
+    setReadLaterPendingArticleId(article.id);
+
+    try {
+      if (nextValue) {
+        await addReadLater(session.token, article.id);
+        showToast(
+          {
+            message: "나중에 읽기에 저장했어요.",
+            tone: "success",
+            actionLabel: "나중에 읽기 보기",
+            action: "moveReadLater",
+            durationMs: 4600,
+          }
+        );
+      } else {
+        await removeReadLater(session.token, article.id);
+        showToast({ message: "나중에 읽기에서 해제했어요.", tone: "info" });
+      }
+      setItems((prev) =>
+        prev.map((it) =>
+          it.id === article.id ? { ...it, isReadLater: nextValue } : it
+        )
+      );
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : "나중에 읽기 처리에 실패했습니다.";
+      showToast({ message, tone: "error" });
+    } finally {
+      setReadLaterPendingArticleId(null);
+    }
+  }
+
+  async function handleSubscribeBlog(blogId: number) {
+    if (!isAuthenticated || !session.token) return;
+    setSubscribingBlogId(blogId);
+    try {
+      await subscribeBlog(session.token, blogId);
+      setSubscribedBlogIds((prev) => {
+        const nextSet = new Set(prev);
+        nextSet.add(blogId);
+        return nextSet;
+      });
+      showToast({ message: "블로그를 구독했습니다.", tone: "success" });
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : "블로그 구독에 실패했습니다.";
+      showToast({ message, tone: "error" });
+    } finally {
+      setSubscribingBlogId(null);
+    }
+  }
+
+  const title = useMemo(() => {
+    if (mode === "my") return "내 피드";
+    return "전체 피드";
+  }, [mode]);
+
+  return (
+    <section className="page-section">
+      <div className="page-head">
+        <div>
+          <p className="eyebrow">ARTICLES</p>
+          <h1>{title}</h1>
+        </div>
+        <div className="segmented">
+          <button
+            type="button"
+            className={mode === "my" ? "segmented__item segmented__item--active" : "segmented__item"}
+            onClick={() => {
+              if (!isAuthenticated) {
+                const shouldMove = window.confirm(
+                  "내 구독 피드는 로그인 후 이용할 수 있어요.\n로그인 화면으로 이동할까요?"
+                );
+                if (shouldMove) {
+                  window.location.href = loginUrl;
+                }
+                return;
+              }
+              setMode("my");
+            }}
+            title={isAuthenticated ? "" : "로그인이 필요합니다"}
+          >
+            내 구독
+          </button>
+          <button
+            type="button"
+            className={mode === "all" ? "segmented__item segmented__item--active" : "segmented__item"}
+            onClick={() => setMode("all")}
+          >
+            전체
+          </button>
+        </div>
+      </div>
+
+      {!isAuthenticated && mode === "my" ? (
+        <EmptyState
+          title="로그인 후 내 피드를 볼 수 있어요"
+          description="Google 로그인 후 구독한 블로그의 글만 모아서 확인할 수 있습니다."
+          action={
+            <a className="btn btn--primary" href={loginUrl}>
+              Google로 로그인
+            </a>
+          }
+        />
+      ) : null}
+
+      {loading ? <p className="status-text">피드를 불러오는 중...</p> : null}
+
+      {!loading && items.length === 0 ? (
+        <EmptyState
+          title="아직 표시할 글이 없어요"
+          description="설정 탭에서 블로그를 더 구독해 보세요."
+        />
+      ) : (
+        <div className="articles-grid">
+          {items.map((article) => (
+            <ArticleCard
+              key={article.id}
+              article={article}
+              readLaterActive={article.isReadLater}
+              busy={readLaterPendingArticleId === article.id}
+              onOpen={(target) => {
+                window.open(target.url, "_blank", "noopener,noreferrer");
+                if (isAuthenticated && session.token) {
+                  markArticleRead(session.token, target.id).catch(() => undefined);
+                }
+              }}
+              onToggleReadLater={(target, nextValue) =>
+                handleToggleReadLater(target as ArticleResponse, nextValue)
+              }
+              blogAction={
+                mode === "all" && isAuthenticated && !subscribedBlogIds.has(article.blog.id) ? (
+                  <button
+                    type="button"
+                    className="btn btn--primary btn--tiny"
+                    disabled={subscribingBlogId === article.blog.id}
+                    onClick={() => handleSubscribeBlog(article.blog.id)}
+                  >
+                    구독
+                  </button>
+                ) : null
+              }
+            />
+          ))}
+        </div>
+      )}
+
+      {nextCursor !== null && !loading ? (
+        <div className="more-wrap">
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={loadingMore}
+            onClick={() => fetchPage(true)}
+          >
+            {loadingMore ? "불러오는 중..." : "더 보기"}
+          </button>
+        </div>
+      ) : null}
+
+      {nextCursor === null && !loading && items.length > 0 ? (
+        <p className="feed-end-text">더 이상 불러올 글이 없습니다.</p>
+      ) : null}
+
+      {toast ? (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          tone={toast.tone}
+          durationMs={toast.durationMs}
+          actionLabel={toast.actionLabel}
+          onAction={
+            toast.action === "moveReadLater"
+              ? () => {
+                  setToast(null);
+                  navigate("/read-later");
+                }
+              : undefined
+          }
+          onClose={() => setToast(null)}
+        />
+      ) : null}
+    </section>
+  );
+}

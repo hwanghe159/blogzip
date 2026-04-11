@@ -35,8 +35,8 @@ class UserController(
     @Parameter(hidden = true) @Authenticated user: AuthenticatedUser,
     @RequestBody request: UserUpdateRequest,
   ): ResponseEntity<UserResponse> {
-    userService.update(user.id, request.receiveDays)
-    return ResponseEntity.ok(UserResponse.from(user))
+    val updatedUser = userService.update(user.id, request.receiveDays)
+    return ResponseEntity.ok(UserResponse.from(updatedUser))
   }
 
   @GetMapping("/api/v1/user/{day}")

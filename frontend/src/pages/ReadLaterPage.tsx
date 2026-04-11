@@ -1,134 +1,189 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import InfiniteScroll from 'react-infinite-scroll-component';
-import Article from '../components/Article';
-import { Api } from '../utils/Api';
-import { getLoginUser } from '../utils/LoginUserHelper';
-import { handleLogin } from '../components/GoogleLoginButton';
-import { PaginationResponse, ReadLaterResponse } from '../types';
+import { useEffect, useRef, useState } from "react";
+import { addReadLater, ApiError, getReadLater, removeReadLater } from "../api";
+import { ReadLaterDetailResponse, SessionState } from "../types";
+import { ArticleCard } from "../components/ArticleCard";
+import { EmptyState } from "../components/EmptyState";
+import { Toast } from "../components/Toast";
 
-export default function ReadLaterPage() {
-  const [readLaters, setReadLaters] = useState<ReadLaterResponse[]>([]);
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isFetching, setIsFetching] = useState(false);
+type ReadLaterPageProps = {
+  session: SessionState;
+  loginUrl: string;
+};
 
-  const nextCursorRef = useRef<number | null>(null);
-  const hasMoreRef = useRef(true);
-  const fetchingRef = useRef(false);
+type ReadLaterToast = {
+  id: number;
+  message: string;
+  tone: "error" | "info" | "success";
+};
 
-  const fetchReadLaters = useCallback(() => {
-    const loginUser = getLoginUser();
-    if (!loginUser) {
-      alert('로그인이 필요한 서비스입니다.');
-      handleLogin();
-      return;
-    }
+export function ReadLaterPage({ session, loginUrl }: ReadLaterPageProps) {
+  const [items, setItems] = useState<ReadLaterDetailResponse[]>([]);
+  const [nextCursor, setNextCursor] = useState<number | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
+  const [toast, setToast] = useState<ReadLaterToast | null>(null);
+  const [removingId, setRemovingId] = useState<number | null>(null);
+  const [locallyRemovedArticleIds, setLocallyRemovedArticleIds] = useState<Set<number>>(new Set());
+  const toastTimerRef = useRef<number | null>(null);
+  const toastSeqRef = useRef<number>(0);
 
-    if (fetchingRef.current || !hasMoreRef.current) {
-      return;
-    }
-
-    fetchingRef.current = true;
-    setIsFetching(true);
-
-    Api.get('/api/v1/read-later', {
-      headers: {
-        Authorization: `Bearer ${loginUser.accessToken}`,
-      },
-      params: {
-        next: nextCursorRef.current,
-        size: 20,
-      },
-    })
-      .onSuccess((response) => {
-        const data = response.data as PaginationResponse<ReadLaterResponse>;
-
-        setReadLaters((prevItems) => {
-          const deduplicated = data.items.filter(
-            (newItem) => !prevItems.some((existingItem) => existingItem.id === newItem.id)
-          );
-
-          return [...prevItems, ...deduplicated].map((item) => ({
-            ...item,
-            article: {
-              ...item.article,
-              isReadLater: true,
-            },
-          }));
-        });
-
-        nextCursorRef.current = data.next;
-        const nextExists = data.next !== null;
-        hasMoreRef.current = nextExists;
-        setHasMore(nextExists);
-
-        setIsLoading(false);
-        setIsFetching(false);
-        fetchingRef.current = false;
-      })
-      .on4XX(() => {
-        setIsLoading(false);
-        setIsFetching(false);
-        fetchingRef.current = false;
-      })
-      .on5XX(() => {
-        setIsLoading(false);
-        setIsFetching(false);
-        fetchingRef.current = false;
-      });
-  }, []);
+  const token = session.token;
+  const isAuthenticated = session.status === "authenticated" && !!token;
 
   useEffect(() => {
-    fetchReadLaters();
-  }, [fetchReadLaters]);
+    return () => {
+      if (toastTimerRef.current !== null) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
+
+  function showToast(message: string, tone: "error" | "info" | "success" = "info") {
+    if (toastTimerRef.current !== null) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+    const next = { id: toastSeqRef.current + 1, message, tone };
+    toastSeqRef.current = next.id;
+    setToast(next);
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast(null);
+      toastTimerRef.current = null;
+    }, 2200);
+  }
+
+  async function fetchPage(append: boolean) {
+    if (!token) return;
+
+    if (append) setLoadingMore(true);
+    else setLoading(true);
+
+    try {
+      const response = await getReadLater({
+        token,
+        next: append ? nextCursor : null,
+        size: 20,
+      });
+      setItems((prev) => (append ? [...prev, ...response.items] : response.items));
+      setNextCursor(response.next);
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "나중에 읽기 목록을 불러오지 못했습니다.";
+      showToast(message, "error");
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchPage(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  async function handleToggleReadLater(articleId: number, nextValue: boolean) {
+    if (!token) return;
+    setRemovingId(articleId);
+    try {
+      if (nextValue) {
+        await addReadLater(token, articleId);
+        setLocallyRemovedArticleIds((prev) => {
+          const next = new Set(prev);
+          next.delete(articleId);
+          return next;
+        });
+        showToast("나중에 읽기에 다시 저장했어요.", "success");
+      } else {
+        await removeReadLater(token, articleId);
+        setLocallyRemovedArticleIds((prev) => {
+          const next = new Set(prev);
+          next.add(articleId);
+          return next;
+        });
+        showToast("나중에 읽기에서 해제했어요.", "info");
+      }
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : "나중에 읽기 처리에 실패했습니다.";
+      showToast(message, "error");
+    } finally {
+      setRemovingId(null);
+    }
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <section className="page-section">
+        <EmptyState
+          title="로그인 후 이용 가능해요"
+          description="읽고 싶은 글을 저장하려면 먼저 로그인해 주세요."
+          action={
+            <a className="btn btn--primary" href={loginUrl}>
+              Google로 로그인
+            </a>
+          }
+        />
+      </section>
+    );
+  }
 
   return (
-    <div className="stack">
-      <section className="surface panel">
-        <h1 className="page-title">나중에 읽기</h1>
-        <p className="page-subtitle">저장해 둔 글을 한곳에서 모아보고, 읽은 후에는 바로 정리할 수 있어요.</p>
-      </section>
+    <section className="page-section">
+      <div className="page-head">
+        <div>
+          <p className="eyebrow">READ LATER</p>
+          <h1>나중에 읽기</h1>
+        </div>
+      </div>
 
-      {!isLoading && readLaters.length === 0 ? (
-        <section className="list-empty stack">
-          <p>아직 저장된 글이 없습니다.</p>
-          <Link to="/" className="btn btn-primary" style={{ width: 'fit-content', margin: '0 auto' }}>
-            홈에서 글 보러가기
-          </Link>
-        </section>
-      ) : null}
+      {loading ? <p className="status-text">목록을 불러오는 중...</p> : null}
 
-      <InfiniteScroll
-        dataLength={readLaters.length}
-        next={fetchReadLaters}
-        hasMore={hasMore}
-        loader={
-          isFetching ? (
-            <div className="loader">
-              <span className="dot-loader" />
-            </div>
-          ) : (
-            <></>
-          )
-        }
-      >
-        <div className="article-list">
-          {readLaters.map((readLater) => (
-            <Article
-              key={readLater.id}
-              article={readLater.article}
-              onReadLaterChange={(articleId, isReadLater) => {
-                if (!isReadLater) {
-                  setReadLaters((prevItems) =>
-                    prevItems.filter((currentItem) => currentItem.article.id !== articleId)
-                  );
-                }
+      {!loading && items.length === 0 ? (
+        <EmptyState
+          title="보관한 글이 없습니다"
+          description="피드 카드의 북마크 아이콘을 누르면 이곳에 모아볼 수 있습니다."
+        />
+      ) : (
+        <div className="articles-grid">
+          {items.map((item) => (
+            <ArticleCard
+              key={item.id}
+              article={item.article}
+              readLaterActive={!locallyRemovedArticleIds.has(item.article.id)}
+              busy={removingId === item.article.id}
+              onOpen={(article) => {
+                window.open(article.url, "_blank", "noopener,noreferrer");
               }}
+              onToggleReadLater={(article, nextValue) =>
+                handleToggleReadLater(article.id, nextValue)
+              }
             />
           ))}
         </div>
-      </InfiniteScroll>
-    </div>
+      )}
+
+      {nextCursor !== null && !loading ? (
+        <div className="more-wrap">
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={loadingMore}
+            onClick={() => fetchPage(true)}
+          >
+            {loadingMore ? "불러오는 중..." : "더 보기"}
+          </button>
+        </div>
+      ) : null}
+
+      {toast ? (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          tone={toast.tone}
+          onClose={() => setToast(null)}
+        />
+      ) : null}
+    </section>
   );
 }
