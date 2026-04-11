@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="${ROOT_DIR}/compose/docker-compose.prod.yml"
-DEPLOY_ENV_FILE="${ROOT_DIR}/compose/.env.deploy"
+DEPLOY_ENV_FILE="${DEPLOY_ENV_FILE:-${ROOT_DIR}/compose/.env.deploy}"
 RUNTIME_ENV_FILE="${ROOT_DIR}/compose/.env.runtime"
 LOG_DIR="${ROOT_DIR}/logs/batch"
 

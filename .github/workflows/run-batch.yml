@@ -124,7 +124,8 @@ jobs:
             }
 
             mkdir -p "${DEPLOY_PATH}/compose" "${DEPLOY_PATH}/scripts" "${DEPLOY_PATH}/data/heapdumps/batch"
-            cat > "${DEPLOY_PATH}/compose/.env.deploy" <<EOF
+            BATCH_DEPLOY_ENV_FILE="${DEPLOY_PATH}/compose/.env.batch-run"
+            cat > "${BATCH_DEPLOY_ENV_FILE}" <<EOF
             BATCH_IMAGE=${IMAGE_PREFIX}/batch:latest
             CRAWLER_IMAGE=${IMAGE_PREFIX}/crawler:latest
             EOF
@@ -137,7 +138,7 @@ jobs:
               read -r -a EXTRA_ARGS <<< "${JOB_ARGS}"
             fi
 
-            "${DEPLOY_PATH}/scripts/run-batch.sh" \
+            DEPLOY_ENV_FILE="${BATCH_DEPLOY_ENV_FILE}" "${DEPLOY_PATH}/scripts/run-batch.sh" \
               --spring.profiles.active=prod \
               --server.port=8081 \
               --spring.batch.job.name="${JOB_NAME}" \
