@@ -430,6 +430,9 @@ class AdminController(
       )
     val candidateLimit = request.candidateLimit.coerceIn(1, 20)
     val sampleSize = request.sampleSize.coerceIn(1, 20)
+    val expectedFirstTitle = normalizeHintText(request.firstArticleTitle)
+    val expectedFirstUrl = normalizeComparableUrl(request.firstArticleUrl)
+    val hasHint = expectedFirstTitle != null || expectedFirstUrl != null
     val candidates = buildCssSelectorCandidates(document)
       .mapNotNull { selector ->
         val extracted = extractSelectorMatches(document, normalizedBlogUrl, selector)
@@ -437,13 +440,30 @@ class AdminController(
           return@mapNotNull null
         }
         val internalUrlCount = countInternalUrls(normalizedBlogUrl, extracted.matches)
+        val baseConfidence = calculateConfidence(
+          blogUrl = normalizedBlogUrl,
+          matchedElementCount = extracted.matchedElementCount,
+          matches = extracted.matches,
+        )
+        val hintMatch = calculateHintMatch(
+          matches = extracted.matches,
+          expectedTitle = expectedFirstTitle,
+          expectedUrl = expectedFirstUrl,
+        )
         CssSelectorCandidateResponse(
           selector = selector,
-          confidence = calculateConfidence(
-            blogUrl = normalizedBlogUrl,
-            matchedElementCount = extracted.matchedElementCount,
-            matches = extracted.matches,
+          confidence = calculateCombinedConfidence(
+            baseConfidence = baseConfidence,
+            hintScore = hintMatch.score,
+            hasExpectedTitle = expectedFirstTitle != null,
+            hasExpectedUrl = expectedFirstUrl != null,
+            titleMatched = hintMatch.titleMatched,
+            urlMatched = hintMatch.urlMatched,
           ),
+          baseConfidence = baseConfidence,
+          hintScore = hintMatch.score,
+          firstArticleTitleMatched = hintMatch.titleMatched,
+          firstArticleUrlMatched = hintMatch.urlMatched,
           matchedElementCount = extracted.matchedElementCount,
           extractableUrlCount = extracted.matches.size,
           internalUrlCount = internalUrlCount,
@@ -451,20 +471,44 @@ class AdminController(
         )
       }
       .filter { it.extractableUrlCount >= 2 }
+    val hintedCandidates = if (hasHint) {
+      candidates
+        .filter { candidate ->
+          candidate.firstArticleTitleMatched || candidate.firstArticleUrlMatched || candidate.hintScore >= 0.35
+        }
+    } else {
+      candidates
+    }
+    val finalCandidates = (if (hintedCandidates.isNotEmpty()) hintedCandidates else candidates)
       .sortedWith(
         compareByDescending<CssSelectorCandidateResponse> { it.confidence }
+          .thenByDescending { it.hintScore }
           .thenByDescending { it.extractableUrlCount }
           .thenByDescending { it.internalUrlCount }
           .thenBy { it.selector.length }
       )
       .take(candidateLimit)
+
     return ResponseEntity.ok(
       CssSelectorSuggestResponse(
-        success = candidates.isNotEmpty(),
+        success = finalCandidates.isNotEmpty(),
         blogUrl = normalizedBlogUrl,
-        candidates = candidates,
-        message = if (candidates.isEmpty()) "추천할 selector를 찾지 못했습니다. test API로 수동 검증이 필요합니다." else null,
+        candidates = finalCandidates,
+        message = when {
+          finalCandidates.isEmpty() -> "추천할 selector를 찾지 못했습니다. hint 없이 다시 시도해 보세요."
+          hasHint && hintedCandidates.isEmpty() -> "입력한 첫 글 제목/URL과 정확히 맞는 후보가 없어 일반 추천 결과를 보여줍니다."
+          else -> null
+        },
       )
+    )
+  }
+
+  @AdminRequired
+  @GetMapping("/api/admin/blog/requiring-selector")
+  fun getBlogsRequiringSelector(): ResponseEntity<List<BlogRequiringSelectorResponse>> {
+    val blogs = blogService.findBlogsRequiringCssSelector()
+    return ResponseEntity.ok(
+      blogs.map { blog -> BlogRequiringSelectorResponse.from(blog) }
     )
   }
 
@@ -1073,5 +1117,130 @@ class AdminController(
 
   private fun round3(value: Double): Double {
     return kotlin.math.round(value * 1000.0) / 1000.0
+  }
+
+  private data class SelectorHintMatch(
+    val score: Double,
+    val titleMatched: Boolean,
+    val urlMatched: Boolean,
+  )
+
+  private fun calculateHintMatch(
+    matches: List<CssSelectorTestMatchResponse>,
+    expectedTitle: String?,
+    expectedUrl: String?,
+  ): SelectorHintMatch {
+    if (matches.isEmpty()) {
+      return SelectorHintMatch(score = 0.0, titleMatched = false, urlMatched = false)
+    }
+
+    val urlMatched = expectedUrl != null && matches.any { match ->
+      val targetUrl = normalizeComparableUrl(match.url)
+      targetUrl != null && targetUrl == expectedUrl
+    }
+
+    val titleSimilarity = if (expectedTitle == null) {
+      0.0
+    } else {
+      matches.maxOfOrNull { match -> calculateTitleSimilarity(expectedTitle, match.title) } ?: 0.0
+    }
+    val titleMatched = expectedTitle != null && titleSimilarity >= 0.72
+
+    val score = when {
+      expectedTitle != null && expectedUrl != null -> {
+        val urlScore = if (urlMatched) 1.0 else 0.0
+        (urlScore * 0.7) + (titleSimilarity * 0.3)
+      }
+      expectedUrl != null -> if (urlMatched) 1.0 else 0.0
+      expectedTitle != null -> titleSimilarity
+      else -> 0.0
+    }
+    return SelectorHintMatch(
+      score = round3(score.coerceIn(0.0, 1.0)),
+      titleMatched = titleMatched,
+      urlMatched = urlMatched,
+    )
+  }
+
+  private fun calculateCombinedConfidence(
+    baseConfidence: Double,
+    hintScore: Double,
+    hasExpectedTitle: Boolean,
+    hasExpectedUrl: Boolean,
+    titleMatched: Boolean,
+    urlMatched: Boolean,
+  ): Double {
+    if (!hasExpectedTitle && !hasExpectedUrl) {
+      return baseConfidence
+    }
+    var score = (baseConfidence * 0.58) + (hintScore * 0.42)
+    if (hasExpectedUrl && !urlMatched) {
+      score -= 0.2
+    }
+    if (hasExpectedTitle && !titleMatched) {
+      score -= 0.08
+    }
+    return round3(score.coerceIn(0.0, 1.0))
+  }
+
+  private fun normalizeHintText(value: String): String? {
+    val normalized = value
+      .lowercase(Locale.ROOT)
+      .replace(Regex("\\s+"), " ")
+      .trim()
+    return normalized.takeIf { it.isNotBlank() }
+  }
+
+  private fun normalizeComparableUrl(value: String): String? {
+    val trimmed = value.trim()
+    if (trimmed.isBlank()) {
+      return null
+    }
+    val uri = runCatching { URI(trimmed).normalize() }.getOrNull()
+      ?: return null
+    val host = uri.host?.lowercase(Locale.ROOT)
+      ?: return null
+    val path = uri.path
+      ?.trim()
+      ?.trimEnd('/')
+      ?.ifBlank { "/" }
+      ?: "/"
+    return "$host$path"
+  }
+
+  private fun calculateTitleSimilarity(
+    expectedTitle: String,
+    candidateTitle: String,
+  ): Double {
+    val normalizedCandidate = normalizeHintText(candidateTitle) ?: return 0.0
+    if (normalizedCandidate == expectedTitle) {
+      return 1.0
+    }
+    if (
+      normalizedCandidate.length >= 8 &&
+      expectedTitle.length >= 8 &&
+      (normalizedCandidate.contains(expectedTitle) || expectedTitle.contains(normalizedCandidate))
+    ) {
+      return 0.9
+    }
+
+    val expectedTokens = tokenizeForSimilarity(expectedTitle)
+    val candidateTokens = tokenizeForSimilarity(normalizedCandidate)
+    if (expectedTokens.isEmpty() || candidateTokens.isEmpty()) {
+      return 0.0
+    }
+    val intersection = expectedTokens.intersect(candidateTokens).size.toDouble()
+    val precision = intersection / expectedTokens.size.toDouble()
+    val recall = intersection / candidateTokens.size.toDouble()
+    return ((precision * 0.65) + (recall * 0.35)).coerceIn(0.0, 1.0)
+  }
+
+  private fun tokenizeForSimilarity(text: String): Set<String> {
+    return text
+      .lowercase(Locale.ROOT)
+      .split(Regex("[^\\p{L}\\p{N}]+"))
+      .map { it.trim() }
+      .filter { it.length >= 2 }
+      .toSet()
   }
 }

@@ -5,16 +5,15 @@ import {
   createAdminKeyword,
   getAdminArticleReports,
   getAdminArticleSummaries,
+  getAdminBlogsRequiringSelector,
   getAdminKeywordOverview,
   getAdminRecentArticles,
   getAdminReceivedReports,
   mergeAdminKeywordsById,
   previewAdminArticleResummary,
   suggestAdminCssSelector,
-  testAdminCssSelector,
   updateAdminArticleCreatedDate,
   updateAdminArticleReportStatus,
-  updateAdminBlogCssSelector,
   updateAdminBlogCssSelectorByUrl,
   updateAdminKeywordById,
   updateAdminKeywordHead,
@@ -23,9 +22,8 @@ import {
   AdminArticleReportResponse,
   AdminArticleReportStatus,
   AdminArticleSummaryResponse,
-  AdminBlogCssSelectorUpdateResponse,
+  AdminBlogRequiringSelectorResponse,
   AdminCssSelectorSuggestResponse,
-  AdminCssSelectorTestResponse,
   AdminFollowerKeywordOverviewResponse,
   AdminHeadKeywordOverviewResponse,
   AdminKeywordOverviewResponse,
@@ -68,11 +66,6 @@ const REPORT_STATUS_OPTIONS: Array<{ value: AdminArticleReportStatus; label: str
   { value: "DISMISSED", label: "기각" },
 ];
 
-function parseNumber(value: string): number | null {
-  const num = Number(value);
-  return Number.isFinite(num) && num > 0 ? num : null;
-}
-
 function formatDateTime(value: string): string {
   try {
     return new Date(value).toLocaleString("ko-KR", {
@@ -88,11 +81,73 @@ function reportStatusLabel(status: AdminArticleReportStatus): string {
   return found?.label ?? status;
 }
 
+function rssStatusLabel(status: AdminBlogRequiringSelectorResponse["rssStatus"]): string {
+  switch (status) {
+    case "NO_RSS":
+      return "RSS 없음";
+    case "WITHOUT_CONTENT":
+      return "RSS 본문 없음";
+    case "WITH_CONTENT":
+      return "RSS 본문 포함";
+    default:
+      return status;
+  }
+}
+
 function normalizeError(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
     return error.message;
   }
   return fallback;
+}
+
+function toEpoch(value: string): number {
+  const epoch = new Date(value).getTime();
+  return Number.isFinite(epoch) ? epoch : 0;
+}
+
+function sortFollowersByVisibleAndRecency(
+  followers: AdminFollowerKeywordOverviewResponse[]
+): AdminFollowerKeywordOverviewResponse[] {
+  return [...followers].sort((a, b) => {
+    if (a.isVisible !== b.isVisible) {
+      return a.isVisible ? -1 : 1;
+    }
+    const createdDiff = toEpoch(b.createdAt) - toEpoch(a.createdAt);
+    if (createdDiff !== 0) {
+      return createdDiff;
+    }
+    return b.id - a.id;
+  });
+}
+
+function sortHeadKeywordsByVisibleAndRecency(
+  headKeywords: AdminHeadKeywordOverviewResponse[]
+): AdminHeadKeywordOverviewResponse[] {
+  return [...headKeywords]
+    .map((headKeyword) => ({
+      ...headKeyword,
+      followers: sortFollowersByVisibleAndRecency(headKeyword.followers),
+    }))
+    .sort((a, b) => {
+      if (a.isVisible !== b.isVisible) {
+        return a.isVisible ? -1 : 1;
+      }
+      const createdDiff = toEpoch(b.createdAt) - toEpoch(a.createdAt);
+      if (createdDiff !== 0) {
+        return createdDiff;
+      }
+      return b.id - a.id;
+    });
+}
+
+function normalizeKeywordOverview(
+  overview: AdminKeywordOverviewResponse
+): AdminKeywordOverviewResponse {
+  return {
+    ...overview,
+    headKeywords: sortHeadKeywordsByVisibleAndRecency(overview.headKeywords),
+  };
 }
 
 export function AdminPage({ session, loginUrl }: AdminPageProps) {
@@ -152,29 +207,21 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
   const touchDragStartRef = useRef<{ x: number; y: number } | null>(null);
   const suppressFollowerClickRef = useRef<boolean>(false);
 
-  const [cssTestBlogUrl, setCssTestBlogUrl] = useState("");
-  const [cssTestSelector, setCssTestSelector] = useState("");
-  const [cssTestSampleSize, setCssTestSampleSize] = useState("5");
-  const [cssTesting, setCssTesting] = useState(false);
-  const [cssTestResult, setCssTestResult] = useState<AdminCssSelectorTestResponse | null>(null);
-
   const [cssSuggestBlogUrl, setCssSuggestBlogUrl] = useState("");
   const [cssSuggestLimit, setCssSuggestLimit] = useState("10");
   const [cssSuggestSampleSize, setCssSuggestSampleSize] = useState("5");
+  const [cssSuggestFirstTitle, setCssSuggestFirstTitle] = useState("");
+  const [cssSuggestFirstUrl, setCssSuggestFirstUrl] = useState("");
   const [cssSuggesting, setCssSuggesting] = useState(false);
   const [applyingSuggestedSelector, setApplyingSuggestedSelector] = useState<string | null>(null);
   const [cssSuggestResult, setCssSuggestResult] = useState<AdminCssSelectorSuggestResponse | null>(
     null
   );
-
-  const [blogIdForSelector, setBlogIdForSelector] = useState("");
-  const [selectorForSave, setSelectorForSave] = useState("");
-  const [selectorSaveSampleSize, setSelectorSaveSampleSize] = useState("5");
-  const [selectorForceSave, setSelectorForceSave] = useState(false);
-  const [savingSelector, setSavingSelector] = useState(false);
-  const [selectorSaveResult, setSelectorSaveResult] = useState<AdminBlogCssSelectorUpdateResponse | null>(
-    null
-  );
+  const [blogsRequiringSelector, setBlogsRequiringSelector] = useState<
+    AdminBlogRequiringSelectorResponse[]
+  >([]);
+  const [blogsRequiringSelectorLoading, setBlogsRequiringSelectorLoading] = useState(false);
+  const [blogsRequiringSelectorLoaded, setBlogsRequiringSelectorLoaded] = useState(false);
 
   function showToast(
     message: string,
@@ -318,7 +365,7 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     setKeywordLoading(true);
     try {
       const result = await getAdminKeywordOverview(token);
-      setKeywordOverview(result);
+      setKeywordOverview(normalizeKeywordOverview(result));
       if (!silent) {
         showToast("키워드 현황을 불러왔습니다.", "success");
       }
@@ -326,6 +373,23 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
       showToast(normalizeError(error, "키워드 현황 조회에 실패했습니다."), "error");
     } finally {
       setKeywordLoading(false);
+    }
+  }
+
+  async function loadBlogsNeedSelector(silent = false) {
+    if (!token) return;
+    setBlogsRequiringSelectorLoading(true);
+    try {
+      const result = await getAdminBlogsRequiringSelector(token);
+      setBlogsRequiringSelector(result);
+      if (!silent) {
+        showToast("selector 적용이 필요한 블로그 목록을 불러왔습니다.", "success");
+      }
+    } catch (error) {
+      showToast(normalizeError(error, "selector 대상 블로그 목록 조회에 실패했습니다."), "error");
+    } finally {
+      setBlogsRequiringSelectorLoading(false);
+      setBlogsRequiringSelectorLoaded(true);
     }
   }
 
@@ -345,6 +409,10 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     }
     if (activeTab === "keywords" && !keywordLoading && !keywordOverview) {
       void loadKeywordOverview(true);
+      return;
+    }
+    if (activeTab === "crawler" && !blogsRequiringSelectorLoading && !blogsRequiringSelectorLoaded) {
+      void loadBlogsNeedSelector(true);
     }
   }, [
     activeTab,
@@ -357,6 +425,8 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     receivedInitialized,
     keywordLoading,
     keywordOverview,
+    blogsRequiringSelectorLoading,
+    blogsRequiringSelectorLoaded,
   ]);
 
   async function ensureSummaries(articleId: number) {
@@ -652,11 +722,12 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
         });
       }
 
-      const nextCounts = recalculateKeywordOverviewCounts(nextHeadKeywords);
+      const sortedHeadKeywords = sortHeadKeywordsByVisibleAndRecency(nextHeadKeywords);
+      const nextCounts = recalculateKeywordOverviewCounts(sortedHeadKeywords);
       return {
         ...prev,
         ...nextCounts,
-        headKeywords: nextHeadKeywords,
+        headKeywords: sortedHeadKeywords,
       };
     });
   }
@@ -667,7 +738,7 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     setKeywordUpdating(true);
     try {
       const updatedOverview = await updateAdminKeywordById(token, keywordId, { isVisible: nextVisible });
-      setKeywordOverview(updatedOverview);
+      setKeywordOverview(normalizeKeywordOverview(updatedOverview));
       showToast(`키워드 "${value}"의 노출 상태를 바꿨습니다.`, "success");
     } catch (error) {
       showToast(normalizeError(error, "키워드 상태 변경에 실패했습니다."), "error");
@@ -793,7 +864,7 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
       setKeywordUpdating(true);
       try {
         const updatedOverview = await mergeAdminKeywordsById(token, sourceKeyword.id, targetHeadKeywordId);
-        setKeywordOverview(updatedOverview);
+        setKeywordOverview(normalizeKeywordOverview(updatedOverview));
         showToast(`헤드 키워드 "${sourceKeyword.label}"를 병합했습니다.`, "success");
       } catch (error) {
         showToast(normalizeError(error, "키워드 병합에 실패했습니다."), "error");
@@ -837,34 +908,15 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     }
   }
 
-  async function handleCssTest(event: FormEvent) {
-    event.preventDefault();
-    if (!token) return;
-    if (!cssTestBlogUrl.trim() || !cssTestSelector.trim()) {
-      showToast("blogUrl과 cssSelector를 입력해 주세요.", "error");
-      return;
-    }
-    setCssTesting(true);
-    try {
-      const result = await testAdminCssSelector(token, {
-        blogUrl: cssTestBlogUrl.trim(),
-        cssSelector: cssTestSelector.trim(),
-        sampleSize: Number(cssTestSampleSize) || 5,
-      });
-      setCssTestResult(result);
-      showToast(result.success ? "selector 테스트 성공" : "selector 테스트 완료", result.success ? "success" : "info");
-    } catch (error) {
-      showToast(normalizeError(error, "selector 테스트에 실패했습니다."), "error");
-    } finally {
-      setCssTesting(false);
-    }
-  }
-
   async function handleCssSuggest(event: FormEvent) {
     event.preventDefault();
     if (!token) return;
     if (!cssSuggestBlogUrl.trim()) {
       showToast("blogUrl을 입력해 주세요.", "error");
+      return;
+    }
+    if (!cssSuggestFirstTitle.trim() || !cssSuggestFirstUrl.trim()) {
+      showToast("첫번째 글 제목과 URL을 함께 입력해 주세요.", "error");
       return;
     }
     setCssSuggesting(true);
@@ -873,6 +925,8 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
         blogUrl: cssSuggestBlogUrl.trim(),
         candidateLimit: Number(cssSuggestLimit) || 10,
         sampleSize: Number(cssSuggestSampleSize) || 5,
+        firstArticleTitle: cssSuggestFirstTitle.trim(),
+        firstArticleUrl: cssSuggestFirstUrl.trim(),
       });
       setCssSuggestResult(result);
       showToast("selector 추천을 완료했습니다.", "success");
@@ -883,28 +937,9 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     }
   }
 
-  async function handleSaveSelector(event: FormEvent) {
-    event.preventDefault();
-    if (!token) return;
-    const blogId = parseNumber(blogIdForSelector);
-    if (!blogId || !selectorForSave.trim()) {
-      showToast("blogId와 cssSelector를 입력해 주세요.", "error");
-      return;
-    }
-    setSavingSelector(true);
-    try {
-      const result = await updateAdminBlogCssSelector(token, blogId, {
-        cssSelector: selectorForSave.trim(),
-        sampleSize: Number(selectorSaveSampleSize) || 5,
-        force: selectorForceSave,
-      });
-      setSelectorSaveResult(result);
-      showToast(result.saved ? "selector를 저장했습니다." : "테스트 실패로 저장하지 않았습니다.", result.saved ? "success" : "info");
-    } catch (error) {
-      showToast(normalizeError(error, "selector 저장에 실패했습니다."), "error");
-    } finally {
-      setSavingSelector(false);
-    }
+  function handleUseBlogForSuggest(blog: AdminBlogRequiringSelectorResponse) {
+    setCssSuggestBlogUrl(blog.url);
+    showToast(`"${blog.name}" URL을 추천 입력값으로 채웠습니다.`, "info");
   }
 
   async function handleApplySuggestedSelector(selector: string) {
@@ -923,9 +958,8 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
         sampleSize: Number(cssSuggestSampleSize) || 5,
         force: false,
       });
-      setSelectorSaveResult(result);
       if (result.saved) {
-        setSelectorForSave(result.cssSelector);
+        await loadBlogsNeedSelector(true);
       }
       showToast(
         result.saved
@@ -1416,7 +1450,7 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
                     >
                       <div className="keyword-lane__head-main">
                         <p className={`keyword-lane__title ${headKeyword.isVisible ? "" : "is-hidden"}`}>
-                          <strong className="keyword-head-prefix">HEAD</strong> {headKeyword.value}
+                          {headKeyword.value}
                         </p>
                       </div>
                       <button
@@ -1499,62 +1533,67 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
                 <div>
                   <h2>크롤링 selector 관리</h2>
                   <p className="panel__description">
-                    blog URL CSS selector 테스트, 추천, 저장(검증 포함)을 수행합니다.
+                    selector 추천 한 번으로 후보 확인과 즉시 적용까지 처리합니다.
                   </p>
                 </div>
               </div>
 
-              <form className="admin-form" onSubmit={handleCssTest}>
-                <h3 className="subheading">selector 테스트</h3>
-                <div className="admin-form-grid">
-                  <label className="admin-field">
-                    <span>blogUrl</span>
-                    <small>게시글 목록이 있는 블로그 페이지 URL</small>
-                    <input
-                      value={cssTestBlogUrl}
-                      onChange={(event) => setCssTestBlogUrl(event.target.value)}
-                      placeholder="https://example.com/blog"
-                    />
-                  </label>
-                  <label className="admin-field">
-                    <span>cssSelector</span>
-                    <small>게시글 링크를 감싸는 HTML 요소 선택자</small>
-                    <input
-                      value={cssTestSelector}
-                      onChange={(event) => setCssTestSelector(event.target.value)}
-                      placeholder=".post-list a.post-link"
-                    />
-                  </label>
-                  <label className="admin-field">
-                    <span>sampleSize</span>
-                    <small>검증 시 확인할 최대 샘플 개수</small>
-                    <input
-                      value={cssTestSampleSize}
-                      onChange={(event) => setCssTestSampleSize(event.target.value)}
-                      placeholder="5"
-                    />
-                  </label>
+              <div className="admin-form">
+                <div className="panel-actions panel-actions--between">
+                  <h3 className="subheading">selector 적용 필요 블로그</h3>
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--small"
+                    onClick={() => void loadBlogsNeedSelector()}
+                    disabled={blogsRequiringSelectorLoading}
+                  >
+                    {blogsRequiringSelectorLoading ? "불러오는 중..." : "새로고침"}
+                  </button>
                 </div>
-                <button type="submit" className="btn btn--primary btn--small" disabled={cssTesting}>
-                  {cssTesting ? "테스트 중..." : "테스트 실행"}
-                </button>
-                {cssTestResult ? (
+                <div className="admin-result-box">
+                  <p>
+                    RSS가 없고 `urlCssSelector`가 비어 있는 블로그 목록입니다. “이 URL로 추천”을 누르면 아래
+                    추천 입력값에 자동으로 채워집니다.
+                  </p>
+                </div>
+                {blogsRequiringSelector.length === 0 ? (
                   <div className="admin-result-box">
                     <p>
-                      성공: {cssTestResult.success ? "Y" : "N"} · match {cssTestResult.matchedElementCount} · url{" "}
-                      {cssTestResult.extractableUrlCount}
+                      {blogsRequiringSelectorLoading
+                        ? "목록을 불러오는 중입니다."
+                        : "현재 selector 적용이 필요한 블로그가 없습니다."}
                     </p>
-                    {cssTestResult.message ? <p>{cssTestResult.message}</p> : null}
                   </div>
-                ) : null}
-              </form>
+                ) : (
+                  <div className="admin-scroll-list">
+                    {blogsRequiringSelector.map((blog) => (
+                      <div key={blog.id} className="admin-list-item">
+                        <div>
+                          <strong>{blog.name}</strong>
+                          <p>{blog.url}</p>
+                          <p>
+                            {rssStatusLabel(blog.rssStatus)} · 등록 {formatDateTime(blog.createdAt)}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn--ghost btn--small"
+                          onClick={() => handleUseBlogForSuggest(blog)}
+                        >
+                          이 URL로 추천
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <form className="admin-form" onSubmit={handleCssSuggest}>
                 <h3 className="subheading">selector 추천</h3>
                 <div className="admin-form-grid">
                   <label className="admin-field">
                     <span>blogUrl</span>
-                    <small>추천할 CSS selector를 찾을 블로그 URL</small>
+                    <small>게시글 목록이 있는 블로그 페이지 URL</small>
                     <input
                       value={cssSuggestBlogUrl}
                       onChange={(event) => setCssSuggestBlogUrl(event.target.value)}
@@ -1563,7 +1602,7 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
                   </label>
                   <label className="admin-field">
                     <span>candidateLimit</span>
-                    <small>추천 후보 개수(클수록 느려짐)</small>
+                    <small>추천 후보 개수(1~20, 클수록 느려짐)</small>
                     <input
                       value={cssSuggestLimit}
                       onChange={(event) => setCssSuggestLimit(event.target.value)}
@@ -1579,98 +1618,81 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
                       placeholder="5"
                     />
                   </label>
+                  <label className="admin-field admin-field--full">
+                    <span>첫번째 글 제목</span>
+                    <small>예시: CI/CD에 기존 Provisioning Profile 유지하기(Git으로 유지하기)</small>
+                    <input
+                      value={cssSuggestFirstTitle}
+                      onChange={(event) => setCssSuggestFirstTitle(event.target.value)}
+                      placeholder="첫번째 게시글의 제목을 입력하세요"
+                    />
+                  </label>
+                  <label className="admin-field admin-field--full">
+                    <span>첫번째 글 URL</span>
+                    <small>예시: https://danawalab.github.io/ios/2025/08/04/iOS-cicd-provisioning-profile.html</small>
+                    <input
+                      value={cssSuggestFirstUrl}
+                      onChange={(event) => setCssSuggestFirstUrl(event.target.value)}
+                      placeholder="첫번째 게시글의 URL을 입력하세요"
+                    />
+                  </label>
                 </div>
-                <button type="submit" className="btn btn--ghost btn--small" disabled={cssSuggesting}>
+                <button type="submit" className="btn btn--primary btn--small" disabled={cssSuggesting}>
                   {cssSuggesting ? "추천 중..." : "추천 실행"}
                 </button>
                 {cssSuggestResult ? (
-                  <div className="admin-scroll-list">
-                    {cssSuggestResult.candidates.map((candidate) => (
-                      <div key={candidate.selector} className="admin-list-item admin-list-item--stack">
-                        <div>
-                          <strong>{candidate.selector}</strong>
-                          <p>
-                            confidence {candidate.confidence.toFixed(2)} · match {candidate.matchedElementCount} · url{" "}
-                            {candidate.extractableUrlCount}
-                          </p>
-                          {candidate.sampleMatches.length > 0 ? (
-                            <ul className="admin-suggest-samples">
-                              {candidate.sampleMatches.map((match) => (
-                                <li key={`${candidate.selector}-${match.url}`}>
-                                  <a href={match.url} target="_blank" rel="noreferrer">
-                                    {match.title}
-                                  </a>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : null}
-                        </div>
-                        <button
-                          type="button"
-                          className="btn btn--primary btn--small"
-                          onClick={() => void handleApplySuggestedSelector(candidate.selector)}
-                          disabled={applyingSuggestedSelector === candidate.selector}
-                        >
-                          {applyingSuggestedSelector === candidate.selector
-                            ? "적용 중..."
-                            : "이 selector 적용"}
-                        </button>
+                  <>
+                    {cssSuggestResult.message ? (
+                      <div className="admin-result-box">
+                        <p>{cssSuggestResult.message}</p>
                       </div>
-                    ))}
-                  </div>
-                ) : null}
-              </form>
-
-              <form className="admin-form" onSubmit={handleSaveSelector}>
-                <h3 className="subheading">selector 저장</h3>
-                <div className="admin-form-grid">
-                  <label className="admin-field">
-                    <span>blogId</span>
-                    <small>selector를 저장할 블로그의 내부 ID</small>
-                    <input
-                      value={blogIdForSelector}
-                      onChange={(event) => setBlogIdForSelector(event.target.value)}
-                      placeholder="123"
-                    />
-                  </label>
-                  <label className="admin-field">
-                    <span>cssSelector</span>
-                    <small>저장할 최종 CSS selector</small>
-                    <input
-                      value={selectorForSave}
-                      onChange={(event) => setSelectorForSave(event.target.value)}
-                      placeholder=".post-list a.post-link"
-                    />
-                  </label>
-                  <label className="admin-field">
-                    <span>sampleSize</span>
-                    <small>저장 전 검증할 샘플 개수</small>
-                    <input
-                      value={selectorSaveSampleSize}
-                      onChange={(event) => setSelectorSaveSampleSize(event.target.value)}
-                      placeholder="5"
-                    />
-                  </label>
-                </div>
-                <label className="admin-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={selectorForceSave}
-                    onChange={(event) => setSelectorForceSave(event.target.checked)}
-                  />
-                  테스트 실패여도 저장(force=true)
-                </label>
-                <button type="submit" className="btn btn--primary btn--small" disabled={savingSelector}>
-                  {savingSelector ? "저장 중..." : "selector 저장"}
-                </button>
-                {selectorSaveResult ? (
+                    ) : null}
+                    <div className="admin-scroll-list">
+                      {cssSuggestResult.candidates.map((candidate) => (
+                        <div key={candidate.selector} className="admin-list-item admin-list-item--stack">
+                          <div>
+                            <strong>{candidate.selector}</strong>
+                            <p>
+                              confidence {candidate.confidence.toFixed(2)} · hint {candidate.hintScore.toFixed(2)} · match{" "}
+                              {candidate.matchedElementCount} · url {candidate.extractableUrlCount}
+                            </p>
+                            <p>
+                              첫 글 매칭: 제목 {candidate.firstArticleTitleMatched ? "O" : "X"} · URL{" "}
+                              {candidate.firstArticleUrlMatched ? "O" : "X"}
+                            </p>
+                            {candidate.sampleMatches.length > 0 ? (
+                              <ul className="admin-suggest-samples">
+                                {candidate.sampleMatches.map((match) => (
+                                  <li key={`${candidate.selector}-${match.url}`}>
+                                    <a href={match.url} target="_blank" rel="noreferrer">
+                                      {match.title}
+                                    </a>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : null}
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn--primary btn--small"
+                            onClick={() => void handleApplySuggestedSelector(candidate.selector)}
+                            disabled={applyingSuggestedSelector === candidate.selector}
+                          >
+                            {applyingSuggestedSelector === candidate.selector
+                              ? "적용 중..."
+                              : "이 selector 적용"}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
                   <div className="admin-result-box">
                     <p>
-                      blogId {selectorSaveResult.blogId} · 저장 {selectorSaveResult.saved ? "성공" : "실패"}
+                      추천 실행 시 상위 selector 후보와 샘플 게시글 제목을 확인하고 바로 적용할 수 있습니다.
                     </p>
-                    {selectorSaveResult.message ? <p>{selectorSaveResult.message}</p> : null}
                   </div>
-                ) : null}
+                )}
               </form>
             </section>
           ) : null}

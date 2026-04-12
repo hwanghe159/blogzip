@@ -6,6 +6,7 @@ import com.blogzip.api.admin.AdminRequired
 import com.blogzip.api.dto.ArticleResponse
 import com.blogzip.api.dto.ArticleReportRequest
 import com.blogzip.api.dto.ArticleReportResponse
+import com.blogzip.api.dto.FeedKeywordCountResponse
 import com.blogzip.api.dto.PaginationResponse
 import com.blogzip.api.dto.admin.ArticleKeywordsAddRequest
 import com.blogzip.dto.SearchedArticles
@@ -27,6 +28,34 @@ class ArticleController(
   private val articleReportService: ArticleReportService,
   private val articleCommandService: ArticleCommandService,
 ) {
+
+  @GetMapping("/api/v1/article/keyword-count")
+  fun getKeywordCounts(
+    @RequestParam(required = true) from: LocalDate,
+    @RequestParam(required = false) to: LocalDate?,
+  ): ResponseEntity<List<FeedKeywordCountResponse>> {
+    return ResponseEntity.ok(
+      articleQueryService.countVisibleKeywordsForFeed(
+        from = from,
+        to = to ?: LocalDate.now(),
+      ).map { FeedKeywordCountResponse.from(it) }
+    )
+  }
+
+  @GetMapping("/api/v1/my/article/keyword-count")
+  fun getMyKeywordCounts(
+    @Parameter(hidden = true) @Authenticated user: AuthenticatedUser,
+    @RequestParam(required = true) from: LocalDate,
+    @RequestParam(required = false) to: LocalDate?,
+  ): ResponseEntity<List<FeedKeywordCountResponse>> {
+    return ResponseEntity.ok(
+      articleQueryService.countVisibleKeywordsForMyFeed(
+        from = from,
+        to = to ?: LocalDate.now(),
+        userId = user.id,
+      ).map { FeedKeywordCountResponse.from(it) }
+    )
+  }
 
   @GetMapping("/api/v1/article")
   fun get(

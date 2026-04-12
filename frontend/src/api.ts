@@ -5,6 +5,7 @@ import {
   AdminArticleResummaryApplyResponse,
   AdminArticleResummaryPreviewResponse,
   AdminArticleResponse,
+  AdminBlogRequiringSelectorResponse,
   AdminArticleSummaryResponse,
   AdminBlogCssSelectorUpdateResponse,
   AdminCssSelectorSuggestResponse,
@@ -19,6 +20,7 @@ import {
   BlogResponse,
   BlogCreateResponse,
   DayOfWeek,
+  FeedKeywordCountResponse,
   LoginResponse,
   PaginationResponse,
   ReadLaterDetailResponse,
@@ -187,6 +189,25 @@ export async function getArticles(params: {
         next,
         size,
         keywords,
+      },
+    }
+  );
+}
+
+export async function getFeedKeywordCounts(params: {
+  token?: string | null;
+  from: string;
+  to?: string;
+  myOnly?: boolean;
+}): Promise<FeedKeywordCountResponse[]> {
+  const { token, from, to, myOnly = false } = params;
+  return request<FeedKeywordCountResponse[]>(
+    myOnly ? "/api/v1/my/article/keyword-count" : "/api/v1/article/keyword-count",
+    {
+      token: token ?? null,
+      query: {
+        from,
+        to,
       },
     }
   );
@@ -523,12 +544,22 @@ export async function suggestAdminCssSelector(
     blogUrl: string;
     candidateLimit?: number;
     sampleSize?: number;
+    firstArticleTitle?: string;
+    firstArticleUrl?: string;
   }
 ): Promise<AdminCssSelectorSuggestResponse> {
   return request<AdminCssSelectorSuggestResponse>("/api/admin/crawler/css-selector/suggest", {
     method: "POST",
     token,
     body: payload,
+  });
+}
+
+export async function getAdminBlogsRequiringSelector(
+  token: string
+): Promise<AdminBlogRequiringSelectorResponse[]> {
+  return request<AdminBlogRequiringSelectorResponse[]>("/api/admin/blog/requiring-selector", {
+    token,
   });
 }
 

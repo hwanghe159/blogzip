@@ -10,6 +10,10 @@ data class CssSelectorSuggestRequest @JsonCreator(mode = JsonCreator.Mode.PROPER
   val candidateLimit: Int = 10,
   @JsonProperty("sampleSize")
   val sampleSize: Int = 5,
+  @JsonProperty("firstArticleTitle")
+  val firstArticleTitle: String = "",
+  @JsonProperty("firstArticleUrl")
+  val firstArticleUrl: String = "",
 )
 
 data class CssSelectorSuggestResponse(
@@ -22,6 +26,10 @@ data class CssSelectorSuggestResponse(
 data class CssSelectorCandidateResponse(
   val selector: String,
   val confidence: Double,
+  val baseConfidence: Double,
+  val hintScore: Double,
+  val firstArticleTitleMatched: Boolean,
+  val firstArticleUrlMatched: Boolean,
   val matchedElementCount: Int,
   val extractableUrlCount: Int,
   val internalUrlCount: Int,

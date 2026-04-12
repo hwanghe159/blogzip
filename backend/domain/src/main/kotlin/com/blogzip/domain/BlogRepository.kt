@@ -22,6 +22,17 @@ interface BlogRepository : JpaRepository<Blog, Long> {
 
   fun findAllByIsShowOnMain(isShowOnMain: Boolean): List<Blog>
 
+  @Query(
+    """
+            select blog
+            from Blog blog
+            where blog.rssStatus = :rssStatus
+              and (blog.urlCssSelector is null or length(trim(blog.urlCssSelector)) = 0)
+            order by blog.createdAt desc
+    """
+  )
+  fun findAllRequiringUrlCssSelector(@Param("rssStatus") rssStatus: Blog.RssStatus): List<Blog>
+
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(
     """

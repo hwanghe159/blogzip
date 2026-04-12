@@ -45,6 +45,11 @@ class BlogService(private val repository: BlogRepository) {
     return repository.findAllById(ids)
   }
 
+  @Transactional(readOnly = true)
+  fun findBlogsRequiringCssSelector(): List<Blog> {
+    return repository.findAllRequiringUrlCssSelector(Blog.RssStatus.NO_RSS)
+  }
+
   @Transactional
   fun updateMetadata(
     blogId: Long,

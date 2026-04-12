@@ -24,10 +24,16 @@ data class AdminRecentArticles(
   val next: Long?,
 )
 
+data class FeedKeywordCount(
+  val keyword: String,
+  val count: Int,
+)
+
 @Service
 class ArticleQueryService(
   private val articleRepository: ArticleRepository,
   private val articleSummaryRepository: ArticleSummaryRepository,
+  private val articleKeywordRepository: ArticleKeywordRepository,
   private val keywordRepository: KeywordRepository,
   private val blogRepository: BlogRepository,
   private val readLaterRepository: ReadLaterRepository,
@@ -241,6 +247,62 @@ class ArticleQueryService(
       size = size,
       userId = userId,
     )
+  }
+
+  @Transactional(readOnly = true)
+  fun countVisibleKeywordsForFeed(
+    from: LocalDate,
+    to: LocalDate,
+  ): List<FeedKeywordCount> {
+    val blogs = blogRepository.findAllByIsShowOnMain(true)
+      .mapNotNull { blog -> blog.id }
+    if (blogs.isEmpty()) {
+      return emptyList()
+    }
+    return articleKeywordRepository.countVisibleHeadKeywordsForFeed(
+      blogIds = blogs,
+      from = from,
+      to = to,
+    )
+      .map { count ->
+        FeedKeywordCount(
+          keyword = count.keywordValue,
+          count = count.mappingCount.toInt(),
+        )
+      }
+      .sortedWith(
+        compareByDescending<FeedKeywordCount> { it.count }
+          .thenBy { it.keyword.lowercase() }
+      )
+  }
+
+  @Transactional(readOnly = true)
+  fun countVisibleKeywordsForMyFeed(
+    from: LocalDate,
+    to: LocalDate,
+    userId: Long,
+  ): List<FeedKeywordCount> {
+    val user = (userRepository.findByIdOrNull(userId)
+      ?: throw DomainException(ErrorCode.USER_NOT_FOUND))
+    val subscribedBlogIds = user.getAllSubscribingBlogIds()
+    if (subscribedBlogIds.isEmpty()) {
+      return emptyList()
+    }
+    return articleKeywordRepository.countVisibleHeadKeywordsForFeed(
+      blogIds = subscribedBlogIds,
+      from = from,
+      to = to,
+    )
+      .map { count ->
+        FeedKeywordCount(
+          keyword = count.keywordValue,
+          count = count.mappingCount.toInt(),
+        )
+      }
+      .sortedWith(
+        compareByDescending<FeedKeywordCount> { it.count }
+          .thenBy { it.keyword.lowercase() }
+      )
   }
 
   private fun searchMyByHeadKeywordIds(

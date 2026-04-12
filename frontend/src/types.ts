@@ -89,6 +89,11 @@ export interface SubscriptionResponse {
   createdAt: string;
 }
 
+export interface FeedKeywordCountResponse {
+  keyword: string;
+  count: number;
+}
+
 export interface ApiErrorResponse {
   code: string | null;
   message: string | null;
@@ -215,6 +220,10 @@ export interface AdminCssSelectorTestResponse {
 export interface AdminCssSelectorCandidateResponse {
   selector: string;
   confidence: number;
+  baseConfidence: number;
+  hintScore: number;
+  firstArticleTitleMatched: boolean;
+  firstArticleUrlMatched: boolean;
   matchedElementCount: number;
   extractableUrlCount: number;
   internalUrlCount: number;
@@ -226,6 +235,14 @@ export interface AdminCssSelectorSuggestResponse {
   blogUrl: string;
   candidates: AdminCssSelectorCandidateResponse[];
   message: string | null;
+}
+
+export interface AdminBlogRequiringSelectorResponse {
+  id: number;
+  name: string;
+  url: string;
+  rssStatus: "NO_RSS" | "WITH_CONTENT" | "WITHOUT_CONTENT";
+  createdAt: string;
 }
 
 export interface AdminBlogCssSelectorUpdateResponse {

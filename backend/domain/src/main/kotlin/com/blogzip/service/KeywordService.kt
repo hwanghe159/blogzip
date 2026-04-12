@@ -8,6 +8,7 @@ import com.blogzip.dto.KeywordOverview
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
 import java.util.Collections
 import java.util.Locale
 
@@ -103,7 +104,7 @@ class KeywordService(
 
     val headKeywords = keywords
       .filter { it.isHead() }
-      .sortedBy { it.value.lowercase(Locale.ROOT) }
+      .sortedWith(::compareKeywordForOverview)
     val followersByHeadKeywordId = keywords
       .filterNot { it.isHead() }
       .groupBy { it.head!!.id!! }
@@ -123,7 +124,7 @@ class KeywordService(
           createdAt = headKeyword.createdAt,
           followers = followersByHeadKeywordId[headKeyword.id]
             .orEmpty()
-            .sortedBy { it.value.lowercase(Locale.ROOT) }
+            .sortedWith(::compareKeywordForOverview)
             .map {
               KeywordOverview.FollowerKeywordOverview(
                 id = it.id!!,
@@ -135,6 +136,30 @@ class KeywordService(
         )
       }
     )
+  }
+
+  private fun compareKeywordForOverview(
+    left: Keyword,
+    right: Keyword,
+  ): Int {
+    if (left.isVisible != right.isVisible) {
+      return if (left.isVisible) -1 else 1
+    }
+    val leftCreatedAt = left.createdAt
+      .takeIf { it != LocalDateTime.MIN }
+      ?: LocalDateTime.MIN
+    val rightCreatedAt = right.createdAt
+      .takeIf { it != LocalDateTime.MIN }
+      ?: LocalDateTime.MIN
+    if (leftCreatedAt != rightCreatedAt) {
+      return rightCreatedAt.compareTo(leftCreatedAt)
+    }
+    val leftId = left.id ?: Long.MIN_VALUE
+    val rightId = right.id ?: Long.MIN_VALUE
+    if (leftId != rightId) {
+      return rightId.compareTo(leftId)
+    }
+    return left.value.lowercase(Locale.ROOT).compareTo(right.value.lowercase(Locale.ROOT))
   }
 
   private fun saveAllIfNotExist(keywordValues: List<String>): List<Keyword> {

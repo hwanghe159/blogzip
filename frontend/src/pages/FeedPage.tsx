@@ -4,13 +4,14 @@ import {
   addReadLater,
   ApiError,
   getArticles,
+  getFeedKeywordCounts,
   getSubscriptions,
   markArticleRead,
   reportArticle,
   removeReadLater,
   subscribeBlog,
 } from "../api";
-import { ArticleResponse, SessionState } from "../types";
+import { ArticleResponse, FeedKeywordCountResponse, SessionState } from "../types";
 import { ArticleCard } from "../components/ArticleCard";
 import { EmptyState } from "../components/EmptyState";
 import { Toast } from "../components/Toast";
@@ -59,6 +60,7 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
   const [reportDetail, setReportDetail] = useState("");
   const [subscribedBlogIds, setSubscribedBlogIds] = useState<Set<number>>(new Set());
   const [subscribingBlogId, setSubscribingBlogId] = useState<number | null>(null);
+  const [keywordCounts, setKeywordCounts] = useState<FeedKeywordCountResponse[]>([]);
   const toastTimerRef = useRef<number | null>(null);
   const toastSeqRef = useRef<number>(0);
 
@@ -124,6 +126,26 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
     }
     loadSubscriptions();
   }, [isAuthenticated, session.token]);
+
+  useEffect(() => {
+    async function loadKeywordCounts() {
+      if (mode === "my" && (!isAuthenticated || !session.token)) {
+        setKeywordCounts([]);
+        return;
+      }
+      try {
+        const counts = await getFeedKeywordCounts({
+          token: session.token,
+          from: DEFAULT_FROM_DATE,
+          myOnly: mode === "my",
+        });
+        setKeywordCounts(counts);
+      } catch (_) {
+        setKeywordCounts([]);
+      }
+    }
+    void loadKeywordCounts();
+  }, [isAuthenticated, mode, session.token]);
 
   const canLoadMyFeed = mode === "all" || isAuthenticated;
 
@@ -294,10 +316,8 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
 
   const keywordOptions = useMemo(() => {
     const counts = new Map<string, number>();
-    items.forEach((article) => {
-      article.keywords.forEach((keyword) => {
-        counts.set(keyword, (counts.get(keyword) ?? 0) + 1);
-      });
+    keywordCounts.forEach((item) => {
+      counts.set(item.keyword, item.count);
     });
     selectedKeywords.forEach((keyword) => {
       if (!counts.has(keyword)) {
@@ -310,7 +330,7 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
         return b[1] - a[1];
       })
       .map(([value, count]) => ({ value, count }));
-  }, [items, selectedKeywords]);
+  }, [keywordCounts, selectedKeywords]);
 
   const isKeywordFiltering = selectedKeywords.length > 0;
   const canToggleKeywordList =

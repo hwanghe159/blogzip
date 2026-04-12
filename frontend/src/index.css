@@ -1110,6 +1110,10 @@ a {
   gap: 4px;
 }
 
+.admin-field--full {
+  grid-column: 1 / -1;
+}
+
 .admin-field > span {
   font-size: 0.78rem;
   font-weight: 700;
@@ -1460,6 +1464,9 @@ a {
   gap: 8px;
   align-items: flex-start;
   cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .keyword-lane__head.is-hidden {
@@ -1507,6 +1514,9 @@ a {
   gap: 6px;
   cursor: grab;
   min-height: 30px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .keyword-chip:disabled {
