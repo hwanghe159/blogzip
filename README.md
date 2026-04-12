@@ -81,65 +81,61 @@
 
 ## 인프라 아키텍쳐
 ```mermaid
-flowchart TB
-  Client["🖥️ Client"]
-  DNS["🌐 DNS<br/>Route53 / Gabia"]
-  GH["⚙️ GitHub Actions"]
-  OCIR["📦 OCIR"]
-  Vault["🔐 OCI Vault"]
+flowchart LR
+  Client["Client"]
+  DNS["DNS<br/>(Route53 / Gabia)"]
+  GH["GitHub Actions"]
+  OCIR["OCIR"]
+  Vault["OCI Vault"]
 
   subgraph OCI["OCI Cloud (ap-chuncheon-1)"]
-    IGW["🛜 Internet Gateway"]
+    direction LR
+    IGW["Internet Gateway"]
+
     subgraph VCN["VCN"]
+      direction LR
+
       subgraph PublicSubnet["Public Subnet"]
-        subgraph VM["VM.Standard.A1.Flex (Docker Compose)"]
-          Nginx["🟩 Nginx"]
-          Web["⚛️ Web Static"]
-          API["☕ API"]
-          Crawler["🕷️ Crawler"]
-          Scheduler["⏰ Scheduler<br/>(daily 00:00 / 09:00 KST)"]
-          BatchRunner["🧪 Batch Runner<br/>(GitHub 수동 실행)"]
+        direction TB
+        subgraph VM["VM.Standard.A1.Flex"]
+          direction TB
+          subgraph DockerHost["Docker Compose (Container Runtime)"]
+            direction LR
+            Nginx["Nginx 컨테이너<br/>(정적 파일 서빙 + /api 프록시)"]
+            API["API 컨테이너"]
+            Crawler["Crawler 컨테이너"]
+            Scheduler["Scheduler 컨테이너"]
+            Batch["Batch 컨테이너"]
+          end
         end
       end
+
       subgraph PrivateSubnet["Private DB Subnet"]
-        MySQL["🛢️ MySQL"]
+        MySQL["MySQL"]
       end
     end
   end
 
-  subgraph Integrations["외부 연동 서비스"]
-    direction LR
-    OpenAI["🤖 OpenAI API"]
-    Email["✉️ OCI Email Delivery"]
-    Slack["💬 Slack"]
-  end
+  ExternalIntegrations["외부 연동 서비스<br/>(OpenAI API / OCI Email Delivery / Slack)"]
 
   Client -->|"80/443"| DNS --> IGW --> Nginx
-  Nginx -->|"/"| Web
   Nginx -->|"/api"| API
 
-  API -->|"HTTP 8090"| Crawler
+  Scheduler -->|"배치 잡 트리거"| Batch
+  GH -->|"배치 잡 수동 실행(SSH)"| Batch
+
+  API -->|"내부 HTTP 8090"| Crawler
+  Batch -->|"내부 HTTP 8090"| Crawler
+
   API -->|"3306"| MySQL
-  API --> OpenAI
-  API --> Email
-  API --> Slack
+  Batch -->|"3306"| MySQL
 
-  Scheduler -->|"HTTP 8090"| Crawler
-  Scheduler -->|"3306"| MySQL
-  Scheduler --> OpenAI
-  Scheduler --> Email
-  Scheduler --> Slack
-
-  BatchRunner -->|"HTTP 8090"| Crawler
-  BatchRunner -->|"3306"| MySQL
-  BatchRunner --> OpenAI
-  BatchRunner --> Email
-  BatchRunner --> Slack
+  API --> ExternalIntegrations
+  Batch --> ExternalIntegrations
 
   GH -->|"이미지 빌드/푸시"| OCIR
-  OCIR -->|"Pull image"| VM
+  OCIR -->|"이미지 Pull"| VM
   GH -->|"배포 워크플로우(SSH)"| VM
-  GH -->|"배치 잡 실행 워크플로우(SSH)"| BatchRunner
   VM -->|"Secret 조회"| Vault
 
   classDef external fill:#f7f7f7,stroke:#7a7a7a,color:#111,stroke-width:1.2px;
@@ -147,26 +143,30 @@ flowchart TB
   classDef app fill:#eefaf0,stroke:#2da44e,color:#111,stroke-width:1.2px;
   classDef db fill:#fff8e6,stroke:#b08800,color:#111,stroke-width:1.2px;
 
-  class Client,DNS,GH,OCIR,OpenAI,Slack,Email,Vault external;
+  class Client,DNS,GH,OCIR,Vault,ExternalIntegrations external;
   class IGW infra;
-  class Nginx,Web,API,Crawler,Scheduler,BatchRunner app;
+  class Nginx,API,Crawler,Scheduler,Batch app;
   class MySQL db;
 ```
 
-## 백엔드 모듈 구조
+## 전체 프로젝트 구조
 ```
-backend
-├── ai : OpenAI Responses 기반 요약/키워드 추출
-├── api : API 서버 애플리케이션 모듈
-├── batch : 배치 애플리케이션 모듈
-├── crawler-client : RSS/HTML 처리 및 크롤링 클라이언트 공용 모듈
-├── domain : 도메인 로직과 DB과의 연결 담당
-├── notification : 이메일 발송 담당
-└── logging : slack으로 로그 메시지 발송 담당
-```
-
-## 크롤러 서비스 구조
-```
-crawler
-└── Node.js + Playwright 기반 크롤링 HTTP 서버 (metadata/content fetch)
+blogzip
+├── backend : Kotlin/Spring Boot 멀티모듈 백엔드
+│   ├── ai : OpenAI Responses 기반 요약/키워드 추출
+│   ├── api : API 서버 애플리케이션 모듈
+│   ├── batch : 배치 애플리케이션 모듈
+│   ├── crawler-client : RSS/HTML 처리 및 크롤링 클라이언트 공용 모듈
+│   ├── domain : 도메인 로직과 DB 연결 담당
+│   ├── notification : 이메일 발송 담당
+│   └── logging : Slack 로그 메시지 발송 담당
+├── crawler : Node.js + Playwright 기반 크롤링 HTTP 서버 (metadata/content fetch)
+├── frontend : React + TypeScript 웹 애플리케이션
+├── deploy : 운영 배포/실행 스크립트 및 인프라 설정
+│   ├── compose : Docker Compose 실행 정의
+│   ├── docker : 서비스별 Dockerfile
+│   ├── nginx : Nginx 설정
+│   ├── scheduler : 정기 배치(cron) 실행 설정
+│   └── scripts : 배포/배치 실행/Secret 주입 스크립트
+└── .github/workflows : CI/CD 파이프라인
 ```
