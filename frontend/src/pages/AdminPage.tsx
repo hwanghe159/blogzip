@@ -1,4 +1,4 @@
-import { FormEvent, TouchEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   ApiError,
   applyAdminArticleSummary,
@@ -51,6 +51,14 @@ type DragKeywordItem = {
   id: number;
   type: "head" | "follower";
   label: string;
+  headId: number | null;
+};
+
+type KeywordActionTarget = {
+  id: number;
+  value: string;
+  isVisible: boolean;
+  type: "head" | "follower";
   headId: number | null;
 };
 
@@ -200,12 +208,14 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
   const [creatingKeyword, setCreatingKeyword] = useState(false);
   const [newKeywordValue, setNewKeywordValue] = useState("");
   const [newKeywordVisible, setNewKeywordVisible] = useState(true);
+  const [keywordSearchQuery, setKeywordSearchQuery] = useState("");
   const [draggingKeyword, setDraggingKeyword] = useState<DragKeywordItem | null>(null);
   const [droppingHeadId, setDroppingHeadId] = useState<number | null>(null);
-  const touchDragKeywordRef = useRef<DragKeywordItem | null>(null);
-  const touchDragActiveRef = useRef<boolean>(false);
-  const touchDragStartRef = useRef<{ x: number; y: number } | null>(null);
-  const suppressFollowerClickRef = useRef<boolean>(false);
+  const [selectedKeywordTarget, setSelectedKeywordTarget] = useState<KeywordActionTarget | null>(null);
+  const [mergeKeywordQuery, setMergeKeywordQuery] = useState("");
+  const [mergeTargetKeywordId, setMergeTargetKeywordId] = useState<number | null>(null);
+  const [includeKeywordQuery, setIncludeKeywordQuery] = useState("");
+  const [includeKeywordIds, setIncludeKeywordIds] = useState<number[]>([]);
 
   const [cssSuggestBlogUrl, setCssSuggestBlogUrl] = useState("");
   const [cssSuggestLimit, setCssSuggestLimit] = useState("10");
@@ -732,16 +742,22 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     });
   }
 
-  async function handleToggleKeywordVisible(keywordId: number, value: string, isVisible: boolean) {
-    if (!token) return;
+  async function handleToggleKeywordVisible(
+    keywordId: number,
+    value: string,
+    isVisible: boolean
+  ): Promise<boolean> {
+    if (!token) return false;
     const nextVisible = !isVisible;
     setKeywordUpdating(true);
     try {
       const updatedOverview = await updateAdminKeywordById(token, keywordId, { isVisible: nextVisible });
       setKeywordOverview(normalizeKeywordOverview(updatedOverview));
       showToast(`키워드 "${value}"의 노출 상태를 바꿨습니다.`, "success");
+      return true;
     } catch (error) {
       showToast(normalizeError(error, "키워드 상태 변경에 실패했습니다."), "error");
+      return false;
     } finally {
       setKeywordUpdating(false);
     }
@@ -772,86 +788,6 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     } finally {
       setCreatingKeyword(false);
     }
-  }
-
-  function findHeadKeywordIdByPoint(clientX: number, clientY: number): number | null {
-    const target = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
-    const lane = target?.closest<HTMLElement>("[data-head-keyword-id]");
-    if (!lane) return null;
-    const value = lane.dataset.headKeywordId;
-    const parsed = value ? Number(value) : Number.NaN;
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  function clearTouchDragState() {
-    touchDragKeywordRef.current = null;
-    touchDragActiveRef.current = false;
-    touchDragStartRef.current = null;
-    setDraggingKeyword(null);
-    setDroppingHeadId(null);
-  }
-
-  function handleKeywordTouchStart(event: TouchEvent<HTMLElement>, keyword: DragKeywordItem) {
-    const target = event.target as HTMLElement;
-    if (target.closest(".keyword-visibility-btn")) {
-      return;
-    }
-    const touch = event.touches.item(0);
-    if (!touch) return;
-    touchDragKeywordRef.current = keyword;
-    touchDragActiveRef.current = false;
-    touchDragStartRef.current = { x: touch.clientX, y: touch.clientY };
-  }
-
-  function handleKeywordTouchMove(event: TouchEvent<HTMLElement>) {
-    if (!touchDragKeywordRef.current) return;
-    const touch = event.touches.item(0);
-    if (!touch) return;
-
-    if (!touchDragActiveRef.current) {
-      const start = touchDragStartRef.current;
-      if (!start) return;
-      const movedX = touch.clientX - start.x;
-      const movedY = touch.clientY - start.y;
-      const distance = Math.hypot(movedX, movedY);
-      if (distance < 8) {
-        return;
-      }
-      touchDragActiveRef.current = true;
-      setDraggingKeyword(touchDragKeywordRef.current);
-    }
-
-    event.preventDefault();
-    const dropHeadId = findHeadKeywordIdByPoint(touch.clientX, touch.clientY);
-    setDroppingHeadId(dropHeadId);
-  }
-
-  function handleKeywordTouchEnd(event: TouchEvent<HTMLElement>) {
-    const keyword = touchDragKeywordRef.current;
-    if (!keyword) {
-      clearTouchDragState();
-      return;
-    }
-
-    const wasActive = touchDragActiveRef.current;
-    const touch = event.changedTouches.item(0);
-    if (wasActive) {
-      event.preventDefault();
-      const dropHeadId = touch
-        ? findHeadKeywordIdByPoint(touch.clientX, touch.clientY)
-        : null;
-      if (dropHeadId !== null) {
-        void handleDropToHead(dropHeadId, keyword);
-      } else if (keyword.type === "follower") {
-        void handleDropToRoot(keyword);
-      }
-      suppressFollowerClickRef.current = true;
-      window.setTimeout(() => {
-        suppressFollowerClickRef.current = false;
-      }, 0);
-    }
-
-    clearTouchDragState();
   }
 
   async function handleDropToHead(
@@ -906,6 +842,138 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     } finally {
       setKeywordUpdating(false);
     }
+  }
+
+  function handleSelectKeywordTarget(target: KeywordActionTarget) {
+    setSelectedKeywordTarget(target);
+    setMergeKeywordQuery("");
+    setMergeTargetKeywordId(null);
+    setIncludeKeywordQuery("");
+    setIncludeKeywordIds([]);
+  }
+
+  async function handleToggleSelectedKeywordVisible() {
+    if (!selectedKeywordTarget) {
+      showToast("먼저 키워드를 선택해 주세요.", "info");
+      return;
+    }
+    const nextVisible = !selectedKeywordTarget.isVisible;
+    const changed = await handleToggleKeywordVisible(
+      selectedKeywordTarget.id,
+      selectedKeywordTarget.value,
+      selectedKeywordTarget.isVisible
+    );
+    if (!changed) {
+      return;
+    }
+    setSelectedKeywordTarget((prev) =>
+      prev
+        ? {
+            ...prev,
+            isVisible: nextVisible,
+          }
+        : prev
+    );
+  }
+
+  async function handleMergeSelectedKeyword() {
+    if (!token) return;
+    if (!selectedKeywordTarget) {
+      showToast("먼저 병합할 키워드를 선택해 주세요.", "info");
+      return;
+    }
+    if (!mergeTargetKeywordId) {
+      showToast("병합 대상을 선택해 주세요.", "info");
+      return;
+    }
+
+    const destinationLabel =
+      allKeywordTargets.find((item) => item.id === mergeTargetKeywordId)?.value ?? "선택한 키워드";
+
+    setKeywordUpdating(true);
+    try {
+      const updatedOverview = await mergeAdminKeywordsById(
+        token,
+        selectedKeywordTarget.id,
+        mergeTargetKeywordId
+      );
+      setKeywordOverview(normalizeKeywordOverview(updatedOverview));
+      setSelectedKeywordTarget(null);
+      setMergeKeywordQuery("");
+      setMergeTargetKeywordId(null);
+      showToast(`"${selectedKeywordTarget.value}"를 "${destinationLabel}"로 병합했습니다.`, "success");
+    } catch (error) {
+      showToast(normalizeError(error, "키워드 병합에 실패했습니다."), "error");
+    } finally {
+      setKeywordUpdating(false);
+    }
+  }
+
+  function toggleIncludeKeyword(keywordId: number) {
+    setIncludeKeywordIds((prev) => {
+      if (prev.includes(keywordId)) {
+        return prev.filter((id) => id !== keywordId);
+      }
+      return [...prev, keywordId];
+    });
+  }
+
+  async function handleIncludeIntoSelectedKeyword() {
+    if (!token) return;
+    if (!selectedKeywordTarget) {
+      showToast("먼저 기준 키워드를 선택해 주세요.", "info");
+      return;
+    }
+    if (includeKeywordIds.length === 0) {
+      showToast("포함할 키워드를 하나 이상 선택해 주세요.", "info");
+      return;
+    }
+
+    setKeywordUpdating(true);
+    try {
+      let destinationHeadId = selectedKeywordTarget.id;
+      if (selectedKeywordTarget.type === "follower") {
+        await updateAdminKeywordHead(token, selectedKeywordTarget.id, null);
+      }
+
+      const sourceIds = includeKeywordIds.filter((id) => id !== destinationHeadId);
+      if (sourceIds.length === 0) {
+        showToast("현재 키워드 외에 포함할 대상을 선택해 주세요.", "info");
+        return;
+      }
+      for (const sourceId of sourceIds) {
+        await updateAdminKeywordHead(token, sourceId, destinationHeadId);
+      }
+
+      await loadKeywordOverview(true);
+      setSelectedKeywordTarget((prev) =>
+        prev
+          ? {
+              ...prev,
+              type: "head",
+              headId: null,
+            }
+          : prev
+      );
+      setIncludeKeywordQuery("");
+      setIncludeKeywordIds([]);
+      showToast(`선택한 키워드 ${sourceIds.length}개를 "${selectedKeywordTarget.value}"에 포함했습니다.`, "success");
+    } catch (error) {
+      showToast(normalizeError(error, "키워드 포함 처리에 실패했습니다."), "error");
+    } finally {
+      setKeywordUpdating(false);
+    }
+  }
+
+  function closeKeywordActionModal() {
+    if (keywordUpdating) {
+      return;
+    }
+    setSelectedKeywordTarget(null);
+    setMergeKeywordQuery("");
+    setMergeTargetKeywordId(null);
+    setIncludeKeywordQuery("");
+    setIncludeKeywordIds([]);
   }
 
   async function handleCssSuggest(event: FormEvent) {
@@ -975,6 +1043,119 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
   }
 
   const keywordHeadList = useMemo(() => keywordOverview?.headKeywords ?? [], [keywordOverview]);
+
+  const filteredKeywordHeadList = useMemo(() => {
+    const query = keywordSearchQuery.trim().toLowerCase();
+    if (!query) {
+      return keywordHeadList;
+    }
+    return keywordHeadList
+      .map((headKeyword) => {
+        const headMatches = headKeyword.value.toLowerCase().includes(query);
+        if (headMatches) {
+          return headKeyword;
+        }
+        const matchedFollowers = headKeyword.followers.filter((follower) =>
+          follower.value.toLowerCase().includes(query)
+        );
+        if (matchedFollowers.length === 0) {
+          return null;
+        }
+        return {
+          ...headKeyword,
+          followers: matchedFollowers,
+        };
+      })
+      .filter((item): item is AdminHeadKeywordOverviewResponse => item !== null);
+  }, [keywordHeadList, keywordSearchQuery]);
+
+  const allKeywordTargets = useMemo<KeywordActionTarget[]>(() => {
+    return keywordHeadList.flatMap((headKeyword) => [
+      {
+        id: headKeyword.id,
+        value: headKeyword.value,
+        isVisible: headKeyword.isVisible,
+        type: "head" as const,
+        headId: null,
+      },
+      ...headKeyword.followers.map((follower) => ({
+        id: follower.id,
+        value: follower.value,
+        isVisible: follower.isVisible,
+        type: "follower" as const,
+        headId: headKeyword.id,
+      })),
+    ]);
+  }, [keywordHeadList]);
+
+  const mergeKeywordCandidates = useMemo(() => {
+    if (!selectedKeywordTarget) {
+      return [];
+    }
+    const query = mergeKeywordQuery.trim().toLowerCase();
+    return allKeywordTargets
+      .filter((candidate) => candidate.id !== selectedKeywordTarget.id)
+      .filter((candidate) => {
+        if (!query) return true;
+        return candidate.value.toLowerCase().includes(query);
+      })
+      .slice(0, 40);
+  }, [allKeywordTargets, mergeKeywordQuery, selectedKeywordTarget]);
+
+  const includeKeywordCandidates = useMemo(() => {
+    if (!selectedKeywordTarget) {
+      return [];
+    }
+    const query = includeKeywordQuery.trim().toLowerCase();
+    return allKeywordTargets
+      .filter((candidate) => candidate.id !== selectedKeywordTarget.id)
+      .filter((candidate) => {
+        if (!query) return true;
+        return candidate.value.toLowerCase().includes(query);
+      })
+      .slice(0, 80);
+  }, [allKeywordTargets, includeKeywordQuery, selectedKeywordTarget]);
+
+  useEffect(() => {
+    if (!selectedKeywordTarget) {
+      return;
+    }
+    const latest = allKeywordTargets.find((keyword) => keyword.id === selectedKeywordTarget.id);
+    if (!latest) {
+      setSelectedKeywordTarget(null);
+      setMergeKeywordQuery("");
+      setMergeTargetKeywordId(null);
+      setIncludeKeywordQuery("");
+      setIncludeKeywordIds([]);
+      return;
+    }
+    if (
+      latest.isVisible !== selectedKeywordTarget.isVisible ||
+      latest.value !== selectedKeywordTarget.value ||
+      latest.headId !== selectedKeywordTarget.headId
+    ) {
+      setSelectedKeywordTarget(latest);
+    }
+  }, [allKeywordTargets, selectedKeywordTarget]);
+
+  useEffect(() => {
+    if (!selectedKeywordTarget) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !keywordUpdating) {
+        setSelectedKeywordTarget(null);
+        setMergeKeywordQuery("");
+        setMergeTargetKeywordId(null);
+        setIncludeKeywordQuery("");
+        setIncludeKeywordIds([]);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [keywordUpdating, selectedKeywordTarget]);
 
   if (!isAuthenticated) {
     return (
@@ -1317,7 +1498,7 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
                 <div>
                   <h2>키워드 관리</h2>
                   <p className="panel__description">
-                    헤드/팔로워, 노출/비노출 상태를 한 번에 보고 Drag & Drop으로 병합/분리할 수 있어요.
+                    키워드를 눌러 노출/비노출과 병합을 처리하고, 데스크톱에서는 Drag & Drop으로 빠르게 이동할 수 있어요.
                   </p>
                 </div>
                 <button
@@ -1381,6 +1562,32 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
                 </button>
               </form>
 
+              <p className="status-text">
+                키워드를 누르면 설정 창이 열립니다. 설정 창에서 노출/비노출 전환, 병합, 포함 작업을 진행할
+                수 있습니다.
+              </p>
+
+              <div className="admin-form keyword-search-box">
+                <label className="admin-field">
+                  <span>키워드 검색</span>
+                  <small>헤드/팔로워 키워드를 이름으로 빠르게 찾습니다.</small>
+                  <input
+                    value={keywordSearchQuery}
+                    onChange={(event) => setKeywordSearchQuery(event.target.value)}
+                    placeholder="키워드 검색"
+                  />
+                </label>
+                {keywordSearchQuery.trim() ? (
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--small"
+                    onClick={() => setKeywordSearchQuery("")}
+                  >
+                    검색 초기화
+                  </button>
+                ) : null}
+              </div>
+
               <div
                 className="keyword-lane-grid-droparea"
                 onDragOver={(event) => {
@@ -1400,129 +1607,101 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
                 }}
               >
                 <div className="keyword-lane-grid">
-                {keywordHeadList.map((headKeyword: AdminHeadKeywordOverviewResponse) => (
-                  <div
-                    key={headKeyword.id}
-                    data-head-keyword-id={headKeyword.id}
-                    className={`keyword-lane ${droppingHeadId === headKeyword.id ? "is-drop-target" : ""}`}
-                    onDragOver={(event) => {
-                      if (draggingKeyword) {
-                        event.preventDefault();
-                        setDroppingHeadId(headKeyword.id);
-                      }
-                    }}
-                    onDragLeave={() => {
-                      setDroppingHeadId((prev) => (prev === headKeyword.id ? null : prev));
-                    }}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      void handleDropToHead(headKeyword.id);
-                      setDraggingKeyword(null);
-                      setDroppingHeadId(null);
-                    }}
-                  >
+                  {filteredKeywordHeadList.map((headKeyword: AdminHeadKeywordOverviewResponse) => (
                     <div
-                      className={`keyword-lane__head ${headKeyword.isVisible ? "" : "is-hidden"}`}
-                      draggable
-                      onDragStart={() =>
-                        setDraggingKeyword({
-                          id: headKeyword.id,
-                          type: "head",
-                          label: headKeyword.value,
-                          headId: null,
-                        })
-                      }
-                      onDragEnd={() => {
+                      key={headKeyword.id}
+                      data-head-keyword-id={headKeyword.id}
+                      className={`keyword-lane ${droppingHeadId === headKeyword.id ? "is-drop-target" : ""}`}
+                      onDragOver={(event) => {
+                        if (draggingKeyword) {
+                          event.preventDefault();
+                          setDroppingHeadId(headKeyword.id);
+                        }
+                      }}
+                      onDragLeave={() => {
+                        setDroppingHeadId((prev) => (prev === headKeyword.id ? null : prev));
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        void handleDropToHead(headKeyword.id);
                         setDraggingKeyword(null);
                         setDroppingHeadId(null);
                       }}
-                      onTouchStart={(event) =>
-                        handleKeywordTouchStart(event, {
-                          id: headKeyword.id,
-                          type: "head",
-                          label: headKeyword.value,
-                          headId: null,
-                        })
-                      }
-                      onTouchMove={handleKeywordTouchMove}
-                      onTouchEnd={handleKeywordTouchEnd}
-                      onTouchCancel={clearTouchDragState}
                     >
-                      <div className="keyword-lane__head-main">
-                        <p className={`keyword-lane__title ${headKeyword.isVisible ? "" : "is-hidden"}`}>
-                          {headKeyword.value}
-                        </p>
-                      </div>
                       <button
                         type="button"
-                        className="btn btn--ghost btn--small keyword-visibility-btn"
+                        className={`keyword-chip keyword-chip--head ${headKeyword.isVisible ? "keyword-chip--visible" : "keyword-chip--hidden"} ${selectedKeywordTarget?.id === headKeyword.id ? "is-selected" : ""}`}
+                        title={headKeyword.value}
+                        draggable
+                        onDragStart={() =>
+                          setDraggingKeyword({
+                            id: headKeyword.id,
+                            type: "head",
+                            label: headKeyword.value,
+                            headId: null,
+                          })
+                        }
+                        onDragEnd={() => {
+                          setDraggingKeyword(null);
+                          setDroppingHeadId(null);
+                        }}
                         onClick={() =>
-                          void handleToggleKeywordVisible(
-                            headKeyword.id,
-                            headKeyword.value,
-                            headKeyword.isVisible
-                          )
+                          handleSelectKeywordTarget({
+                            id: headKeyword.id,
+                            value: headKeyword.value,
+                            isVisible: headKeyword.isVisible,
+                            type: "head",
+                            headId: null,
+                          })
                         }
                         disabled={keywordUpdating}
                       >
-                        {headKeyword.isVisible ? "비노출" : "노출"}
+                        <span className="keyword-chip__title">{headKeyword.value}</span>
                       </button>
-                    </div>
 
-                    {headKeyword.followers.length === 0 ? (
-                      <p className="status-text">팔로워 없음</p>
-                    ) : (
-                      <div className="keyword-lane__followers">
-                        {headKeyword.followers.map((follower) => (
-                          <button
-                            key={follower.id}
-                            type="button"
-                            className={`keyword-chip ${follower.isVisible ? "keyword-chip--visible" : "keyword-chip--hidden"} ${follower.isVisible ? "" : "is-hidden"}`}
-                            draggable
-                            onDragStart={() =>
-                              setDraggingKeyword({
-                                id: follower.id,
-                                type: "follower",
-                                label: follower.value,
-                                headId: headKeyword.id,
-                              })
-                            }
-                            onDragEnd={() => {
-                              setDraggingKeyword(null);
-                              setDroppingHeadId(null);
-                            }}
-                            onTouchStart={(event) =>
-                              handleKeywordTouchStart(event, {
-                                id: follower.id,
-                                type: "follower",
-                                label: follower.value,
-                                headId: headKeyword.id,
-                              })
-                            }
-                            onTouchMove={handleKeywordTouchMove}
-                            onTouchEnd={handleKeywordTouchEnd}
-                            onTouchCancel={clearTouchDragState}
-                            onClick={() => {
-                              if (suppressFollowerClickRef.current) {
-                                suppressFollowerClickRef.current = false;
-                                return;
+                      {headKeyword.followers.length === 0 ? null : (
+                        <div className="keyword-lane__followers">
+                          {headKeyword.followers.map((follower) => (
+                            <button
+                              key={follower.id}
+                              type="button"
+                              className={`keyword-chip ${follower.isVisible ? "keyword-chip--visible" : "keyword-chip--hidden"} ${selectedKeywordTarget?.id === follower.id ? "is-selected" : ""}`}
+                              title={follower.value}
+                              draggable
+                              onDragStart={() =>
+                                setDraggingKeyword({
+                                  id: follower.id,
+                                  type: "follower",
+                                  label: follower.value,
+                                  headId: headKeyword.id,
+                                })
                               }
-                              void handleToggleKeywordVisible(
-                                follower.id,
-                                follower.value,
-                                follower.isVisible
-                              );
-                            }}
-                            disabled={keywordUpdating}
-                          >
-                            <span className="keyword-chip__title">{follower.value}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                              onDragEnd={() => {
+                                setDraggingKeyword(null);
+                                setDroppingHeadId(null);
+                              }}
+                              onClick={() =>
+                                handleSelectKeywordTarget({
+                                  id: follower.id,
+                                  value: follower.value,
+                                  isVisible: follower.isVisible,
+                                  type: "follower",
+                                  headId: headKeyword.id,
+                                })
+                              }
+                              disabled={keywordUpdating}
+                            >
+                              <span className="keyword-chip__title">{follower.value}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
+                {filteredKeywordHeadList.length === 0 ? (
+                  <p className="status-text">검색 결과가 없습니다.</p>
+                ) : null}
               </div>
             </section>
           ) : null}
@@ -1707,6 +1886,138 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
           durationMs={toast.durationMs}
           onClose={() => setToast(null)}
         />
+      ) : null}
+
+      {selectedKeywordTarget ? (
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="keyword-action-modal-title"
+          onClick={() => closeKeywordActionModal()}
+        >
+          <div className="modal keyword-action-modal" onClick={(event) => event.stopPropagation()}>
+            <h2 id="keyword-action-modal-title">키워드 설정</h2>
+
+            <div className="keyword-action-selected">
+              <span className="keyword-action-selected__label">선택됨</span>
+              <button
+                type="button"
+                className={`keyword-chip ${selectedKeywordTarget.isVisible ? "keyword-chip--visible" : "keyword-chip--hidden"} is-selected`}
+                title={selectedKeywordTarget.value}
+              >
+                <span className="keyword-chip__title">{selectedKeywordTarget.value}</span>
+              </button>
+              <span className="keyword-action-selected__meta">
+                {selectedKeywordTarget.type === "head" ? "헤드" : "팔로워"}
+              </span>
+            </div>
+
+            <div className="keyword-action-buttons">
+              <button
+                type="button"
+                className="btn btn--ghost btn--small"
+                onClick={() => void handleToggleSelectedKeywordVisible()}
+                disabled={keywordUpdating}
+              >
+                {selectedKeywordTarget.isVisible ? "비노출로 전환" : "노출로 전환"}
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost btn--small"
+                onClick={() => closeKeywordActionModal()}
+                disabled={keywordUpdating}
+              >
+                닫기
+              </button>
+            </div>
+
+            <div className="keyword-merge-box">
+              <label className="admin-field">
+                <span>병합 대상 검색</span>
+                <small>병합하면 현재 키워드는 사라지고, 선택한 대상 키워드로 합쳐집니다.</small>
+                <input
+                  value={mergeKeywordQuery}
+                  onChange={(event) => {
+                    setMergeKeywordQuery(event.target.value);
+                    setMergeTargetKeywordId(null);
+                  }}
+                  placeholder="병합할 대상 키워드를 검색하세요"
+                />
+              </label>
+              <div className="keyword-merge-candidates">
+                {mergeKeywordCandidates.length === 0 ? (
+                  <p className="status-text">검색 결과가 없습니다.</p>
+                ) : (
+                  mergeKeywordCandidates.map((candidate) => (
+                    <button
+                      key={candidate.id}
+                      type="button"
+                      className={`keyword-merge-candidate ${mergeTargetKeywordId === candidate.id ? "is-selected" : ""}`}
+                      onClick={() => setMergeTargetKeywordId(candidate.id)}
+                    >
+                      <span>{candidate.value}</span>
+                      <small>{candidate.type === "head" ? "헤드" : "팔로워"}</small>
+                    </button>
+                  ))
+                )}
+              </div>
+              <button
+                type="button"
+                className="btn btn--primary btn--small"
+                onClick={() => void handleMergeSelectedKeyword()}
+                disabled={keywordUpdating || !mergeTargetKeywordId}
+              >
+                {keywordUpdating ? "병합 중..." : "선택한 대상과 병합"}
+              </button>
+            </div>
+
+            <div className="keyword-merge-box">
+              <label className="admin-field">
+                <span>이 키워드에 포함시키기</span>
+                <small>
+                  검색해서 여러 키워드를 선택한 뒤 포함할 수 있습니다.
+                  {selectedKeywordTarget.type === "follower"
+                    ? " (현재 선택 키워드는 자동으로 헤드로 분리 후 포함됩니다.)"
+                    : ""}
+                </small>
+                <input
+                  value={includeKeywordQuery}
+                  onChange={(event) => setIncludeKeywordQuery(event.target.value)}
+                  placeholder="포함할 키워드를 검색하세요"
+                />
+              </label>
+              <div className="keyword-include-candidates">
+                {includeKeywordCandidates.length === 0 ? (
+                  <p className="status-text">검색 결과가 없습니다.</p>
+                ) : (
+                  includeKeywordCandidates.map((candidate) => (
+                    <button
+                      key={candidate.id}
+                      type="button"
+                      className={`keyword-include-candidate ${includeKeywordIds.includes(candidate.id) ? "is-selected" : ""}`}
+                      onClick={() => toggleIncludeKeyword(candidate.id)}
+                    >
+                      <span>{candidate.value}</span>
+                      <small>{candidate.type === "head" ? "헤드" : "팔로워"}</small>
+                    </button>
+                  ))
+                )}
+              </div>
+              <div className="keyword-action-buttons">
+                <span className="status-text">선택 {includeKeywordIds.length}개</span>
+                <button
+                  type="button"
+                  className="btn btn--primary btn--small"
+                  onClick={() => void handleIncludeIntoSelectedKeyword()}
+                  disabled={keywordUpdating || includeKeywordIds.length === 0}
+                >
+                  {keywordUpdating ? "처리 중..." : "선택 키워드 포함"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : null}
     </section>
   );

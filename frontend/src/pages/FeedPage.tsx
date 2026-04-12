@@ -24,6 +24,7 @@ type FeedPageProps = {
 const DEFAULT_FROM_DATE = "2000-01-01";
 const DEFAULT_TOAST_DURATION = 2800;
 const KEYWORD_COLLAPSE_MAX = 10;
+const KEYWORD_COLLAPSE_STEP = 10;
 const REPORT_REASON_OPTIONS = [
   { value: "요약 결과가 이상해요.", label: "요약 결과가 이상해요." },
   { value: "부적절한 내용이에요.", label: "부적절한 내용이에요." },
@@ -47,7 +48,8 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
   const [isCompactKeywordLayout, setIsCompactKeywordLayout] = useState<boolean>(
     typeof window !== "undefined" ? window.innerWidth < 1100 : false
   );
-  const [isKeywordListExpanded, setIsKeywordListExpanded] = useState<boolean>(false);
+  const [compactKeywordVisibleCount, setCompactKeywordVisibleCount] =
+    useState<number>(KEYWORD_COLLAPSE_MAX);
   const [items, setItems] = useState<ArticleResponse[]>([]);
   const [nextCursor, setNextCursor] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -106,10 +108,10 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
   }, []);
 
   useEffect(() => {
-    if (!isCompactKeywordLayout && isKeywordListExpanded) {
-      setIsKeywordListExpanded(false);
+    if (isCompactKeywordLayout) {
+      setCompactKeywordVisibleCount(KEYWORD_COLLAPSE_MAX);
     }
-  }, [isCompactKeywordLayout, isKeywordListExpanded]);
+  }, [isCompactKeywordLayout]);
 
   useEffect(() => {
     async function loadSubscriptions() {
@@ -333,13 +335,15 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
   }, [keywordCounts, selectedKeywords]);
 
   const isKeywordFiltering = selectedKeywords.length > 0;
-  const canToggleKeywordList =
-    isCompactKeywordLayout && keywordOptions.length > KEYWORD_COLLAPSE_MAX;
+  const visibleKeywordLimit = isCompactKeywordLayout
+    ? Math.min(compactKeywordVisibleCount, keywordOptions.length)
+    : keywordOptions.length;
   const visibleKeywordOptions = useMemo(() => {
-    if (!canToggleKeywordList || isKeywordListExpanded) return keywordOptions;
-    return keywordOptions.slice(0, KEYWORD_COLLAPSE_MAX);
-  }, [canToggleKeywordList, isKeywordListExpanded, keywordOptions]);
-  const hiddenKeywordCount = keywordOptions.length - visibleKeywordOptions.length;
+    return keywordOptions.slice(0, visibleKeywordLimit);
+  }, [keywordOptions, visibleKeywordLimit]);
+  const hiddenKeywordCount = Math.max(0, keywordOptions.length - visibleKeywordOptions.length);
+  const canExpandKeywordList = isCompactKeywordLayout && hiddenKeywordCount > 0;
+  const nextExpandCount = Math.min(KEYWORD_COLLAPSE_STEP, hiddenKeywordCount);
 
   return (
     <section className="page-section">
@@ -424,13 +428,17 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
               키워드가 붙은 글을 불러오면 여기서 선택할 수 있어요.
             </p>
           )}
-          {canToggleKeywordList ? (
+          {canExpandKeywordList ? (
             <button
               type="button"
               className="btn btn--ghost btn--tiny feed-keyword-panel__toggle"
-              onClick={() => setIsKeywordListExpanded((prev) => !prev)}
+              onClick={() =>
+                setCompactKeywordVisibleCount((prev) =>
+                  Math.min(prev + KEYWORD_COLLAPSE_STEP, keywordOptions.length)
+                )
+              }
             >
-              {isKeywordListExpanded ? "접기" : `${hiddenKeywordCount}개 더 보기`}
+              {nextExpandCount}개 더 보기
             </button>
           ) : null}
         </aside>

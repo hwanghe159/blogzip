@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { SessionState } from "../types";
 import GoogleLoginButton from "./GoogleLoginButton";
 
@@ -15,7 +15,9 @@ const navItems = [
 ];
 
 export function PageShell({ session, children }: PageShellProps) {
+  const location = useLocation();
   const [compactTopbar, setCompactTopbar] = useState(false);
+  const isAdminRoute = location.pathname.startsWith("/admin");
 
   useEffect(() => {
     const onScroll = () => {
@@ -71,7 +73,7 @@ export function PageShell({ session, children }: PageShellProps) {
         </div>
       </header>
 
-      <main className="content">{children}</main>
+      <main className={isAdminRoute ? "content content--admin" : "content"}>{children}</main>
 
       <nav className="mobile-nav">
         {navItems.map((item) => (
