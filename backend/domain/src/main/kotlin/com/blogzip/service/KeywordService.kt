@@ -266,7 +266,7 @@ class KeywordService(
 
   private fun merge(source: Keyword, destination: Keyword) {
     if (source.id == destination.id) {
-      throw DomainException(ErrorCode.KEYWORD_UPDATE_FAILED)
+      return
     }
     source.mergeInto(destination)
     moveMapping(source.id!!, destination.id!!)

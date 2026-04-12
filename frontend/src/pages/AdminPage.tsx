@@ -661,118 +661,15 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     });
   }
 
-  function mergeHeadKeywordLocally(sourceHeadKeywordId: number, destinationHeadKeywordId: number) {
-    setKeywordOverview((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const source = prev.headKeywords.find((headKeyword) => headKeyword.id === sourceHeadKeywordId);
-      const destination = prev.headKeywords.find(
-        (headKeyword) => headKeyword.id === destinationHeadKeywordId
-      );
-      if (!source || !destination) {
-        return prev;
-      }
-
-      const promotedFollower: AdminFollowerKeywordOverviewResponse = {
-        id: source.id,
-        value: source.value,
-        isVisible: source.isVisible,
-        createdAt: source.createdAt,
-      };
-
-      const nextHeadKeywords = prev.headKeywords
-        .filter((headKeyword) => headKeyword.id !== sourceHeadKeywordId)
-        .map((headKeyword) => {
-          if (headKeyword.id !== destinationHeadKeywordId) {
-            return headKeyword;
-          }
-          return {
-            ...headKeyword,
-            followers: [...headKeyword.followers, promotedFollower, ...source.followers],
-          };
-        });
-
-      const nextCounts = recalculateKeywordOverviewCounts(nextHeadKeywords);
-      return {
-        ...prev,
-        ...nextCounts,
-        headKeywords: nextHeadKeywords,
-      };
-    });
-  }
-
-  function toggleKeywordVisibilityLocally(value: string, nextVisible: boolean) {
-    setKeywordOverview((prev) => {
-      if (!prev) {
-        return prev;
-      }
-
-      let changed = false;
-      const nextHeadKeywords = prev.headKeywords.map((headKeyword) => {
-        let nextHeadKeyword = headKeyword;
-        if (headKeyword.value === value && headKeyword.isVisible !== nextVisible) {
-          nextHeadKeyword = {
-            ...headKeyword,
-            isVisible: nextVisible,
-          };
-          changed = true;
-        }
-
-        const nextFollowers = nextHeadKeyword.followers.map((followerKeyword) => {
-          if (followerKeyword.value === value && followerKeyword.isVisible !== nextVisible) {
-            changed = true;
-            return {
-              ...followerKeyword,
-              isVisible: nextVisible,
-            };
-          }
-          return followerKeyword;
-        });
-
-        if (nextFollowers !== nextHeadKeyword.followers) {
-          nextHeadKeyword = {
-            ...nextHeadKeyword,
-            followers: nextFollowers,
-          };
-        }
-
-        return nextHeadKeyword;
-      });
-
-      if (!changed) {
-        return prev;
-      }
-
-      const allKeywords = nextHeadKeywords.flatMap((headKeyword) => [
-        { isVisible: headKeyword.isVisible },
-        ...headKeyword.followers.map((followerKeyword) => ({
-          isVisible: followerKeyword.isVisible,
-        })),
-      ]);
-      const visibleKeywordCount = allKeywords.filter((keyword) => keyword.isVisible).length;
-      const hiddenKeywordCount = allKeywords.length - visibleKeywordCount;
-
-      return {
-        ...prev,
-        headKeywords: nextHeadKeywords,
-        visibleKeywordCount,
-        hiddenKeywordCount,
-      };
-    });
-  }
-
   async function handleToggleKeywordVisible(keywordId: number, value: string, isVisible: boolean) {
     if (!token) return;
     const nextVisible = !isVisible;
-    const snapshot = keywordOverview;
-    toggleKeywordVisibilityLocally(value, nextVisible);
     setKeywordUpdating(true);
     try {
-      await updateAdminKeywordById(token, keywordId, { isVisible: nextVisible });
+      const updatedOverview = await updateAdminKeywordById(token, keywordId, { isVisible: nextVisible });
+      setKeywordOverview(updatedOverview);
       showToast(`키워드 "${value}"의 노출 상태를 바꿨습니다.`, "success");
     } catch (error) {
-      setKeywordOverview(snapshot);
       showToast(normalizeError(error, "키워드 상태 변경에 실패했습니다."), "error");
     } finally {
       setKeywordUpdating(false);
@@ -893,14 +790,12 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     if (!token || !sourceKeyword) return;
     if (sourceKeyword.type === "head") {
       if (sourceKeyword.id === targetHeadKeywordId) return;
-      const snapshot = keywordOverview;
-      mergeHeadKeywordLocally(sourceKeyword.id, targetHeadKeywordId);
       setKeywordUpdating(true);
       try {
-        await mergeAdminKeywordsById(token, sourceKeyword.id, targetHeadKeywordId);
+        const updatedOverview = await mergeAdminKeywordsById(token, sourceKeyword.id, targetHeadKeywordId);
+        setKeywordOverview(updatedOverview);
         showToast(`헤드 키워드 "${sourceKeyword.label}"를 병합했습니다.`, "success");
       } catch (error) {
-        setKeywordOverview(snapshot);
         showToast(normalizeError(error, "키워드 병합에 실패했습니다."), "error");
       } finally {
         setKeywordUpdating(false);

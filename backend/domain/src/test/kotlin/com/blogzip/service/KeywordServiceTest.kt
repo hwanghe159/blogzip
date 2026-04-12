@@ -1,10 +1,7 @@
 package com.blogzip.service
 
-import com.blogzip.common.DomainException
-import com.blogzip.common.ErrorCode
 import com.blogzip.domain.*
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.DisplayName
 
 import org.junit.jupiter.api.Test
@@ -90,18 +87,15 @@ class KeywordServiceTest {
     assertEquals(false, backendKeyword.followers.first().isVisible)
   }
 
-  @DisplayName("같은 키워드끼리 머지하려는 경우, 머지에 실패한다.")
+  @DisplayName("같은 키워드끼리 머지하려는 경우, 아무 동작도 하지 않는다.")
   @Test
   fun mergeById_WithSameKeyword() {
     val keyword = Keyword(id = 1, value = "backend")
     `when`(keywordRepository.findById(1L))
       .thenReturn(Optional.of(keyword))
 
-    val exception = assertThrows(DomainException::class.java) {
-      keywordService.mergeById(1L, 1L)
-    }
+    keywordService.mergeById(1L, 1L)
 
-    assertEquals(ErrorCode.KEYWORD_UPDATE_FAILED, exception.errorCode)
     verify(articleKeywordRepository, never()).findAllByHeadKeywordId(anyLong())
   }
 }

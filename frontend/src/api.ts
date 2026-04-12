@@ -290,8 +290,8 @@ export async function updateAdminKeyword(
     value?: string | null;
     isVisible?: boolean | null;
   }
-): Promise<void> {
-  await request<void>(`/api/admin/keyword/${encodeURIComponent(currentValue)}`, {
+): Promise<AdminKeywordOverviewResponse> {
+  return request<AdminKeywordOverviewResponse>(`/api/admin/keyword/${encodeURIComponent(currentValue)}`, {
     method: "PATCH",
     token,
     body: payload,
@@ -305,8 +305,8 @@ export async function updateAdminKeywordById(
     value?: string | null;
     isVisible?: boolean | null;
   }
-): Promise<void> {
-  await request<void>(`/api/admin/keyword/id/${keywordId}`, {
+): Promise<AdminKeywordOverviewResponse> {
+  return request<AdminKeywordOverviewResponse>(`/api/admin/keyword/id/${keywordId}`, {
     method: "PATCH",
     token,
     body: payload,
@@ -317,8 +317,8 @@ export async function mergeAdminKeywords(
   token: string,
   src: string,
   dest: string
-): Promise<void> {
-  await request<void>("/api/admin/keyword/merge", {
+): Promise<AdminKeywordOverviewResponse> {
+  return request<AdminKeywordOverviewResponse>("/api/admin/keyword/merge", {
     method: "POST",
     token,
     query: { src, dest },
@@ -329,8 +329,8 @@ export async function mergeAdminKeywordsById(
   token: string,
   srcKeywordId: number,
   destKeywordId: number
-): Promise<void> {
-  await request<void>("/api/admin/keyword/merge/by-id", {
+): Promise<AdminKeywordOverviewResponse> {
+  return request<AdminKeywordOverviewResponse>("/api/admin/keyword/merge/by-id", {
     method: "POST",
     token,
     body: { srcKeywordId, destKeywordId },

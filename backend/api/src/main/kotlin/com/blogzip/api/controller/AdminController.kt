@@ -50,8 +50,10 @@ class AdminController(
   fun updateKeyword(
     @PathVariable value: String,
     @RequestBody request: KeywordUpdateRequest,
-  ) {
+  ): ResponseEntity<KeywordOverviewResponse> {
     keywordService.update(value, request.value, request.isVisible)
+    val keywordOverview = keywordService.getOverview()
+    return ResponseEntity.ok(KeywordOverviewResponse.from(keywordOverview))
   }
 
   @AdminRequired
@@ -59,8 +61,10 @@ class AdminController(
   fun updateKeywordById(
     @PathVariable keywordId: Long,
     @RequestBody request: KeywordUpdateRequest,
-  ) {
+  ): ResponseEntity<KeywordOverviewResponse> {
     keywordService.updateById(keywordId, request.value, request.isVisible)
+    val keywordOverview = keywordService.getOverview()
+    return ResponseEntity.ok(KeywordOverviewResponse.from(keywordOverview))
   }
 
   @AdminRequired
@@ -80,16 +84,20 @@ class AdminController(
   fun mergeKeywords(
     @RequestParam(required = true) src: String,
     @RequestParam(required = true) dest: String,
-  ) {
+  ): ResponseEntity<KeywordOverviewResponse> {
     keywordService.merge(src, dest)
+    val keywordOverview = keywordService.getOverview()
+    return ResponseEntity.ok(KeywordOverviewResponse.from(keywordOverview))
   }
 
   @AdminRequired
   @PostMapping("/api/admin/keyword/merge/by-id")
   fun mergeKeywordsById(
     @RequestBody request: KeywordMergeByIdRequest,
-  ) {
+  ): ResponseEntity<KeywordOverviewResponse> {
     keywordService.mergeById(request.srcKeywordId, request.destKeywordId)
+    val keywordOverview = keywordService.getOverview()
+    return ResponseEntity.ok(KeywordOverviewResponse.from(keywordOverview))
   }
 
   @AdminRequired
@@ -641,17 +649,15 @@ class AdminController(
     }
     val matches = elements
       .mapNotNull { element: Element ->
-        val href = element.attr("href")
-          .ifBlank { element.selectFirst("a[href]")?.attr("href").orEmpty() }
-          .trim()
+        val href = extractHrefFromElement(element)
         if (href.isBlank()) {
           return@mapNotNull null
         }
         val resolvedUrl = resolveUrl(blogUrl, href)
           ?: return@mapNotNull null
-        val title = element.text().trim()
+        val title = extractTitleFromElement(element, resolvedUrl)
         CssSelectorTestMatchResponse(
-          title = if (title.isBlank()) resolvedUrl else title,
+          title = title,
           url = resolvedUrl,
         )
       }
@@ -662,10 +668,91 @@ class AdminController(
     )
   }
 
+  private fun extractHrefFromElement(element: Element): String {
+    extractUrlFromAttributes(element)
+      .takeIf { it.isNotBlank() }
+      ?.let { return it }
+
+    element.closest("a[href]")
+      ?.let { anchor ->
+        extractUrlFromAttributes(anchor)
+          .takeIf { it.isNotBlank() }
+          ?.let { return it }
+      }
+
+    element.selectFirst("a[href]")
+      ?.let { anchor ->
+        extractUrlFromAttributes(anchor)
+          .takeIf { it.isNotBlank() }
+          ?.let { return it }
+      }
+
+    element.selectFirst("[data-href], [data-url], [data-link], [data-permalink], [data-post-url], [data-target-url], [href]")
+      ?.let { candidate ->
+        extractUrlFromAttributes(candidate)
+          .takeIf { it.isNotBlank() }
+          ?.let { return it }
+      }
+    return ""
+  }
+
+  private fun extractUrlFromAttributes(element: Element): String {
+    val urlAttributes = listOf(
+      "href",
+      "data-href",
+      "data-url",
+      "data-link",
+      "data-permalink",
+      "data-post-url",
+      "data-target-url",
+    )
+    return urlAttributes
+      .asSequence()
+      .map { attribute -> element.attr(attribute).trim() }
+      .firstOrNull { value -> value.isNotBlank() }
+      .orEmpty()
+  }
+
+  private fun extractTitleFromElement(
+    element: Element,
+    fallbackUrl: String,
+  ): String {
+    val candidates = buildList {
+      add(normalizeWhitespace(element.ownText()))
+      add(normalizeWhitespace(element.text()))
+      add(normalizeWhitespace(element.attr("title")))
+      add(normalizeWhitespace(element.attr("aria-label")))
+      element.closest("a[href]")?.text()?.let { add(normalizeWhitespace(it)) }
+      element.selectFirst("a[href]")?.text()?.let { add(normalizeWhitespace(it)) }
+    }.filter { it.isNotBlank() }
+
+    val title = candidates.firstOrNull { it.length in 8..180 }
+      ?: candidates.firstOrNull()
+      ?: fallbackUrl
+    return title.take(220)
+  }
+
+  private fun normalizeWhitespace(value: String): String {
+    return value
+      .replace(Regex("\\s+"), " ")
+      .trim()
+  }
+
   private fun resolveUrl(baseUrl: String, href: String): String? {
-    return runCatching {
-      URI(baseUrl).resolve(href).normalize().toString()
+    val trimmedHref = href.trim()
+    if (trimmedHref.isBlank() || trimmedHref.startsWith("#")) {
+      return null
+    }
+    val resolvedUri = runCatching {
+      URI(baseUrl).resolve(trimmedHref).normalize()
     }.getOrNull()
+      ?: return null
+    val scheme = resolvedUri.scheme?.lowercase(Locale.ROOT)
+      ?: return null
+    if (scheme !in setOf("http", "https")) {
+      return null
+    }
+    return resolvedUri.toString()
   }
 
   private fun buildCssSelectorCandidates(document: Document): List<String> {
@@ -684,30 +771,141 @@ class AdminController(
       ".content a[href]",
       ".list a[href]",
       ".feed a[href]",
+      "a[href] > h1",
+      "a[href] > h2",
+      "a[href] > h3",
+      "a[href] > h4",
+      "a[href] > p",
+      "a[href] > div",
+      "article h2",
+      "article h3",
+      "main h2",
+      "main h3",
+      "section h2",
+      "section h3",
+      ".post h2",
+      ".post h3",
+      ".entry h2",
+      ".entry h3",
+      ".content h2",
+      ".content h3",
+      "[class*=title] h2",
+      "[class*=title] h3",
+      "[class*=tit] h2",
+      "[class*=tit] h3",
     )
-    val anchors = document.select("a[href]").take(250)
+    val anchors = document.select("a[href]").take(300)
     for (anchor in anchors) {
-      anchor.classNames()
-        .filter { isMeaningfulCssToken(it) }
-        .take(3)
-        .forEach { className ->
-          candidates.add("a.$className[href]")
-          candidates.add(".$className a[href]")
-        }
-      addContainerSelectors(anchor.parent(), candidates)
-      addContainerSelectors(anchor.parent()?.parent(), candidates)
-      val parentTag = anchor.parent()?.tagName()
-      if (parentTag in setOf("h1", "h2", "h3", "h4")) {
-        candidates.add("$parentTag a[href]")
-      }
+      addAnchorSelectorCandidates(anchor, candidates)
+    }
+
+    val titleLikeElements = document
+      .select("h1, h2, h3, h4, h5, h6, p, div, span, [class*=title], [class*=tit], [class*=subject], [class*=headline]")
+      .take(400)
+      .filter { element -> isLikelySelectorTargetElement(element) }
+    for (element in titleLikeElements) {
+      addTitleElementCandidates(element, candidates)
     }
     return candidates
       .asSequence()
       .map { it.trim() }
       .filter { it.isNotBlank() }
-      .filter { it.length <= 120 }
-      .take(200)
+      .filter { it.length <= 180 }
+      .take(350)
       .toList()
+  }
+
+  private fun addAnchorSelectorCandidates(
+    anchor: Element,
+    candidates: MutableSet<String>,
+  ) {
+    anchor.classNames()
+      .filter { isMeaningfulCssToken(it) }
+      .take(3)
+      .forEach { className ->
+        candidates.add("a.$className[href]")
+        candidates.add(".$className a[href]")
+      }
+    addContainerSelectors(anchor.parent(), candidates)
+    addContainerSelectors(anchor.parent()?.parent(), candidates)
+    val parentTag = anchor.parent()?.tagName()
+    if (parentTag in setOf("h1", "h2", "h3", "h4", "h5", "h6")) {
+      candidates.add("$parentTag a[href]")
+    }
+
+    val titleNodes = anchor
+      .select("h1, h2, h3, h4, h5, h6, p, div, span")
+      .take(4)
+      .filter { isLikelySelectorTargetElement(it) }
+
+    for (titleNode in titleNodes) {
+      val tagName = titleNode.tagName()
+      candidates.add("a[href] > $tagName")
+      titleNode.classNames()
+        .filter { isMeaningfulCssToken(it) }
+        .take(2)
+        .forEach { className ->
+          candidates.add("a[href] > $tagName.$className")
+        }
+      addTitleContainerSelectors(anchor.parent(), tagName, candidates)
+      addTitleContainerSelectors(anchor.parent()?.parent(), tagName, candidates)
+      buildCompactPathSelector(titleNode)
+        ?.let { pathSelector -> candidates.add(pathSelector) }
+    }
+  }
+
+  private fun addTitleElementCandidates(
+    element: Element,
+    candidates: MutableSet<String>,
+  ) {
+    val tagName = element.tagName()
+    element.classNames()
+      .filter { isMeaningfulCssToken(it) }
+      .take(2)
+      .forEach { className ->
+        candidates.add("$tagName.$className")
+        candidates.add(".$className $tagName")
+      }
+    val id = element.id().trim()
+    if (isMeaningfulCssToken(id)) {
+      candidates.add("#$id")
+      candidates.add("#$id $tagName")
+    }
+
+    element.closest("a[href]")?.let { anchor ->
+      candidates.add("a[href] > $tagName")
+      addContainerSelectors(anchor.parent(), candidates)
+      addTitleContainerSelectors(anchor.parent(), tagName, candidates)
+    }
+    addTitleContainerSelectors(element.parent(), tagName, candidates)
+    addTitleContainerSelectors(element.parent()?.parent(), tagName, candidates)
+    buildCompactPathSelector(element)
+      ?.let { pathSelector -> candidates.add(pathSelector) }
+  }
+
+  private fun addTitleContainerSelectors(
+    container: Element?,
+    titleTagName: String,
+    candidates: MutableSet<String>,
+  ) {
+    if (container == null) {
+      return
+    }
+    val containerTag = container.tagName()
+    container.classNames()
+      .filter { isMeaningfulCssToken(it) }
+      .take(3)
+      .forEach { className ->
+        candidates.add(".$className $titleTagName")
+        candidates.add(".$className > $titleTagName")
+        candidates.add("$containerTag.$className $titleTagName")
+        candidates.add("$containerTag.$className a[href] > $titleTagName")
+      }
+    val id = container.id().trim()
+    if (isMeaningfulCssToken(id)) {
+      candidates.add("#$id $titleTagName")
+      candidates.add("#$id a[href] > $titleTagName")
+    }
   }
 
   private fun addContainerSelectors(
@@ -732,9 +930,74 @@ class AdminController(
     }
   }
 
+  private fun buildCompactPathSelector(element: Element): String? {
+    val segments = mutableListOf<String>()
+    var cursor: Element? = element
+    var depth = 0
+    while (cursor != null && depth < 5) {
+      val segment = buildSelectorSegment(cursor)
+        ?: break
+      segments.add(segment)
+      if (segment.startsWith("#")) {
+        break
+      }
+      cursor = cursor.parent()
+      depth += 1
+      if (cursor?.tagName() in setOf("html", "body")) {
+        break
+      }
+    }
+    if (segments.size < 2) {
+      return null
+    }
+    return segments
+      .asReversed()
+      .joinToString(" > ")
+  }
+
+  private fun buildSelectorSegment(element: Element): String? {
+    val id = element.id().trim()
+    if (isMeaningfulCssToken(id)) {
+      return "#$id"
+    }
+    val className = element.classNames()
+      .firstOrNull { className -> isMeaningfulCssToken(className) }
+    if (className != null) {
+      return "${element.tagName()}.$className"
+    }
+    val tagName = element.tagName()
+    if (tagName in setOf("div", "span")) {
+      return null
+    }
+    return tagName
+  }
+
+  private fun isLikelySelectorTargetElement(element: Element): Boolean {
+    val text = normalizeWhitespace(element.text())
+    if (text.length !in 8..220) {
+      return false
+    }
+    if (!text.any { character -> character.isLetterOrDigit() }) {
+      return false
+    }
+    if (element.childrenSize() > 30) {
+      return false
+    }
+    val lower = text.lowercase(Locale.ROOT)
+    val blacklist = listOf(
+      "home", "about", "contact", "privacy", "terms", "login", "sign in",
+      "menu", "subscribe", "rss", "검색", "전체보기", "더보기",
+      "카테고리", "공지", "공지사항", "태그", "이전", "다음"
+    )
+    return blacklist.none { blocked -> lower == blocked || lower.contains(blocked) }
+  }
+
   private fun isMeaningfulCssToken(token: String): Boolean {
     val trimmed = token.trim()
     if (trimmed.length !in 3..40) {
+      return false
+    }
+    if (trimmed.first().isDigit()) {
       return false
     }
     if (!trimmed.all { it.isLetterOrDigit() || it == '-' || it == '_' }) {
