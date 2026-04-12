@@ -22,6 +22,7 @@ type FeedPageProps = {
 
 const DEFAULT_FROM_DATE = "2000-01-01";
 const DEFAULT_TOAST_DURATION = 2800;
+const KEYWORD_COLLAPSE_MAX = 10;
 const REPORT_REASON_OPTIONS = [
   { value: "요약 결과가 이상해요.", label: "요약 결과가 이상해요." },
   { value: "부적절한 내용이에요.", label: "부적절한 내용이에요." },
@@ -41,6 +42,11 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
   const [mode, setMode] = useState<"my" | "all">(
     session.status === "authenticated" ? "my" : "all"
   );
+  const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
+  const [isCompactKeywordLayout, setIsCompactKeywordLayout] = useState<boolean>(
+    typeof window !== "undefined" ? window.innerWidth < 1100 : false
+  );
+  const [isKeywordListExpanded, setIsKeywordListExpanded] = useState<boolean>(false);
   const [items, setItems] = useState<ArticleResponse[]>([]);
   const [nextCursor, setNextCursor] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -89,6 +95,21 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
   }, [isAuthenticated, mode]);
 
   useEffect(() => {
+    function handleResize() {
+      setIsCompactKeywordLayout(window.innerWidth < 1100);
+    }
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (!isCompactKeywordLayout && isKeywordListExpanded) {
+      setIsKeywordListExpanded(false);
+    }
+  }, [isCompactKeywordLayout, isKeywordListExpanded]);
+
+  useEffect(() => {
     async function loadSubscriptions() {
       if (!isAuthenticated || !session.token) {
         setSubscribedBlogIds(new Set());
@@ -122,6 +143,7 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
         next: append ? nextCursor : null,
         size: 20,
         myOnly: mode === "my",
+        keywords: selectedKeywords.length > 0 ? selectedKeywords : undefined,
       });
 
       setItems((prev) => (append ? [...prev, ...response.items] : response.items));
@@ -141,7 +163,7 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
   useEffect(() => {
     fetchPage(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, session.token]);
+  }, [mode, session.token, selectedKeywords]);
 
   async function handleToggleReadLater(article: ArticleResponse, nextValue: boolean) {
     if (!isAuthenticated || !session.token) {
@@ -205,6 +227,14 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
     }
   }
 
+  function handleKeywordClick(keyword: string) {
+    setSelectedKeywords((prev) =>
+      prev.includes(keyword)
+        ? prev.filter((item) => item !== keyword)
+        : [...prev, keyword]
+    );
+  }
+
   function openReportModal(article: ArticleResponse) {
     if (!isAuthenticated || !session.token) {
       const shouldMove = window.confirm(
@@ -258,11 +288,43 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
     return "전체 피드";
   }, [mode]);
 
+  const selectedKeywordSet = useMemo(() => {
+    return new Set(selectedKeywords);
+  }, [selectedKeywords]);
+
+  const keywordOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    items.forEach((article) => {
+      article.keywords.forEach((keyword) => {
+        counts.set(keyword, (counts.get(keyword) ?? 0) + 1);
+      });
+    });
+    selectedKeywords.forEach((keyword) => {
+      if (!counts.has(keyword)) {
+        counts.set(keyword, 0);
+      }
+    });
+    return Array.from(counts.entries())
+      .sort((a, b) => {
+        if (a[1] === b[1]) return a[0].localeCompare(b[0], "ko");
+        return b[1] - a[1];
+      })
+      .map(([value, count]) => ({ value, count }));
+  }, [items, selectedKeywords]);
+
+  const isKeywordFiltering = selectedKeywords.length > 0;
+  const canToggleKeywordList =
+    isCompactKeywordLayout && keywordOptions.length > KEYWORD_COLLAPSE_MAX;
+  const visibleKeywordOptions = useMemo(() => {
+    if (!canToggleKeywordList || isKeywordListExpanded) return keywordOptions;
+    return keywordOptions.slice(0, KEYWORD_COLLAPSE_MAX);
+  }, [canToggleKeywordList, isKeywordListExpanded, keywordOptions]);
+  const hiddenKeywordCount = keywordOptions.length - visibleKeywordOptions.length;
+
   return (
     <section className="page-section">
       <div className="page-head">
         <div>
-          <p className="eyebrow">ARTICLES</p>
           <h1>{title}</h1>
         </div>
         <div className="segmented">
@@ -295,92 +357,169 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
         </div>
       </div>
 
-      {!isAuthenticated && mode === "my" ? (
-        <EmptyState
-          title="로그인 후 내 피드를 볼 수 있어요"
-          description="Google 로그인 후 구독한 블로그의 글만 모아서 확인할 수 있습니다."
-          action={
-            <a className="btn btn--primary" href={loginUrl}>
-              Google로 로그인
-            </a>
-          }
-        />
-      ) : null}
+      <div className="feed-layout">
+        <aside className="feed-keyword-panel" aria-label="키워드 필터">
+          <div className="feed-keyword-panel__head">
+            <h2>키워드</h2>
+            {isKeywordFiltering ? (
+              <button
+                type="button"
+                className="btn btn--ghost btn--tiny"
+                onClick={() => setSelectedKeywords([])}
+              >
+                전체 해제
+              </button>
+            ) : null}
+          </div>
+          <p className="feed-keyword-panel__selected">
+            {isKeywordFiltering
+              ? `${selectedKeywords.length}개 선택됨`
+              : "여러 키워드를 동시에 선택할 수 있어요."}
+          </p>
+          {keywordOptions.length > 0 ? (
+            <ul className="feed-keyword-list">
+              {visibleKeywordOptions.map(({ value, count }) => {
+                const isActive = selectedKeywordSet.has(value);
+                return (
+                  <li key={value}>
+                    <button
+                      type="button"
+                      className={
+                        isActive
+                          ? "feed-keyword-item feed-keyword-item--active"
+                          : "feed-keyword-item"
+                      }
+                      aria-pressed={isActive}
+                      onClick={() => handleKeywordClick(value)}
+                    >
+                      <span className="feed-keyword-item__name">#{value}</span>
+                      <span className="feed-keyword-item__count">{count}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="feed-keyword-panel__empty">
+              키워드가 붙은 글을 불러오면 여기서 선택할 수 있어요.
+            </p>
+          )}
+          {canToggleKeywordList ? (
+            <button
+              type="button"
+              className="btn btn--ghost btn--tiny feed-keyword-panel__toggle"
+              onClick={() => setIsKeywordListExpanded((prev) => !prev)}
+            >
+              {isKeywordListExpanded ? "접기" : `${hiddenKeywordCount}개 더 보기`}
+            </button>
+          ) : null}
+        </aside>
 
-      {loading ? <p className="status-text">피드를 불러오는 중...</p> : null}
-
-      {!loading && items.length === 0 ? (
-        <EmptyState
-          title="아직 표시할 글이 없어요"
-          description="설정 탭에서 블로그를 더 구독해 보세요."
-          action={
-            <Link to="/settings" className="btn btn--primary">
-              구독 설정으로 이동
-            </Link>
-          }
-        />
-      ) : (
-        <div className="articles-grid">
-          {items.map((article) => (
-            <ArticleCard
-              key={article.id}
-              article={article}
-              readLaterActive={article.isReadLater}
-              busy={readLaterPendingArticleId === article.id}
-              onOpen={(target) => {
-                window.open(target.url, "_blank", "noopener,noreferrer");
-                if (isAuthenticated && session.token) {
-                  markArticleRead(session.token, target.id).catch(() => undefined);
-                }
-              }}
-              onToggleReadLater={(target, nextValue) =>
-                handleToggleReadLater(target as ArticleResponse, nextValue)
-              }
-              blogAction={
-                mode === "all" && isAuthenticated && !subscribedBlogIds.has(article.blog.id) ? (
-                  <button
-                    type="button"
-                    className="btn btn--primary btn--tiny"
-                    disabled={subscribingBlogId === article.blog.id}
-                    onClick={() => handleSubscribeBlog(article.blog.id)}
-                  >
-                    구독
-                  </button>
-                ) : null
-              }
-              bottomAction={
-                isAuthenticated ? (
-                  <button
-                    type="button"
-                    className="btn btn--ghost btn--tiny btn--feed-report"
-                    disabled={reportingArticleId === article.id}
-                    onClick={() => openReportModal(article)}
-                  >
-                    신고하기
-                  </button>
-                ) : null
+        <div className="feed-main">
+          {!isAuthenticated && mode === "my" ? (
+            <EmptyState
+              title="로그인 후 내 피드를 볼 수 있어요"
+              description="Google 로그인 후 구독한 블로그의 글만 모아서 확인할 수 있습니다."
+              action={
+                <a className="btn btn--primary" href={loginUrl}>
+                  Google로 로그인
+                </a>
               }
             />
-          ))}
-        </div>
-      )}
+          ) : null}
 
-      {nextCursor !== null && !loading ? (
-        <div className="more-wrap">
-          <button
-            type="button"
-            className="btn btn--ghost"
-            disabled={loadingMore}
-            onClick={() => fetchPage(true)}
-          >
-            {loadingMore ? "불러오는 중..." : "더 보기"}
-          </button>
-        </div>
-      ) : null}
+          {loading ? <p className="status-text">피드를 불러오는 중...</p> : null}
 
-      {nextCursor === null && !loading && items.length > 0 ? (
-        <p className="feed-end-text">더 이상 불러올 글이 없습니다.</p>
-      ) : null}
+          {!loading && items.length === 0 ? (
+            <EmptyState
+              title={isKeywordFiltering ? "선택한 키워드 글이 없어요" : "아직 표시할 글이 없어요"}
+              description={
+                isKeywordFiltering
+                  ? "다른 키워드를 선택하거나 필터를 해제해 보세요."
+                  : "설정 탭에서 블로그를 더 구독해 보세요."
+              }
+              action={
+                isKeywordFiltering ? (
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    onClick={() => setSelectedKeywords([])}
+                  >
+                    필터 해제
+                  </button>
+                ) : (
+                  <Link to="/settings" className="btn btn--primary">
+                    구독 설정으로 이동
+                  </Link>
+                )
+              }
+            />
+          ) : (
+            <div className="articles-grid">
+              {items.map((article) => (
+                <ArticleCard
+                  key={article.id}
+                  article={article}
+                  readLaterActive={article.isReadLater}
+                  busy={readLaterPendingArticleId === article.id}
+                  onOpen={(target) => {
+                    window.open(target.url, "_blank", "noopener,noreferrer");
+                    if (isAuthenticated && session.token) {
+                      markArticleRead(session.token, target.id).catch(() => undefined);
+                    }
+                  }}
+                  onToggleReadLater={(target, nextValue) =>
+                    handleToggleReadLater(target as ArticleResponse, nextValue)
+                  }
+                  onKeywordClick={handleKeywordClick}
+                  activeKeywords={selectedKeywordSet}
+                  blogAction={
+                    mode === "all" && isAuthenticated && !subscribedBlogIds.has(article.blog.id) ? (
+                      <button
+                        type="button"
+                        className="btn btn--primary btn--tiny"
+                        disabled={subscribingBlogId === article.blog.id}
+                        onClick={() => handleSubscribeBlog(article.blog.id)}
+                      >
+                        구독
+                      </button>
+                    ) : null
+                  }
+                  bottomAction={
+                    isAuthenticated ? (
+                      <button
+                        type="button"
+                        className="btn btn--ghost btn--tiny btn--feed-report"
+                        disabled={reportingArticleId === article.id}
+                        onClick={() => openReportModal(article)}
+                      >
+                        신고하기
+                      </button>
+                    ) : null
+                  }
+                />
+              ))}
+            </div>
+          )}
+
+          {nextCursor !== null && !loading ? (
+            <div className="more-wrap">
+              <button
+                type="button"
+                className="btn btn--ghost"
+                disabled={loadingMore}
+                onClick={() => fetchPage(true)}
+              >
+                {loadingMore ? "불러오는 중..." : "더 보기"}
+              </button>
+            </div>
+          ) : null}
+
+          {nextCursor === null && !loading && items.length > 0 ? (
+            <p className="feed-end-text">더 이상 불러올 글이 없습니다.</p>
+          ) : null}
+        </div>
+      </div>
 
       {toast ? (
         <Toast

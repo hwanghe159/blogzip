@@ -30,7 +30,7 @@ interface ArticleRepository : JpaRepository<Article, Long> {
     """
             select article
             from Article article
-            where (:next is null or article.id <= :next)
+            where (:next is null or article.id < :next)
         """
   )
   fun searchRecent(
@@ -45,7 +45,7 @@ interface ArticleRepository : JpaRepository<Article, Long> {
             where article.blogId in :blogIds
             and article.createdDate >= :from
             and article.createdDate <= :to
-            and (:next is null or article.id <= :next)
+            and (:next is null or article.id < :next)
             and exists (
                 select articleSummary.id
                 from ArticleSummary articleSummary
@@ -67,11 +67,11 @@ interface ArticleRepository : JpaRepository<Article, Long> {
             select article
             from Article article
             where article.blogId in :blogIds
-            and (:next is null or article.id <= :next)
+            and (:next is null or article.id < :next)
             and article.id in (
                 select articleKeyword.articleId
                 from ArticleKeyword articleKeyword
-                where articleKeyword.headKeywordId = :headKeywordId
+                where articleKeyword.headKeywordId in :headKeywordIds
             )
             and exists (
                 select articleSummary.id
@@ -81,8 +81,8 @@ interface ArticleRepository : JpaRepository<Article, Long> {
             )
         """
   )
-  fun searchByHeadKeyword(
-    headKeywordId: Long,
+  fun searchByHeadKeywords(
+    headKeywordIds: Collection<Long>,
     blogIds: Collection<Long>,
     next: Long?,
     pageable: Pageable,

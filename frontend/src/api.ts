@@ -48,7 +48,7 @@ type RequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   token?: string | null;
-  query?: Record<string, string | number | null | undefined>;
+  query?: Record<string, string | number | Array<string | number> | null | undefined>;
 };
 
 function buildQuery(query?: RequestOptions["query"]): string {
@@ -56,6 +56,13 @@ function buildQuery(query?: RequestOptions["query"]): string {
   const params = new URLSearchParams();
   Object.entries(query).forEach(([key, value]) => {
     if (value === null || value === undefined || value === "") return;
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        if (item === "") return;
+        params.append(key, String(item));
+      });
+      return;
+    }
     params.set(key, String(value));
   });
   const queryString = params.toString();
@@ -167,8 +174,9 @@ export async function getArticles(params: {
   next?: number | null;
   size?: number;
   myOnly?: boolean;
+  keywords?: string[];
 }): Promise<PaginationResponse<ArticleResponse>> {
-  const { token, from, to, next, size = 20, myOnly = false } = params;
+  const { token, from, to, next, size = 20, myOnly = false, keywords } = params;
   return request<PaginationResponse<ArticleResponse>>(
     myOnly ? "/api/v1/my/article" : "/api/v1/article",
     {
@@ -178,6 +186,7 @@ export async function getArticles(params: {
         to,
         next,
         size,
+        keywords,
       },
     }
   );

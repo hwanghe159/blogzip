@@ -113,6 +113,7 @@ a {
 .page-section {
   display: grid;
   gap: 16px;
+  min-width: 0;
 }
 
 .page-head {
@@ -130,11 +131,7 @@ a {
 }
 
 .eyebrow {
-  margin: 0 0 2px;
-  font-family: "Space Grotesk", sans-serif;
-  letter-spacing: 0.07em;
-  font-size: 0.72rem;
-  color: var(--text-muted);
+  display: none;
 }
 
 .panel {
@@ -379,6 +376,7 @@ a {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  min-width: 0;
 }
 
 .article-card {
@@ -389,6 +387,7 @@ a {
   box-shadow: var(--shadow);
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .article-card--clickable {
@@ -477,6 +476,7 @@ a {
   margin: 0;
   color: var(--text-muted);
   font-size: 0.78rem;
+  overflow-wrap: anywhere;
 }
 
 .article-card__date {
@@ -520,6 +520,8 @@ a {
   margin: 0;
   font-size: 1.05rem;
   line-height: 1.42;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .article-card__summary {
@@ -528,6 +530,7 @@ a {
   font-size: 0.92rem;
   line-height: 1.55;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
@@ -541,18 +544,44 @@ a {
 }
 
 .article-card__keywords li {
+  list-style: none;
+}
+
+.article-card__keyword-chip,
+.article-card__keyword-label {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  height: 28px;
+  min-height: 28px;
   padding: 0 10px;
-  background: #eef5ff;
-  color: #355784;
   font-size: 0.76rem;
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
+}
+
+.article-card__keyword-label {
+  background: #eef5ff;
+  color: #355784;
+}
+
+.article-card__keyword-chip {
+  border: 1px solid transparent;
+  background: #eef5ff;
+  color: #355784;
+  font: inherit;
+  cursor: pointer;
+}
+
+.article-card__keyword-chip:hover {
+  background: #e2ecfb;
+}
+
+.article-card__keyword-chip--active {
+  background: #e4efe8;
+  border-color: #b6d1c1;
+  color: #1e5f44;
 }
 
 .article-card__bottom-action {
@@ -716,6 +745,114 @@ a {
   height: 30px;
   min-width: 82px;
   padding: 0 12px;
+}
+
+.feed-layout {
+  display: grid;
+  gap: 14px;
+}
+
+.feed-main {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-width: 0;
+}
+
+.feed-keyword-panel {
+  border: 1px solid #d5e7da;
+  border-radius: 14px;
+  background: #f8fcfa;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.feed-keyword-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.feed-keyword-panel__head h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.feed-keyword-panel__selected {
+  margin: 0;
+  color: #496255;
+  font-size: 0.8rem;
+}
+
+.feed-keyword-panel__empty {
+  margin: 0;
+  color: #607569;
+  font-size: 0.82rem;
+}
+
+.feed-keyword-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.feed-keyword-list li {
+  list-style: none;
+}
+
+.feed-keyword-item {
+  border: 1px solid #cbddd1;
+  background: #ffffff;
+  color: #2a4638;
+  border-radius: 999px;
+  min-height: 32px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.feed-keyword-item__name {
+  line-height: 1;
+}
+
+.feed-keyword-item__count {
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #edf4f0;
+  color: #466356;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0 6px;
+}
+
+.feed-keyword-item--active {
+  border-color: #1f8f5f;
+  color: #165e3f;
+  background: #e7f4ec;
+}
+
+.feed-keyword-item--active .feed-keyword-item__count {
+  background: rgba(31, 143, 95, 0.2);
+  color: #165e3f;
+}
+
+.feed-keyword-panel__toggle {
+  justify-self: start;
 }
 
 .segmented {
@@ -1645,6 +1782,14 @@ a {
 }
 
 @media (max-width: 640px) {
+  .feed-keyword-panel {
+    padding: 10px;
+  }
+
+  .feed-keyword-item {
+    min-height: 30px;
+  }
+
   .settings-page .list__item {
     flex-direction: column;
     align-items: stretch;
@@ -1752,6 +1897,21 @@ a {
 
   .admin-report-item__actions .btn {
     width: 100%;
+  }
+}
+
+@media (min-width: 1100px) {
+  .feed-layout {
+    grid-template-columns: 260px minmax(0, 1fr);
+    align-items: start;
+    gap: 18px;
+  }
+
+  .feed-keyword-panel {
+    position: sticky;
+    top: 94px;
+    max-height: calc(100vh - 118px);
+    overflow: auto;
   }
 }
 

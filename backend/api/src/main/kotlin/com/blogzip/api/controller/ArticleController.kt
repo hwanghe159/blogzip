@@ -32,11 +32,20 @@ class ArticleController(
   fun get(
     @RequestParam(required = true) from: LocalDate,
     @RequestParam(required = false) to: LocalDate?,
+    @RequestParam(required = false) keyword: String?,
+    @RequestParam(required = false) keywords: List<String>?,
     @RequestParam(required = false) next: Long?,
     @RequestParam(required = false, defaultValue = "20") size: Int,
   ): ResponseEntity<PaginationResponse<ArticleResponse>> {
+    val resolvedKeywords = resolveKeywords(keyword = keyword, keywords = keywords)
+    val searchedArticles =
+      if (resolvedKeywords.isEmpty()) {
+        articleQueryService.search(from, to, next, size)
+      } else {
+        articleQueryService.searchByKeywordValues(resolvedKeywords, next, size)
+      }
     return ResponseEntity.ok(
-      buildArticlePaginationResponse(articleQueryService.search(from, to, next, size))
+      buildArticlePaginationResponse(searchedArticles)
     )
   }
 
@@ -45,11 +54,25 @@ class ArticleController(
     @Parameter(hidden = true) @Authenticated user: AuthenticatedUser,
     @RequestParam(required = true) from: LocalDate,
     @RequestParam(required = false) to: LocalDate?,
+    @RequestParam(required = false) keyword: String?,
+    @RequestParam(required = false) keywords: List<String>?,
     @RequestParam(required = false) next: Long?,
     @RequestParam(required = false, defaultValue = "20") size: Int,
   ): ResponseEntity<PaginationResponse<ArticleResponse>> {
+    val resolvedKeywords = resolveKeywords(keyword = keyword, keywords = keywords)
+    val searchedArticles =
+      if (resolvedKeywords.isEmpty()) {
+        articleQueryService.searchMy(from, to, next, size, user.id)
+      } else {
+        articleQueryService.searchMyByKeywordValues(
+          keywordValues = resolvedKeywords,
+          next = next,
+          size = size,
+          userId = user.id,
+        )
+      }
     return ResponseEntity.ok(
-      buildArticlePaginationResponse(articleQueryService.searchMy(from, to, next, size, user.id))
+      buildArticlePaginationResponse(searchedArticles)
     )
   }
 
@@ -135,5 +158,22 @@ class ArticleController(
       },
       next = searchedArticles.next
     )
+  }
+
+  private fun resolveKeywords(
+    keyword: String?,
+    keywords: List<String>?,
+  ): List<String> {
+    return buildList {
+      if (!keyword.isNullOrBlank()) {
+        add(keyword)
+      }
+      if (!keywords.isNullOrEmpty()) {
+        addAll(keywords)
+      }
+    }
+      .map { it.trim() }
+      .filter { it.isNotBlank() }
+      .distinct()
   }
 }
