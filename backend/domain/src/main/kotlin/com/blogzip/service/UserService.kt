@@ -29,12 +29,12 @@ class UserService(
 
   @Transactional(readOnly = true)
   fun findByEmail(email: String): User? {
-    return repository.findByEmailAndIsDeletedFalse(email)
+    return repository.findFirstByEmailAndIsDeletedOrderByIdDesc(email, false)
   }
 
   @Transactional(readOnly = true)
   fun findByEmailIncludingDeleted(email: String): User? {
-    return repository.findByEmail(email)
+    return repository.findFirstByEmailOrderByIsDeletedAscIdDesc(email)
   }
 
   @Transactional(readOnly = true)

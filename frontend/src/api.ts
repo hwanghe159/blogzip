@@ -554,13 +554,3 @@ export async function updateAdminBlogCssSelectorByUrl(
     body: payload,
   });
 }
-
-export async function rerunAdminOpenAiBatch(
-  token: string,
-  batchId: string
-): Promise<boolean> {
-  return request<boolean>(`/api/admin/openai/batches/${encodeURIComponent(batchId)}/re-run`, {
-    method: "POST",
-    token,
-  });
-}

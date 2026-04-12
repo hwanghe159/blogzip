@@ -160,9 +160,9 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
         await addReadLater(session.token, article.id);
         showToast(
           {
-            message: "나중에 읽기에 저장했어요.",
+            message: "나중에 읽기 목록에 저장했어요.",
             tone: "success",
-            actionLabel: "나중에 읽기 보기",
+            actionLabel: "이동하기",
             action: "moveReadLater",
             durationMs: 4600,
           }
@@ -352,11 +352,11 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
                 isAuthenticated ? (
                   <button
                     type="button"
-                    className="btn btn--ghost btn--tiny"
+                    className="btn btn--ghost btn--tiny btn--feed-report"
                     disabled={reportingArticleId === article.id}
                     onClick={() => openReportModal(article)}
                   >
-                    문제 신고
+                    신고하기
                   </button>
                 ) : null
               }
@@ -410,7 +410,7 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
           onClick={() => closeReportModal()}
         >
           <div className="modal report-modal" onClick={(event) => event.stopPropagation()}>
-            <h2 id="report-modal-title">문제 신고</h2>
+            <h2 id="report-modal-title">신고하기</h2>
             <p className="report-modal__target">{reportModalArticle.title}</p>
 
             <label className="feed-report-form__label" htmlFor="report-modal-reason">

@@ -8,6 +8,7 @@ import com.blogzip.domain.User
 import com.blogzip.domain.UserRepository
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DisplayName
@@ -30,6 +31,46 @@ class UserServiceTest {
 
   @InjectMocks
   lateinit var userService: UserService
+
+  @DisplayName("활성 회원 조회는 같은 이메일 중 최신 사용자 1건만 반환한다.")
+  @Test
+  fun findByEmail() {
+    val user = User(
+      id = 2L,
+      email = "test@blogzip.com",
+      socialType = SocialType.GOOGLE,
+      socialId = "google-2",
+      receiveDays = "MONDAY",
+      isDeleted = false,
+    )
+    `when`(userRepository.findFirstByEmailAndIsDeletedOrderByIdDesc("test@blogzip.com", false))
+      .thenReturn(user)
+
+    val found = userService.findByEmail("test@blogzip.com")
+
+    assertSame(user, found)
+    verify(userRepository).findFirstByEmailAndIsDeletedOrderByIdDesc("test@blogzip.com", false)
+  }
+
+  @DisplayName("전체 회원 조회는 활성 회원 우선으로 같은 이메일 중 1건만 반환한다.")
+  @Test
+  fun findByEmailIncludingDeleted() {
+    val user = User(
+      id = 2L,
+      email = "test@blogzip.com",
+      socialType = SocialType.GOOGLE,
+      socialId = "google-2",
+      receiveDays = "MONDAY",
+      isDeleted = false,
+    )
+    `when`(userRepository.findFirstByEmailOrderByIsDeletedAscIdDesc("test@blogzip.com"))
+      .thenReturn(user)
+
+    val found = userService.findByEmailIncludingDeleted("test@blogzip.com")
+
+    assertSame(user, found)
+    verify(userRepository).findFirstByEmailOrderByIsDeletedAscIdDesc("test@blogzip.com")
+  }
 
   @DisplayName("회원 탈퇴 시 user에 탈퇴 플래그가 반영된다.")
   @Test

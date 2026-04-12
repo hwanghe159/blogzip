@@ -363,7 +363,7 @@ export function SettingsPage({ session, loginUrl }: SettingsPageProps) {
   }
 
   return (
-    <section className="page-section">
+    <section className="page-section settings-page">
       <div className="page-head">
         <div>
           <p className="eyebrow">SETTINGS</p>

@@ -1,11 +1,7 @@
 package com.blogzip.api.controller
 
-import com.blogzip.ai.common.JsonlConverter
 import com.blogzip.ai.summary.ArticleContentSequentialSummarizer
 import com.blogzip.ai.summary.ArticleToSummarize
-import com.blogzip.ai.summary.BatchResponse
-import com.blogzip.ai.summary.OpenAiApiClient
-import com.blogzip.ai.summary.SummarizedArticle
 import com.blogzip.ai.summary.SummarizedArticleResult
 import com.blogzip.api.admin.AdminRequired
 import com.blogzip.api.dto.PaginationResponse
@@ -21,13 +17,10 @@ import com.blogzip.service.ArticleQueryService
 import com.blogzip.service.ArticleReportService
 import com.blogzip.service.BlogService
 import com.blogzip.service.KeywordService
-import com.blogzip.slack.SlackSender
-import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.validation.Valid
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
-import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import java.net.URI
@@ -37,16 +30,11 @@ import java.util.Locale
 @RestController
 class AdminController(
   private val keywordService: KeywordService,
-  private val openAiApiClient: OpenAiApiClient,
-  private val jsonlConverter: JsonlConverter,
-  @Qualifier("jsonlObjectMapper")
-  private val objectMapper: ObjectMapper,
   private val articleCommandService: ArticleCommandService,
   private val articleQueryService: ArticleQueryService,
   private val articleReportService: ArticleReportService,
   private val articleContentSequentialSummarizer: ArticleContentSequentialSummarizer,
   private val blogService: BlogService,
-  private val slackSender: SlackSender,
   private val crawlerHttpClient: CrawlerHttpClient,
 ) {
 
@@ -570,51 +558,6 @@ class AdminController(
         force = request.force,
       )
     )
-  }
-
-  @AdminRequired
-  @PostMapping("/api/admin/openai/batches/{batchId}/re-run")
-  fun reRunOpenAiBatches(
-    @PathVariable batchId: String,
-  ): ResponseEntity<Boolean> {
-    val response = openAiApiClient.getBatch(batchId)
-    val status = response["status"] as String
-    if (status != "completed") {
-      return ResponseEntity.ok(false)
-    }
-    val outputFileId = response["output_file_id"] as String
-    val resultJsonl = openAiApiClient.getFileContent(outputFileId)
-    val summarizedArticle: List<SummarizedArticleResult> = jsonlConverter.jsonlToObjects(
-      resultJsonl.toString(Charsets.UTF_8),
-      BatchResponse::class.java
-    )
-      .map {
-        val summaryAndKeywordsJson =
-          objectMapper.readTree(it.response?.body?.choices?.first()?.message?.content)
-        val summary = summaryAndKeywordsJson["summary"].textValue()
-        val keywords = summaryAndKeywordsJson["keywords"].map { it.textValue() }
-        SummarizedArticleResult.Success(
-          SummarizedArticle(
-            id = it.customId?.toLong()!!,
-            summary = summary,
-            summarizedBy = it.response?.body?.model!!,
-            keywords = keywords
-          )
-        )
-      }
-    summarizedArticle.forEach {
-      it.handle(
-        onSuccess = { result ->
-          articleCommandService.updateSummary(result.id, result.summary, result.summarizedBy)
-          keywordService.addArticleKeywords(result.id, result.keywords)
-        },
-        onFailure = { articleId, throwable ->
-          val exception = RuntimeException("$articleId 요약 실패", throwable)
-          slackSender.sendStackTraceAsync(SlackSender.SlackChannel.ERROR_LOG, exception)
-        }
-      )
-    }
-    return ResponseEntity.ok(true)
   }
 
   private fun normalizeBlogUrl(blogUrl: String): String {

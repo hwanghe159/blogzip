@@ -184,7 +184,7 @@ export function AccountPage({
         </div>
       </section>
 
-      <section className="panel panel--danger">
+      <section className="panel panel--danger account-withdraw-panel">
         <h2>계정 탈퇴</h2>
         <p className="panel__description">
           탈퇴하면 계정이 비활성화되고, 나중에 읽기, 구독 데이터가 영구적으로 삭제됩니다.

@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, TouchEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   ApiError,
   applyAdminArticleSummary,
@@ -147,6 +147,10 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
   const [newKeywordVisible, setNewKeywordVisible] = useState(true);
   const [draggingKeyword, setDraggingKeyword] = useState<DragKeywordItem | null>(null);
   const [droppingHeadId, setDroppingHeadId] = useState<number | null>(null);
+  const touchDragKeywordRef = useRef<DragKeywordItem | null>(null);
+  const touchDragActiveRef = useRef<boolean>(false);
+  const touchDragStartRef = useRef<{ x: number; y: number } | null>(null);
+  const suppressFollowerClickRef = useRef<boolean>(false);
 
   const [cssTestBlogUrl, setCssTestBlogUrl] = useState("");
   const [cssTestSelector, setCssTestSelector] = useState("");
@@ -802,16 +806,99 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     }
   }
 
-  async function handleDropToHead(targetHeadKeywordId: number) {
-    if (!token || !draggingKeyword) return;
-    if (draggingKeyword.type === "head") {
-      if (draggingKeyword.id === targetHeadKeywordId) return;
+  function findHeadKeywordIdByPoint(clientX: number, clientY: number): number | null {
+    const target = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
+    const lane = target?.closest<HTMLElement>("[data-head-keyword-id]");
+    if (!lane) return null;
+    const value = lane.dataset.headKeywordId;
+    const parsed = value ? Number(value) : Number.NaN;
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function clearTouchDragState() {
+    touchDragKeywordRef.current = null;
+    touchDragActiveRef.current = false;
+    touchDragStartRef.current = null;
+    setDraggingKeyword(null);
+    setDroppingHeadId(null);
+  }
+
+  function handleKeywordTouchStart(event: TouchEvent<HTMLElement>, keyword: DragKeywordItem) {
+    const target = event.target as HTMLElement;
+    if (target.closest(".keyword-visibility-btn")) {
+      return;
+    }
+    const touch = event.touches.item(0);
+    if (!touch) return;
+    touchDragKeywordRef.current = keyword;
+    touchDragActiveRef.current = false;
+    touchDragStartRef.current = { x: touch.clientX, y: touch.clientY };
+  }
+
+  function handleKeywordTouchMove(event: TouchEvent<HTMLElement>) {
+    if (!touchDragKeywordRef.current) return;
+    const touch = event.touches.item(0);
+    if (!touch) return;
+
+    if (!touchDragActiveRef.current) {
+      const start = touchDragStartRef.current;
+      if (!start) return;
+      const movedX = touch.clientX - start.x;
+      const movedY = touch.clientY - start.y;
+      const distance = Math.hypot(movedX, movedY);
+      if (distance < 8) {
+        return;
+      }
+      touchDragActiveRef.current = true;
+      setDraggingKeyword(touchDragKeywordRef.current);
+    }
+
+    event.preventDefault();
+    const dropHeadId = findHeadKeywordIdByPoint(touch.clientX, touch.clientY);
+    setDroppingHeadId(dropHeadId);
+  }
+
+  function handleKeywordTouchEnd(event: TouchEvent<HTMLElement>) {
+    const keyword = touchDragKeywordRef.current;
+    if (!keyword) {
+      clearTouchDragState();
+      return;
+    }
+
+    const wasActive = touchDragActiveRef.current;
+    const touch = event.changedTouches.item(0);
+    if (wasActive) {
+      event.preventDefault();
+      const dropHeadId = touch
+        ? findHeadKeywordIdByPoint(touch.clientX, touch.clientY)
+        : null;
+      if (dropHeadId !== null) {
+        void handleDropToHead(dropHeadId, keyword);
+      } else if (keyword.type === "follower") {
+        void handleDropToRoot(keyword);
+      }
+      suppressFollowerClickRef.current = true;
+      window.setTimeout(() => {
+        suppressFollowerClickRef.current = false;
+      }, 0);
+    }
+
+    clearTouchDragState();
+  }
+
+  async function handleDropToHead(
+    targetHeadKeywordId: number,
+    sourceKeyword: DragKeywordItem | null = draggingKeyword
+  ) {
+    if (!token || !sourceKeyword) return;
+    if (sourceKeyword.type === "head") {
+      if (sourceKeyword.id === targetHeadKeywordId) return;
       const snapshot = keywordOverview;
-      mergeHeadKeywordLocally(draggingKeyword.id, targetHeadKeywordId);
+      mergeHeadKeywordLocally(sourceKeyword.id, targetHeadKeywordId);
       setKeywordUpdating(true);
       try {
-        await mergeAdminKeywordsById(token, draggingKeyword.id, targetHeadKeywordId);
-        showToast(`헤드 키워드 "${draggingKeyword.label}"를 병합했습니다.`, "success");
+        await mergeAdminKeywordsById(token, sourceKeyword.id, targetHeadKeywordId);
+        showToast(`헤드 키워드 "${sourceKeyword.label}"를 병합했습니다.`, "success");
       } catch (error) {
         setKeywordOverview(snapshot);
         showToast(normalizeError(error, "키워드 병합에 실패했습니다."), "error");
@@ -821,12 +908,12 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
       return;
     }
 
-    if (draggingKeyword.headId === targetHeadKeywordId) return;
+    if (sourceKeyword.headId === targetHeadKeywordId) return;
     const snapshot = keywordOverview;
-    moveFollowerLocally(draggingKeyword.id, targetHeadKeywordId);
+    moveFollowerLocally(sourceKeyword.id, targetHeadKeywordId);
     setKeywordUpdating(true);
     try {
-      await updateAdminKeywordHead(token, draggingKeyword.id, targetHeadKeywordId);
+      await updateAdminKeywordHead(token, sourceKeyword.id, targetHeadKeywordId);
       showToast(`팔로워 키워드를 이동했습니다.`, "success");
     } catch (error) {
       setKeywordOverview(snapshot);
@@ -836,17 +923,17 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     }
   }
 
-  async function handleDropToRoot() {
-    if (!token || !draggingKeyword) return;
-    if (draggingKeyword.type !== "follower") {
+  async function handleDropToRoot(sourceKeyword: DragKeywordItem | null = draggingKeyword) {
+    if (!token || !sourceKeyword) return;
+    if (sourceKeyword.type !== "follower") {
       return;
     }
     const snapshot = keywordOverview;
-    moveFollowerLocally(draggingKeyword.id, null);
+    moveFollowerLocally(sourceKeyword.id, null);
     setKeywordUpdating(true);
     try {
-      await updateAdminKeywordHead(token, draggingKeyword.id, null);
-      showToast(`"${draggingKeyword.label}"를 헤드 키워드로 분리했습니다.`, "success");
+      await updateAdminKeywordHead(token, sourceKeyword.id, null);
+      showToast(`"${sourceKeyword.label}"를 헤드 키워드로 분리했습니다.`, "success");
     } catch (error) {
       setKeywordOverview(snapshot);
       showToast(normalizeError(error, "키워드 분리에 실패했습니다."), "error");
@@ -1387,6 +1474,7 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
                 {keywordHeadList.map((headKeyword: AdminHeadKeywordOverviewResponse) => (
                   <div
                     key={headKeyword.id}
+                    data-head-keyword-id={headKeyword.id}
                     className={`keyword-lane ${droppingHeadId === headKeyword.id ? "is-drop-target" : ""}`}
                     onDragOver={(event) => {
                       if (draggingKeyword) {
@@ -1419,6 +1507,17 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
                         setDraggingKeyword(null);
                         setDroppingHeadId(null);
                       }}
+                      onTouchStart={(event) =>
+                        handleKeywordTouchStart(event, {
+                          id: headKeyword.id,
+                          type: "head",
+                          label: headKeyword.value,
+                          headId: null,
+                        })
+                      }
+                      onTouchMove={handleKeywordTouchMove}
+                      onTouchEnd={handleKeywordTouchEnd}
+                      onTouchCancel={clearTouchDragState}
                     >
                       <div className="keyword-lane__head-main">
                         <p className={`keyword-lane__title ${headKeyword.isVisible ? "" : "is-hidden"}`}>
@@ -1427,7 +1526,7 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
                       </div>
                       <button
                         type="button"
-                        className="btn btn--ghost btn--small"
+                        className="btn btn--ghost btn--small keyword-visibility-btn"
                         onClick={() =>
                           void handleToggleKeywordVisible(
                             headKeyword.id,
@@ -1463,13 +1562,28 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
                               setDraggingKeyword(null);
                               setDroppingHeadId(null);
                             }}
-                            onClick={() =>
+                            onTouchStart={(event) =>
+                              handleKeywordTouchStart(event, {
+                                id: follower.id,
+                                type: "follower",
+                                label: follower.value,
+                                headId: headKeyword.id,
+                              })
+                            }
+                            onTouchMove={handleKeywordTouchMove}
+                            onTouchEnd={handleKeywordTouchEnd}
+                            onTouchCancel={clearTouchDragState}
+                            onClick={() => {
+                              if (suppressFollowerClickRef.current) {
+                                suppressFollowerClickRef.current = false;
+                                return;
+                              }
                               void handleToggleKeywordVisible(
                                 follower.id,
                                 follower.value,
                                 follower.isVisible
-                              )
-                            }
+                              );
+                            }}
                             disabled={keywordUpdating}
                           >
                             <span className="keyword-chip__title">{follower.value}</span>

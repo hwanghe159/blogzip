@@ -5,8 +5,8 @@ import org.springframework.data.jpa.repository.Query
 import java.time.DayOfWeek
 
 interface UserRepository : JpaRepository<User, Long> {
-  fun findByEmail(email: String): User?
-  fun findByEmailAndIsDeletedFalse(email: String): User?
+  fun findFirstByEmailOrderByIsDeletedAscIdDesc(email: String): User?
+  fun findFirstByEmailAndIsDeletedOrderByIdDesc(email: String, isDeleted: Boolean): User?
 
   fun findByIdAndIsDeletedFalse(id: Long): User?
 

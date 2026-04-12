@@ -152,6 +152,10 @@ a {
   background: linear-gradient(180deg, #fff 0%, #fff8f8 100%);
 }
 
+.account-withdraw-panel {
+  margin-top: 14px;
+}
+
 .panel h2 {
   margin: 0;
 }
@@ -701,6 +705,12 @@ a {
   min-height: 28px;
   border-radius: 999px;
   flex-shrink: 0;
+}
+
+.btn--feed-report {
+  height: 30px;
+  min-width: 82px;
+  padding: 0 12px;
 }
 
 .segmented {
@@ -1605,6 +1615,39 @@ a {
 
 .desktop-only {
   display: none;
+}
+
+@media (max-width: 640px) {
+  .settings-page .list__item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-page .list__item > * {
+    min-width: 0;
+  }
+
+  .settings-page .list__item > .btn {
+    align-self: flex-end;
+  }
+
+  .settings-page .form-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-page .form-row .btn {
+    width: 100%;
+  }
+
+  .settings-page .blog-list-meta {
+    width: 100%;
+  }
+
+  .settings-page .blog-list-meta__text strong {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
 }
 
 @media (max-width: 819px) {
