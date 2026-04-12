@@ -8,6 +8,8 @@ type ArticleCardProps = {
   readLaterActive: boolean;
   onOpen: (article: BaseArticle) => void;
   onToggleReadLater?: (article: BaseArticle, nextValue: boolean) => void;
+  onKeywordClick?: (keyword: string) => void;
+  activeKeywords?: Set<string>;
   blogAction?: ReactNode;
   bottomAction?: ReactNode;
   busy?: boolean;
@@ -26,6 +28,8 @@ export function ArticleCard({
   readLaterActive,
   onOpen,
   onToggleReadLater,
+  onKeywordClick,
+  activeKeywords,
   blogAction,
   bottomAction,
   busy = false,
@@ -131,8 +135,27 @@ export function ArticleCard({
 
       {article.keywords.length > 0 ? (
         <ul className="article-card__keywords">
-          {article.keywords.map((keyword) => (
-            <li key={keyword}>#{keyword}</li>
+          {article.keywords.map((keyword, index) => (
+            <li key={`${keyword}-${index}`}>
+              {onKeywordClick ? (
+                <button
+                  type="button"
+                  className={
+                    activeKeywords?.has(keyword)
+                      ? "article-card__keyword-chip article-card__keyword-chip--active"
+                      : "article-card__keyword-chip"
+                  }
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onKeywordClick(keyword);
+                  }}
+                >
+                  #{keyword}
+                </button>
+              ) : (
+                <span className="article-card__keyword-label">#{keyword}</span>
+              )}
+            </li>
           ))}
         </ul>
       ) : null}

@@ -36,6 +36,15 @@ class ArticleQueryService(
 
   var log = logger()
 
+  private fun emptySearchedArticles(readLaterArticleIds: Set<Long> = emptySet()): SearchedArticles {
+    return SearchedArticles.of(
+      articleAndBlogs = emptyList(),
+      next = null,
+      readLaterArticleIds = readLaterArticleIds,
+      appliedSummaries = emptyMap(),
+    )
+  }
+
   // 메인에 노출될 글 조회 (비로그인)
   @Transactional(readOnly = true)
   fun search(from: LocalDate, to: LocalDate?, next: Long?, size: Int): SearchedArticles {
@@ -122,10 +131,69 @@ class ArticleQueryService(
     )
   }
 
+  @Transactional(readOnly = true)
+  fun searchByKeywordValue(
+    keywordValue: String,
+    next: Long?,
+    size: Int,
+  ): SearchedArticles {
+    return searchByKeywordValues(listOf(keywordValue), next, size)
+  }
+
+  @Transactional(readOnly = true)
+  fun searchByKeywordValues(
+    keywordValues: Collection<String>,
+    next: Long?,
+    size: Int,
+  ): SearchedArticles {
+    val headKeywordIds = findHeadKeywordIds(keywordValues)
+    if (headKeywordIds.isEmpty()) {
+      return emptySearchedArticles()
+    }
+    return searchByHeadKeywordIds(headKeywordIds, next, size)
+  }
+
+  @Transactional(readOnly = true)
+  fun searchMyByKeywordValue(
+    keywordValue: String,
+    next: Long?,
+    size: Int,
+    userId: Long,
+  ): SearchedArticles {
+    return searchMyByKeywordValues(listOf(keywordValue), next, size, userId)
+  }
+
+  @Transactional(readOnly = true)
+  fun searchMyByKeywordValues(
+    keywordValues: Collection<String>,
+    next: Long?,
+    size: Int,
+    userId: Long,
+  ): SearchedArticles {
+    val headKeywordIds = findHeadKeywordIds(keywordValues)
+    if (headKeywordIds.isEmpty()) {
+      return emptySearchedArticles()
+    }
+    return searchMyByHeadKeywordIds(
+      headKeywordIds = headKeywordIds,
+      next = next,
+      size = size,
+      userId = userId,
+    )
+  }
+
   // 키워드에 해당하는 글 조회 (비로그인)
   @Transactional(readOnly = true)
   fun searchByKeywordId(keywordId: Long, next: Long?, size: Int): SearchedArticles {
     val headKeywordId = getHeadKeywordId(keywordId)
+    return searchByHeadKeywordIds(listOf(headKeywordId), next, size)
+  }
+
+  private fun searchByHeadKeywordIds(
+    headKeywordIds: Collection<Long>,
+    next: Long?,
+    size: Int,
+  ): SearchedArticles {
     val blogs = blogRepository.findAllByIsShowOnMain(true)
       .map { it.id!! to it }.toMap()
     if (blogs.isEmpty()) {
@@ -136,8 +204,8 @@ class ArticleQueryService(
         appliedSummaries = emptyMap(),
       )
     }
-    val articles = articleRepository.searchByHeadKeyword(
-      headKeywordId = headKeywordId,
+    val articles = articleRepository.searchByHeadKeywords(
+      headKeywordIds = headKeywordIds,
       blogIds = blogs.keys,
       next = next,
       pageable = articlePageRequest(size),
@@ -167,6 +235,20 @@ class ArticleQueryService(
     userId: Long,
   ): SearchedArticles {
     val headKeywordId = getHeadKeywordId(keywordId)
+    return searchMyByHeadKeywordIds(
+      headKeywordIds = listOf(headKeywordId),
+      next = next,
+      size = size,
+      userId = userId,
+    )
+  }
+
+  private fun searchMyByHeadKeywordIds(
+    headKeywordIds: Collection<Long>,
+    next: Long?,
+    size: Int,
+    userId: Long,
+  ): SearchedArticles {
     val user = (userRepository.findByIdOrNull(userId)
       ?: throw DomainException(ErrorCode.USER_NOT_FOUND))
     val blogIds = user.getAllSubscribingBlogIds()
@@ -178,8 +260,8 @@ class ArticleQueryService(
         appliedSummaries = emptyMap(),
       )
     }
-    val articles = articleRepository.searchByHeadKeyword(
-      headKeywordId = headKeywordId,
+    val articles = articleRepository.searchByHeadKeywords(
+      headKeywordIds = headKeywordIds,
       blogIds = blogIds,
       next = next,
       pageable = articlePageRequest(size),
@@ -203,6 +285,19 @@ class ArticleQueryService(
       readLaterArticleIds,
       appliedSummaries = appliedSummaries,
     )
+  }
+
+  private fun findHeadKeywordIds(keywordValues: Collection<String>): List<Long> {
+    val normalizedKeywords = keywordValues
+      .map { it.trim() }
+      .filter { it.isNotBlank() }
+      .distinct()
+    if (normalizedKeywords.isEmpty()) {
+      return emptyList()
+    }
+    return keywordRepository.findAllByValueIn(normalizedKeywords)
+      .mapNotNull { keyword -> keyword.head?.id ?: keyword.id }
+      .distinct()
   }
 
   @Transactional(readOnly = true)
