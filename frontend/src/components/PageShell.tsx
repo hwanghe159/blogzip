@@ -5,7 +5,6 @@ import GoogleLoginButton from "./GoogleLoginButton";
 
 type PageShellProps = {
   session: SessionState;
-  onLogout: () => void;
   children: ReactNode;
 };
 
@@ -15,7 +14,7 @@ const navItems = [
   { to: "/settings", label: "구독 설정" },
 ];
 
-export function PageShell({ session, onLogout, children }: PageShellProps) {
+export function PageShell({ session, children }: PageShellProps) {
   const [compactTopbar, setCompactTopbar] = useState(false);
 
   useEffect(() => {
@@ -65,9 +64,6 @@ export function PageShell({ session, onLogout, children }: PageShellProps) {
                   <strong>{session.user.email}</strong>
                 </div>
               </Link>
-              <button type="button" onClick={onLogout} className="btn btn--ghost btn--small">
-                로그아웃
-              </button>
             </div>
           ) : (
             <GoogleLoginButton />

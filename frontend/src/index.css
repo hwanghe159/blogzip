@@ -247,6 +247,11 @@ a {
   justify-content: flex-end;
 }
 
+.account-session-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .day-picker {
   display: flex;
   gap: 8px;
@@ -1036,6 +1041,7 @@ a {
 .admin-section-stack {
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .admin-section-title h3 {
@@ -1223,6 +1229,7 @@ a {
   padding: 10px;
   display: grid;
   gap: 6px;
+  min-width: 0;
 }
 
 .admin-report-item p {
@@ -1245,6 +1252,7 @@ a {
   color: var(--text);
   font-weight: 700;
   text-decoration: none;
+  overflow-wrap: anywhere;
 }
 
 .admin-report-item__article-link:hover {
@@ -1257,9 +1265,26 @@ a {
 }
 
 .admin-report-item__actions {
-  display: flex;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
   align-items: center;
+}
+
+.admin-report-item__actions select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--text);
+  padding: 7px 9px;
+  font: inherit;
+}
+
+.admin-report-item__actions .btn {
+  white-space: nowrap;
 }
 
 .keyword-lane-grid-droparea {
@@ -1709,6 +1734,22 @@ a {
   .user-chip .btn--small {
     padding: 6px 8px;
     font-size: 0.74rem;
+  }
+}
+
+@media (max-width: 1260px) {
+  .admin-article-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .admin-report-item__actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-report-item__actions .btn {
+    width: 100%;
   }
 }
 

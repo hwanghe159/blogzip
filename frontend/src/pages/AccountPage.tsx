@@ -125,6 +125,11 @@ export function AccountPage({
     }
   }
 
+  function handleAccountLogout() {
+    onLogout();
+    window.location.href = "/";
+  }
+
   if (!isAuthenticated || !session.user) {
     return (
       <section className="page-section">
@@ -180,6 +185,11 @@ export function AccountPage({
             onClick={handleSaveReceiveDays}
           >
             {savingReceiveDays ? "저장 중..." : "저장"}
+          </button>
+        </div>
+        <div className="account-session-actions">
+          <button type="button" className="btn btn--ghost btn--small" onClick={handleAccountLogout}>
+            로그아웃
           </button>
         </div>
       </section>

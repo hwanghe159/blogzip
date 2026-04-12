@@ -90,7 +90,7 @@ export default function App() {
   }
 
   return (
-    <PageShell session={session} onLogout={handleLogout}>
+    <PageShell session={session}>
       <Routes>
         <Route path="/" element={<FeedPage session={session} loginUrl={loginUrl} />} />
         <Route
