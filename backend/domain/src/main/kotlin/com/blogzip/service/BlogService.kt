@@ -6,6 +6,7 @@ import com.blogzip.domain.Blog
 import com.blogzip.domain.BlogRepository
 import com.blogzip.domain.BlogUrl
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 
 @Service
@@ -112,5 +113,27 @@ class BlogService(private val repository: BlogRepository) {
   fun updateCssSelector(blogId: Long, cssSelector: String?) {
     val blog = findById(blogId)
     blog.updateUrlCssSelector(cssSelector)
+  }
+
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  fun updateMetadataPerBlog(
+    blogId: Long,
+    name: String,
+    image: String?,
+    rss: String?,
+    rssStatus: Blog.RssStatus,
+    shouldUpdateCssSelector: Boolean,
+    urlCssSelector: String?,
+  ) {
+    updateMetadata(
+      blogId = blogId,
+      name = name,
+      image = image,
+      rss = rss,
+      rssStatus = rssStatus,
+    )
+    if (shouldUpdateCssSelector) {
+      updateCssSelector(blogId, urlCssSelector)
+    }
   }
 }

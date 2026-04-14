@@ -69,16 +69,15 @@ class RefreshBlogMetadataTasklet(
           urlCssSelector = cssSelectorResolution.urlCssSelector,
         )
 
-        blogService.updateMetadata(
+        blogService.updateMetadataPerBlog(
           blogId = blogId,
           name = target.name,
           image = target.image,
           rss = target.rss,
           rssStatus = target.rssStatus,
+          shouldUpdateCssSelector = blog.urlCssSelector != target.urlCssSelector,
+          urlCssSelector = target.urlCssSelector,
         )
-        if (blog.urlCssSelector != target.urlCssSelector) {
-          blogService.updateCssSelector(blogId, target.urlCssSelector)
-        }
 
         val fieldChanges = createFieldChanges(blog, target)
         if (fieldChanges.isNotEmpty()) {
