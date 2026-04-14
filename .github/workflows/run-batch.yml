@@ -34,6 +34,7 @@ concurrency:
 jobs:
   run-batch:
     runs-on: ubuntu-latest
+    timeout-minutes: 75
     steps:
       - name: 소스 코드 체크아웃
         uses: actions/checkout@v4
@@ -103,6 +104,8 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
+          timeout: 60s
+          command_timeout: 60m
           envs: JOB_NAME,JOB_ARGS,DEPLOY_PATH,IMAGE_PREFIX,REGISTRY_HOST,REGISTRY_USERNAME,REGISTRY_PASSWORD,OCI_REGION,OCI_VAULT_ID
           script: |
             set -euo pipefail

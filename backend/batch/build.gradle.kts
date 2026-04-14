@@ -22,6 +22,17 @@ dependencies {
   implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
   implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
 
+  val isMacOs = System.getProperty("os.name").contains("Mac", ignoreCase = true)
+  val arch = System.getProperty("os.arch").lowercase()
+  if (isMacOs) {
+    val classifier = if (arch.contains("aarch64") || arch.contains("arm64")) "osx-aarch_64" else "osx-x86_64"
+    runtimeOnly("io.netty:netty-resolver-dns-native-macos") {
+      artifact {
+        this.classifier = classifier
+      }
+    }
+  }
+
   testImplementation("org.springframework.batch:spring-batch-test")
   testImplementation("io.mockk:mockk:1.13.10")
 }
