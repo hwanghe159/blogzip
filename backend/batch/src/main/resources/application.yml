@@ -19,6 +19,7 @@ spring:
 logging:
   level:
     org.hibernate.SQL: info
+    io.netty.channel.DefaultChannelPipeline: error
 crawler:
   base-url: ${CRAWLER_BASE_URL:http://localhost:8090}
 

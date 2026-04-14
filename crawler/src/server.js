@@ -66,6 +66,16 @@ const RSS_CONTENT_TYPES = new Set([
 ]);
 const BLOCKED_STATUS_CODES = new Set([401, 403, 429, 451, 503]);
 const CLOUDFRONT_BLOCKED_TITLE = "error: the request could not be satisfied";
+const ERROR_PAGE_TITLE_MARKERS = [
+  "internal server error",
+  "access denied",
+  "request blocked",
+  "service unavailable",
+  "bad gateway",
+  "gateway timeout",
+  "too many requests",
+  "forbidden",
+];
 
 const chromeArgs = (process.env.CHROME_ARGS || "")
   .split(" ")
@@ -139,6 +149,23 @@ function isCloudFrontBlockedPage({ status, title, bodyText }) {
   return hasCloudFrontMarker && (hasDeniedMarker || hasBlockedStatus);
 }
 
+function isErrorLikePage({ status, title, bodyText }) {
+  const normalizedTitle = normalizeText(title);
+  const normalizedBody = normalizeText(bodyText);
+  const hasErrorTitle = ERROR_PAGE_TITLE_MARKERS.some((marker) => normalizedTitle.includes(marker));
+  const hasErrorBody =
+    normalizedBody.includes("internal server error") ||
+    normalizedBody.includes("access denied") ||
+    normalizedBody.includes("request blocked") ||
+    normalizedBody.includes("the request could not be satisfied");
+
+  if (Number.isInteger(status) && status >= 400) {
+    return true;
+  }
+
+  return hasErrorTitle || hasErrorBody;
+}
+
 function guessRssUrl(urlString) {
   try {
     const url = new URL(urlString);
@@ -198,6 +225,17 @@ async function getMetadata(urlString) {
       throw new Error(
         [
           "CloudFront 차단 페이지 감지",
+          `url=${urlString}`,
+          `resolvedUrl=${currentUrl}`,
+          `status=${responseStatus ?? "unknown"}`,
+          `title=${pageTitle || "empty"}`,
+        ].join(", ")
+      );
+    }
+    if (isErrorLikePage({ status: responseStatus, title: pageTitle, bodyText })) {
+      throw new Error(
+        [
+          "오류 페이지 감지",
           `url=${urlString}`,
           `resolvedUrl=${currentUrl}`,
           `status=${responseStatus ?? "unknown"}`,
