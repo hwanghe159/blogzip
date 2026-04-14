@@ -10,7 +10,7 @@ class CrawlerHttpClient(
 ) {
   private val log = logger()
 
-  fun getMetadata(url: String): BlogMetadata {
+  fun getMetadata(url: String): BlogMetadata? {
     return runCatching {
       webClient.post()
         .uri("/metadata/fetch")
@@ -21,11 +21,6 @@ class CrawlerHttpClient(
     }.onFailure { e ->
       log.error("원격 crawler metadata 조회 실패. url=$url", e)
     }.getOrNull()
-      ?: BlogMetadata(
-        title = url,
-        imageUrl = null,
-        rss = null,
-      )
   }
 
   fun getContent(url: String): String? {

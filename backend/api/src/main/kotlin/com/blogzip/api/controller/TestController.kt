@@ -72,7 +72,7 @@ class TestController(
   }
 
   @PostMapping("/api/v1/test/crawler")
-  fun crawlerTest(@RequestBody url: String): BlogMetadata {
+  fun crawlerTest(@RequestBody url: String): BlogMetadata? {
     val blogUrl = BlogUrl.from(url)
     return crawlerHttpClient.getMetadata(blogUrl.toString())
   }

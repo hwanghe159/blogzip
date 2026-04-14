@@ -64,7 +64,15 @@ class BlogController(
       throw DomainException(ErrorCode.BLOG_URL_DUPLICATED)
     }
     val metadata = crawlerHttpClient.getMetadata(blogUrl.toString())
-    if (metadata.imageUrl == null || metadata.rss == null) {
+    if (metadata == null) {
+      slackSender.sendMessageAsync(
+        MONITORING,
+        "crawler metadata 조회 실패. url=$blogUrl"
+      )
+    }
+    val image = metadata?.imageUrl
+    val rss = metadata?.rss
+    if (image == null || rss == null) {
       slackSender.sendMessageAsync(
         MONITORING,
         "imageUrl==null 또는 rss==null. url=$blogUrl, metadata=$metadata"
@@ -72,8 +80,8 @@ class BlogController(
     }
     // todo rss 가 있어도 cloudflare에 의해 차단되는 경우가 있음. 이 경우엔 NO_RSS 가 되어야 함
     val rssStatus =
-      if (metadata.rss == null) Blog.RssStatus.NO_RSS
-      else if (rssFeedFetcher.isContentContainsInRss(metadata.rss!!)) Blog.RssStatus.WITH_CONTENT
+      if (rss == null) Blog.RssStatus.NO_RSS
+      else if (rssFeedFetcher.isContentContainsInRss(rss)) Blog.RssStatus.WITH_CONTENT
       else Blog.RssStatus.WITHOUT_CONTENT
 
     if (rssStatus == Blog.RssStatus.NO_RSS) {
@@ -81,14 +89,14 @@ class BlogController(
        * 아래는 모든 title 정보를 가져오는 js 코드
        * const articles = document.querySelectorAll('...');
        * const titles = Array.from(articles).map(article => article.textContent.trim())
-       */
+      */
       slackSender.sendMessageAsync(MONITORING, "url_css_selector 직접 추가 필요. url=$blogUrl")
     }
     val blog = blogService.save(
-      name = metadata.title,
+      name = metadata?.title ?: blogUrl.toString(),
       url = blogUrl.toString(),
-      image = metadata.imageUrl,
-      rss = metadata.rss,
+      image = image,
+      rss = rss,
       rssStatus = rssStatus,
       createdBy = user.id,
     )

@@ -117,8 +117,16 @@ class RssFeedFetcher private constructor(
   }
 
   private fun convertToArticles(xml: String): List<Article> {
-    val input = SyndFeedInput()
-    val entries = input.build(BufferedReader(StringReader(xml))).entries
+    val entries = try {
+      parseEntries(xml, allowDoctypes = false)
+    } catch (e: Exception) {
+      if (!isDoctypeDisallowedError(e)) {
+        throw e
+      }
+
+      log.warn("DOCTYPE 선언이 포함된 RSS 파싱에 실패하여 DOCTYPE 허용 모드로 재시도합니다. message=${e.message}")
+      parseEntries(xml, allowDoctypes = true)
+    }
     val articles = entries.map {
       Article(
         title = it.title,
@@ -130,5 +138,25 @@ class RssFeedFetcher private constructor(
       )
     }
     return articles
+  }
+
+  private fun parseEntries(xml: String, allowDoctypes: Boolean) =
+    SyndFeedInput().apply {
+      setAllowDoctypes(allowDoctypes)
+    }.build(BufferedReader(StringReader(xml))).entries
+
+  private fun isDoctypeDisallowedError(throwable: Throwable): Boolean {
+    var current: Throwable? = throwable
+    while (current != null) {
+      val message = current.message.orEmpty()
+      if (
+        message.contains("disallow-doctype-decl", ignoreCase = true) ||
+        message.contains("doctype is disallowed", ignoreCase = true)
+      ) {
+        return true
+      }
+      current = current.cause
+    }
+    return false
   }
 }

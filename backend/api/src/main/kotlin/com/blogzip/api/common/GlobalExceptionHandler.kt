@@ -21,6 +21,7 @@ private val ErrorCode.toHttpStatus: HttpStatus
       ErrorCode.BLOG_NOT_FOUND -> HttpStatus.NOT_FOUND
       ErrorCode.BLOG_URL_DUPLICATED -> HttpStatus.CONFLICT
       ErrorCode.BLOG_URL_NOT_VALID -> HttpStatus.BAD_REQUEST
+      ErrorCode.BLOG_METADATA_FETCH_FAILED -> HttpStatus.BAD_GATEWAY
       ErrorCode.EMAIL_NOT_FOUND -> HttpStatus.NOT_FOUND
       ErrorCode.LOGIN_FAILED -> HttpStatus.UNAUTHORIZED
       ErrorCode.USER_NOT_FOUND -> HttpStatus.NOT_FOUND
