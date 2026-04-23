@@ -52,6 +52,7 @@ create table article
     content       longtext     not null comment '내용',
     url           varchar(700) not null comment 'URL',
     created_date  date         not null comment '생성 날짜',
+    is_visible    boolean      not null default true comment '노출 여부',
     unique index udx_url (url)
 ) comment '블로그 글';
 

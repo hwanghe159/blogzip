@@ -2,9 +2,11 @@ import {
   AdminArticleReportResponse,
   AdminArticleReportStatus,
   AdminArticleCreatedDateUpdateResponse,
+  AdminArticleVisibilityUpdateResponse,
   AdminArticleResummaryApplyResponse,
   AdminArticleResummaryPreviewResponse,
   AdminArticleResponse,
+  AdminBlogResponse,
   AdminBlogRequiringSelectorResponse,
   AdminArticleSummaryResponse,
   AdminBlogCssSelectorUpdateResponse,
@@ -455,6 +457,18 @@ export async function updateAdminArticleCreatedDate(
   );
 }
 
+export async function updateAdminArticleVisibility(
+  token: string,
+  articleId: number,
+  isVisible: boolean
+): Promise<AdminArticleVisibilityUpdateResponse> {
+  return request<AdminArticleVisibilityUpdateResponse>(`/api/admin/article/${articleId}/visibility`, {
+    method: "PATCH",
+    token,
+    body: { isVisible },
+  });
+}
+
 export async function updateAdminArticleCreatedDates(
   token: string,
   items: { articleId: number; createdDate: string }[]
@@ -550,6 +564,40 @@ export async function suggestAdminCssSelector(
 ): Promise<AdminCssSelectorSuggestResponse> {
   return request<AdminCssSelectorSuggestResponse>("/api/admin/crawler/css-selector/suggest", {
     method: "POST",
+    token,
+    body: payload,
+  });
+}
+
+export async function getAdminBlogs(
+  token: string,
+  params: { next?: number | null; size?: number; query?: string } = {}
+): Promise<PaginationResponse<AdminBlogResponse>> {
+  return request<PaginationResponse<AdminBlogResponse>>("/api/admin/blog", {
+    token,
+    query: {
+      next: params.next,
+      size: params.size ?? 20,
+      query: params.query,
+    },
+  });
+}
+
+export async function updateAdminBlog(
+  token: string,
+  blogId: number,
+  payload: {
+    name: string;
+    url: string;
+    image?: string | null;
+    rss?: string | null;
+    urlCssSelector?: string | null;
+    rssStatus: "NO_RSS" | "WITH_CONTENT" | "WITHOUT_CONTENT";
+    isShowOnMain: boolean;
+  }
+): Promise<AdminBlogResponse> {
+  return request<AdminBlogResponse>(`/api/admin/blog/${blogId}`, {
+    method: "PATCH",
     token,
     body: payload,
   });

@@ -24,6 +24,12 @@ data class ArticleCreatedDateUpdateResult(
   val createdDate: LocalDate,
 )
 
+data class ArticleVisibilityUpdateResult(
+  val articleId: Long,
+  val beforeIsVisible: Boolean,
+  val isVisible: Boolean,
+)
+
 @Service
 class ArticleCommandService(
   private val articleRepository: ArticleRepository,
@@ -127,6 +133,19 @@ class ArticleCommandService(
         createdDate = article.createdDate!!,
       )
     }
+  }
+
+  @Transactional
+  fun updateVisibility(articleId: Long, isVisible: Boolean): ArticleVisibilityUpdateResult {
+    val article = articleRepository.findByIdOrNull(articleId)
+      ?: throw DomainException(ErrorCode.ARTICLE_NOT_FOUND)
+    val beforeIsVisible = article.isVisible
+    article.isVisible = isVisible
+    return ArticleVisibilityUpdateResult(
+      articleId = article.id!!,
+      beforeIsVisible = beforeIsVisible,
+      isVisible = article.isVisible,
+    )
   }
 
   private fun createAndApplySummary(

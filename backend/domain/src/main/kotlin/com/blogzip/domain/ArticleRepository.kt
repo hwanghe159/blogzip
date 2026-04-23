@@ -45,6 +45,7 @@ interface ArticleRepository : JpaRepository<Article, Long> {
             where article.blogId in :blogIds
             and article.createdDate >= :from
             and article.createdDate <= :to
+            and article.isVisible = true
             and (:next is null or article.id < :next)
             and exists (
                 select articleSummary.id
@@ -67,6 +68,7 @@ interface ArticleRepository : JpaRepository<Article, Long> {
             select article
             from Article article
             where article.blogId in :blogIds
+            and article.isVisible = true
             and (:next is null or article.id < :next)
             and article.id in (
                 select articleKeyword.articleId

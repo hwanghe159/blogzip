@@ -20,6 +20,9 @@ class Article(
   val url: String,
 
   var createdDate: LocalDate? = null,
+
+  @Column(name = "is_visible")
+  var isVisible: Boolean = true,
 ) {
 
   @PrePersist
@@ -30,6 +33,6 @@ class Article(
   }
 
   override fun toString(): String {
-    return "Article(id=$id, blogId=$blogId, title='$title', content='$content', url='$url', createdDate=$createdDate)"
+    return "Article(id=$id, blogId=$blogId, title='$title', content='$content', url='$url', createdDate=$createdDate, isVisible=$isVisible)"
   }
 }

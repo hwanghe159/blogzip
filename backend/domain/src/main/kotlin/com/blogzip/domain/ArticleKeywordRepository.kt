@@ -29,6 +29,7 @@ interface ArticleKeywordRepository : JpaRepository<ArticleKeyword, Long> {
       and articleKeyword.headKeywordId = keyword.id
       and keyword.head is null
       and keyword.isVisible = true
+      and article.isVisible = true
       and article.blogId in :blogIds
       and article.createdDate >= :from
       and article.createdDate <= :to

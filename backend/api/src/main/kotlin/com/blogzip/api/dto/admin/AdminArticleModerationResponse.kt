@@ -18,6 +18,8 @@ data class AdminRecentArticleResponse(
   val blogImage: String?,
   val title: String,
   val url: String,
+  @get:JsonProperty("isVisible")
+  val isVisible: Boolean,
   val summary: String?,
   val summarizedBy: String?,
   val createdDate: LocalDate,
@@ -39,6 +41,7 @@ data class AdminRecentArticleResponse(
         blogImage = blog.image,
         title = article.title,
         url = article.url,
+        isVisible = article.isVisible,
         summary = appliedSummary?.summary,
         summarizedBy = appliedSummary?.summarizedBy,
         createdDate = article.createdDate!!,

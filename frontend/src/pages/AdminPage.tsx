@@ -5,6 +5,7 @@ import {
   createAdminKeyword,
   getAdminArticleReports,
   getAdminArticleSummaries,
+  getAdminBlogs,
   getAdminBlogsRequiringSelector,
   getAdminKeywordOverview,
   getAdminRecentArticles,
@@ -12,6 +13,8 @@ import {
   previewAdminArticleResummary,
   suggestAdminCssSelector,
   updateAdminArticleCreatedDate,
+  updateAdminArticleVisibility,
+  updateAdminBlog,
   updateAdminBlogCssSelectorByUrl,
   updateAdminKeywordById,
   updateAdminKeywordHead,
@@ -20,6 +23,7 @@ import {
   AdminArticleReportResponse,
   AdminArticleReportStatus,
   AdminArticleSummaryResponse,
+  AdminBlogResponse,
   AdminBlogRequiringSelectorResponse,
   AdminCssSelectorSuggestResponse,
   AdminFollowerKeywordOverviewResponse,
@@ -37,7 +41,7 @@ type AdminPageProps = {
   loginUrl: string;
 };
 
-type AdminTab = "articles" | "keywords" | "crawler";
+type AdminTab = "articles" | "blogs" | "keywords" | "crawler";
 
 type AdminToast = {
   id: number;
@@ -88,7 +92,9 @@ function reportStatusLabel(status: AdminArticleReportStatus): string {
   return found?.label ?? status;
 }
 
-function rssStatusLabel(status: AdminBlogRequiringSelectorResponse["rssStatus"]): string {
+function rssStatusLabel(
+  status: AdminBlogRequiringSelectorResponse["rssStatus"] | AdminBlogResponse["rssStatus"]
+): string {
   switch (status) {
     case "NO_RSS":
       return "RSS 없음";
@@ -157,8 +163,20 @@ function normalizeKeywordOverview(
   };
 }
 
+function parseAdminTab(value: string | null): AdminTab | null {
+  switch (value) {
+    case "articles":
+    case "blogs":
+    case "keywords":
+    case "crawler":
+      return value;
+    default:
+      return null;
+  }
+}
+
 export function AdminPage({ session, loginUrl }: AdminPageProps) {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const token = session.token;
   const isAuthenticated = session.status === "authenticated" && !!token;
   const isAdmin = !!session.user?.isAdmin;
@@ -176,6 +194,7 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
   const [recentInitialized, setRecentInitialized] = useState(false);
   const [editingDates, setEditingDates] = useState<Record<number, string>>({});
   const [savingDateArticleId, setSavingDateArticleId] = useState<number | null>(null);
+  const [updatingVisibilityArticleId, setUpdatingVisibilityArticleId] = useState<number | null>(null);
   const [openSummaryArticleId, setOpenSummaryArticleId] = useState<number | null>(null);
   const [summaryLoadingArticleId, setSummaryLoadingArticleId] = useState<number | null>(null);
   const [creatingSummaryArticleId, setCreatingSummaryArticleId] = useState<number | null>(null);
@@ -192,6 +211,14 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     Record<number, AdminArticleReportResponse[]>
   >({});
   const [focusedArticleId, setFocusedArticleId] = useState<number | null>(null);
+  const [adminBlogs, setAdminBlogs] = useState<AdminBlogResponse[]>([]);
+  const [adminBlogNext, setAdminBlogNext] = useState<number | null>(null);
+  const [adminBlogLoading, setAdminBlogLoading] = useState(false);
+  const [adminBlogLoadingMore, setAdminBlogLoadingMore] = useState(false);
+  const [adminBlogInitialized, setAdminBlogInitialized] = useState(false);
+  const [adminBlogQuery, setAdminBlogQuery] = useState("");
+  const [adminBlogSearchInput, setAdminBlogSearchInput] = useState("");
+  const [savingBlogId, setSavingBlogId] = useState<number | null>(null);
 
   const [keywordOverview, setKeywordOverview] = useState<AdminKeywordOverviewResponse | null>(null);
   const [keywordLoading, setKeywordLoading] = useState(false);
@@ -234,6 +261,25 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     }
     return parsed;
   }, [searchParams]);
+  const tabFromQuery = useMemo(() => parseAdminTab(searchParams.get("tab")), [searchParams]);
+
+  useEffect(() => {
+    if (!tabFromQuery || activeTab === tabFromQuery) {
+      return;
+    }
+    setActiveTab(tabFromQuery);
+  }, [activeTab, tabFromQuery]);
+
+  function handleTabChange(nextTab: AdminTab) {
+    setActiveTab(nextTab);
+    const nextSearchParams = new URLSearchParams(searchParams);
+    if (nextTab === "articles") {
+      nextSearchParams.delete("tab");
+    } else {
+      nextSearchParams.set("tab", nextTab);
+    }
+    setSearchParams(nextSearchParams, { replace: true });
+  }
 
   function showToast(
     message: string,
@@ -347,6 +393,53 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     }
   }
 
+  async function loadAdminBlogs({ reset, silent = false, query }: LoadOptions & { query?: string }) {
+    if (!token) return;
+    const resolvedQuery = query ?? adminBlogQuery;
+    if (reset) {
+      setAdminBlogLoading(true);
+    } else {
+      setAdminBlogLoadingMore(true);
+    }
+    try {
+      const response = await getAdminBlogs(token, {
+        next: reset ? null : adminBlogNext,
+        size: 20,
+        query: resolvedQuery.trim() ? resolvedQuery.trim() : undefined,
+      });
+      setAdminBlogs((prev) => {
+        if (reset) {
+          return response.items;
+        }
+        const merged = [...prev];
+        const existingIds = new Set(prev.map((item) => item.id));
+        response.items.forEach((item) => {
+          if (!existingIds.has(item.id)) {
+            merged.push(item);
+          }
+        });
+        return merged;
+      });
+      setAdminBlogQuery(resolvedQuery);
+      if (reset) {
+        setAdminBlogSearchInput(resolvedQuery);
+      }
+      setAdminBlogNext(response.next ?? null);
+      if (!silent) {
+        showToast("블로그 목록을 불러왔습니다.", "success");
+      }
+    } catch (error) {
+      showToast(normalizeError(error, "블로그 목록 조회에 실패했습니다."), "error");
+    } finally {
+      if (reset) {
+        setAdminBlogLoading(false);
+        setAdminBlogInitialized(true);
+      } else {
+        setAdminBlogLoadingMore(false);
+      }
+    }
+  }
+
   useEffect(() => {
     if (!isAuthenticated || !isAdmin || !token) {
       return;
@@ -354,6 +447,12 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     if (activeTab === "articles") {
       if (!recentLoading && !recentInitialized) {
         void loadRecentArticles({ reset: true, silent: true });
+      }
+      return;
+    }
+    if (activeTab === "blogs") {
+      if (!adminBlogLoading && !adminBlogInitialized) {
+        void loadAdminBlogs({ reset: true, silent: true });
       }
       return;
     }
@@ -372,6 +471,8 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     token,
     recentInitialized,
     recentLoading,
+    adminBlogInitialized,
+    adminBlogLoading,
     keywordLoading,
     keywordOverview,
     blogsRequiringSelectorLoading,
@@ -514,6 +615,94 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     } finally {
       setSavingDateArticleId(null);
     }
+  }
+
+  async function handleToggleArticleVisibility(articleId: number, isVisible: boolean) {
+    if (!token) return;
+    setUpdatingVisibilityArticleId(articleId);
+    try {
+      const result = await updateAdminArticleVisibility(token, articleId, !isVisible);
+      setRecentArticles((prev) =>
+        prev.map((item) =>
+          item.id === articleId
+            ? {
+                ...item,
+                isVisible: result.isVisible,
+              }
+            : item
+        )
+      );
+      showToast(
+        result.isVisible ? "게시글을 노출 상태로 변경했습니다." : "게시글을 비노출 상태로 변경했습니다.",
+        "success"
+      );
+    } catch (error) {
+      showToast(normalizeError(error, "게시글 노출 상태 변경에 실패했습니다."), "error");
+    } finally {
+      setUpdatingVisibilityArticleId(null);
+    }
+  }
+
+  function handleAdminBlogFieldChange(blogId: number, patch: Partial<AdminBlogResponse>) {
+    setAdminBlogs((prev) =>
+      prev.map((blog) =>
+        blog.id === blogId
+          ? {
+              ...blog,
+              ...patch,
+            }
+          : blog
+      )
+    );
+  }
+
+  async function handleSaveBlog(blogId: number) {
+    if (!token) return;
+    const target = adminBlogs.find((blog) => blog.id === blogId);
+    if (!target) return;
+
+    setSavingBlogId(blogId);
+    try {
+      const updated = await updateAdminBlog(token, blogId, {
+        name: target.name.trim(),
+        url: target.url.trim(),
+        image: target.image?.trim() || null,
+        rss: target.rss?.trim() || null,
+        urlCssSelector: target.urlCssSelector?.trim() || null,
+        rssStatus: target.rssStatus,
+        isShowOnMain: target.isShowOnMain,
+      });
+      setAdminBlogs((prev) =>
+        prev.map((blog) =>
+          blog.id === blogId
+            ? {
+                ...updated,
+              }
+            : blog
+        )
+      );
+      showToast(`"${updated.name}" 블로그 정보를 저장했습니다.`, "success");
+    } catch (error) {
+      showToast(normalizeError(error, "블로그 정보 저장에 실패했습니다."), "error");
+    } finally {
+      setSavingBlogId(null);
+    }
+  }
+
+  async function handleAdminBlogSearch(event: FormEvent) {
+    event.preventDefault();
+    await loadAdminBlogs({
+      reset: true,
+      query: adminBlogSearchInput,
+    });
+  }
+
+  function handleAdminBlogSearchReset() {
+    setAdminBlogSearchInput("");
+    void loadAdminBlogs({
+      reset: true,
+      query: "",
+    });
   }
 
   async function toggleArticleReports(articleId: number) {
@@ -1093,9 +1282,16 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
             <button
               type="button"
               className={`admin-tab-btn ${activeTab === "articles" ? "admin-tab-btn--active" : ""}`}
-              onClick={() => setActiveTab("articles")}
+              onClick={() => handleTabChange("articles")}
             >
               게시글 관리
+            </button>
+            <button
+              type="button"
+              className={`admin-tab-btn ${activeTab === "blogs" ? "admin-tab-btn--active" : ""}`}
+              onClick={() => handleTabChange("blogs")}
+            >
+              블로그 관리
             </button>
             <Link to="/admin/reports" className="admin-tab-btn">
               신고 관리
@@ -1103,14 +1299,14 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
             <button
               type="button"
               className={`admin-tab-btn ${activeTab === "keywords" ? "admin-tab-btn--active" : ""}`}
-              onClick={() => setActiveTab("keywords")}
+              onClick={() => handleTabChange("keywords")}
             >
               키워드 관리
             </button>
             <button
               type="button"
               className={`admin-tab-btn ${activeTab === "crawler" ? "admin-tab-btn--active" : ""}`}
-              onClick={() => setActiveTab("crawler")}
+              onClick={() => handleTabChange("crawler")}
             >
               크롤링 설정
             </button>
@@ -1124,7 +1320,7 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
                 <div>
                   <h2>게시글 관리</h2>
                   <p className="panel__description">
-                    최근 게시글을 확인하고 날짜 수정, 요약본 재실행/적용을 진행할 수 있어요.
+                    최근 게시글의 노출/비노출을 관리하고 날짜 수정, 요약본 재실행/적용을 진행할 수 있어요.
                   </p>
                 </div>
                 <div className="admin-page-actions">
@@ -1167,6 +1363,9 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
                             <header className="admin-article-card__head">
                               <div className="admin-article-card__blog">
                                 <span className="badge badge--muted">{article.blogName}</span>
+                                <span className={`badge ${article.isVisible ? "badge--visible" : "badge--hidden"}`}>
+                                  {article.isVisible ? "노출" : "비노출"}
+                                </span>
                                 <span className="badge badge--soft">
                                   신고 {article.receivedReportCount}/{article.reportCount}
                                 </span>
@@ -1228,6 +1427,18 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
                                   onClick={() => void toggleArticleReports(article.id)}
                                 >
                                   {openArticleReportsForId === article.id ? "신고 접기" : "신고 보기"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn--ghost btn--small"
+                                  onClick={() => void handleToggleArticleVisibility(article.id, article.isVisible)}
+                                  disabled={updatingVisibilityArticleId === article.id}
+                                >
+                                  {updatingVisibilityArticleId === article.id
+                                    ? "처리 중..."
+                                    : article.isVisible
+                                      ? "비노출 처리"
+                                      : "노출 처리"}
                                 </button>
                               </div>
                             </div>
@@ -1327,6 +1538,193 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
                   </div>
                 ) : null}
               </div>
+            </section>
+          ) : null}
+
+          {activeTab === "blogs" ? (
+            <section className="panel">
+              <div className="panel-actions panel-actions--between">
+                <div>
+                  <h2>블로그 관리</h2>
+                  <p className="panel__description">
+                    블로그 이름, URL, 이미지, RSS 상태, selector, 메인 노출 여부를 직접 관리할 수 있어요.
+                  </p>
+                </div>
+                <div className="admin-page-actions">
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--small"
+                    onClick={() => void loadAdminBlogs({ reset: true })}
+                    disabled={adminBlogLoading}
+                  >
+                    {adminBlogLoading ? "불러오는 중..." : "새로고침"}
+                  </button>
+                </div>
+              </div>
+
+              <form className="admin-form admin-blog-search" onSubmit={handleAdminBlogSearch}>
+                <label className="admin-field">
+                  <span>블로그 검색</span>
+                  <small>이름 또는 URL로 필터링합니다.</small>
+                  <input
+                    value={adminBlogSearchInput}
+                    onChange={(event) => setAdminBlogSearchInput(event.target.value)}
+                    placeholder="예: naver, techblog"
+                  />
+                </label>
+                <div className="admin-page-actions">
+                  <button type="submit" className="btn btn--primary btn--small" disabled={adminBlogLoading}>
+                    검색
+                  </button>
+                  {adminBlogQuery.trim() ? (
+                    <button
+                      type="button"
+                      className="btn btn--ghost btn--small"
+                      onClick={handleAdminBlogSearchReset}
+                      disabled={adminBlogLoading}
+                    >
+                      검색 초기화
+                    </button>
+                  ) : null}
+                </div>
+              </form>
+
+              {adminBlogLoading ? (
+                <p className="status-text">블로그 목록을 불러오는 중...</p>
+              ) : adminBlogs.length === 0 ? (
+                <p className="status-text">표시할 블로그가 없습니다.</p>
+              ) : (
+                <div className="admin-blog-list">
+                  {adminBlogs.map((blog) => (
+                    <article key={blog.id} className="admin-list-item admin-list-item--stack admin-blog-item">
+                      <div className="admin-blog-item__head">
+                        <div>
+                          <strong>{blog.name}</strong>
+                          <p>
+                            id {blog.id} · 등록 {formatDateTime(blog.createdAt)} · 생성자 {blog.createdBy}
+                          </p>
+                        </div>
+                        <span className={`badge ${blog.isShowOnMain ? "badge--visible" : "badge--hidden"}`}>
+                          {blog.isShowOnMain ? "메인 노출" : "메인 비노출"}
+                        </span>
+                      </div>
+
+                      <div className="admin-form-grid admin-form-grid--blog">
+                        <label className="admin-field">
+                          <span>이름</span>
+                          <input
+                            value={blog.name}
+                            onChange={(event) =>
+                              handleAdminBlogFieldChange(blog.id, {
+                                name: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <label className="admin-field">
+                          <span>URL</span>
+                          <input
+                            value={blog.url}
+                            onChange={(event) =>
+                              handleAdminBlogFieldChange(blog.id, {
+                                url: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <label className="admin-field">
+                          <span>이미지 URL</span>
+                          <input
+                            value={blog.image ?? ""}
+                            onChange={(event) =>
+                              handleAdminBlogFieldChange(blog.id, {
+                                image: event.target.value,
+                              })
+                            }
+                            placeholder="없으면 비워두세요"
+                          />
+                        </label>
+                        <label className="admin-field">
+                          <span>RSS URL</span>
+                          <input
+                            value={blog.rss ?? ""}
+                            onChange={(event) =>
+                              handleAdminBlogFieldChange(blog.id, {
+                                rss: event.target.value,
+                              })
+                            }
+                            placeholder="없으면 비워두세요"
+                          />
+                        </label>
+                        <label className="admin-field">
+                          <span>RSS 상태</span>
+                          <select
+                            value={blog.rssStatus}
+                            onChange={(event) =>
+                              handleAdminBlogFieldChange(blog.id, {
+                                rssStatus: event.target.value as AdminBlogResponse["rssStatus"],
+                              })
+                            }
+                          >
+                            <option value="NO_RSS">RSS 없음</option>
+                            <option value="WITH_CONTENT">RSS 본문 포함</option>
+                            <option value="WITHOUT_CONTENT">RSS 본문 없음</option>
+                          </select>
+                        </label>
+                        <label className="admin-field">
+                          <span>URL CSS Selector</span>
+                          <input
+                            value={blog.urlCssSelector ?? ""}
+                            onChange={(event) =>
+                              handleAdminBlogFieldChange(blog.id, {
+                                urlCssSelector: event.target.value,
+                              })
+                            }
+                            placeholder="NO_RSS 블로그일 때 사용"
+                          />
+                        </label>
+                      </div>
+
+                      <label className="admin-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={blog.isShowOnMain}
+                          onChange={(event) =>
+                            handleAdminBlogFieldChange(blog.id, {
+                              isShowOnMain: event.target.checked,
+                            })
+                          }
+                        />
+                        추천/메인 피드에 블로그 노출
+                      </label>
+
+                      <div className="admin-page-actions">
+                        <button
+                          type="button"
+                          className="btn btn--primary btn--small"
+                          onClick={() => void handleSaveBlog(blog.id)}
+                          disabled={savingBlogId === blog.id}
+                        >
+                          {savingBlogId === blog.id ? "저장 중..." : "저장"}
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+
+              {adminBlogNext !== null ? (
+                <div className="more-wrap">
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--small"
+                    onClick={() => void loadAdminBlogs({ reset: false })}
+                    disabled={adminBlogLoadingMore}
+                  >
+                    {adminBlogLoadingMore ? "불러오는 중..." : "블로그 더 보기"}
+                  </button>
+                </div>
+              ) : null}
             </section>
           ) : null}
 

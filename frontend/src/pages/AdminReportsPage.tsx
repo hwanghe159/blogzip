@@ -245,8 +245,17 @@ export function AdminReportsPage({ session, loginUrl }: AdminReportsPageProps) {
             <Link to="/admin" className="admin-tab-btn">
               게시글 관리
             </Link>
+            <Link to="/admin?tab=blogs" className="admin-tab-btn">
+              블로그 관리
+            </Link>
             <Link to="/admin/reports" className="admin-tab-btn admin-tab-btn--active">
               신고 관리
+            </Link>
+            <Link to="/admin?tab=keywords" className="admin-tab-btn">
+              키워드 관리
+            </Link>
+            <Link to="/admin?tab=crawler" className="admin-tab-btn">
+              크롤링 설정
             </Link>
           </div>
         </aside>

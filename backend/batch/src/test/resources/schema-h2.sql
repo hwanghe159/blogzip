@@ -47,6 +47,7 @@ create table article
     content       clob                                not null,
     url           varchar(700)                        not null,
     created_date  date                                not null,
+    is_visible    boolean   default true              not null,
     created_at    timestamp default CURRENT_TIMESTAMP not null,
     unique (url)
 );

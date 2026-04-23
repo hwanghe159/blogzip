@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   addReadLater,
@@ -66,9 +66,15 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
   const [loadingRecommendedBlogs, setLoadingRecommendedBlogs] = useState<boolean>(false);
   const [subscribedBlogIds, setSubscribedBlogIds] = useState<Set<number>>(new Set());
   const [subscribingBlogId, setSubscribingBlogId] = useState<number | null>(null);
+  const [brokenRecommendedBlogImages, setBrokenRecommendedBlogImages] = useState<Set<string>>(
+    new Set()
+  );
   const [keywordCounts, setKeywordCounts] = useState<FeedKeywordCountResponse[]>([]);
+  const [canScrollRecommendedPrev, setCanScrollRecommendedPrev] = useState<boolean>(false);
+  const [canScrollRecommendedNext, setCanScrollRecommendedNext] = useState<boolean>(false);
   const toastTimerRef = useRef<number | null>(null);
   const toastSeqRef = useRef<number>(0);
+  const recommendationListRef = useRef<HTMLUListElement | null>(null);
 
   const isAuthenticated = session.status === "authenticated" && !!session.token;
 
@@ -382,7 +388,48 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
       .slice(0, FEED_RECOMMENDED_BLOG_LIMIT);
   }, [allBlogs, isAuthenticated, mode, subscribedBlogIds]);
 
+  const updateRecommendedScrollState = useCallback(() => {
+    const listElement = recommendationListRef.current;
+    if (!listElement) {
+      setCanScrollRecommendedPrev(false);
+      setCanScrollRecommendedNext(false);
+      return;
+    }
+
+    const maxScrollLeft = Math.max(0, listElement.scrollWidth - listElement.clientWidth);
+    const scrollThreshold = 4;
+    setCanScrollRecommendedPrev(listElement.scrollLeft > scrollThreshold);
+    setCanScrollRecommendedNext(maxScrollLeft - listElement.scrollLeft > scrollThreshold);
+  }, []);
+
+  function handleRecommendedScroll(direction: "prev" | "next") {
+    const listElement = recommendationListRef.current;
+    if (!listElement) return;
+
+    const firstItem = listElement.querySelector<HTMLElement>(".feed-blog-recommendation__item");
+    const fallbackWidth = Math.max(listElement.clientWidth * 0.85, 240);
+    const scrollDistance = firstItem?.offsetWidth ?? fallbackWidth;
+
+    listElement.scrollBy({
+      left: direction === "next" ? scrollDistance : -scrollDistance,
+      behavior: "smooth",
+    });
+  }
+
+  useEffect(() => {
+    updateRecommendedScrollState();
+  }, [recommendedBlogs.length, updateRecommendedScrollState, loadingRecommendedBlogs, mode, isAuthenticated]);
+
+  useEffect(() => {
+    function handleResize() {
+      updateRecommendedScrollState();
+    }
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [updateRecommendedScrollState]);
+
   const isKeywordFiltering = selectedKeywords.length > 0;
+  const shouldShowRecommendationPanel = loadingRecommendedBlogs || recommendedBlogs.length > 0;
   const visibleKeywordLimit = isCompactKeywordLayout
     ? Math.min(compactKeywordVisibleCount, keywordOptions.length)
     : keywordOptions.length;
@@ -508,37 +555,84 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
 
           {loading ? <p className="status-text">피드를 불러오는 중...</p> : null}
 
-          {mode === "recommend" && isAuthenticated ? (
+          {mode === "recommend" && isAuthenticated && shouldShowRecommendationPanel ? (
             <section className="panel feed-blog-recommendation" aria-label="블로그 추천">
               <div className="feed-blog-recommendation__head">
-                <h2>추천 블로그</h2>
-                <p>아직 구독하지 않은 블로그를 먼저 확인해 보세요.</p>
+                <h2>이런 블로그는 어때요?</h2>
               </div>
               {loadingRecommendedBlogs ? (
                 <p className="feed-blog-recommendation__empty">추천 블로그를 불러오는 중...</p>
-              ) : recommendedBlogs.length === 0 ? (
-                <p className="feed-blog-recommendation__empty">
-                  지금은 추가로 추천할 블로그가 없어요. 설정에서 새 블로그를 찾아보세요.
-                </p>
               ) : (
-                <ul className="feed-blog-recommendation__list">
-                  {recommendedBlogs.map((blog) => (
-                    <li key={blog.id} className="feed-blog-recommendation__item">
-                      <div className="feed-blog-recommendation__meta">
-                        <strong>{blog.name}</strong>
-                        <p>{blog.url}</p>
-                      </div>
-                      <button
-                        type="button"
-                        className="btn btn--primary btn--tiny"
-                        disabled={subscribingBlogId === blog.id}
-                        onClick={() => handleSubscribeBlog(blog.id)}
-                      >
-                        구독
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                <div className="feed-blog-recommendation__carousel">
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--tiny feed-blog-recommendation__nav-btn desktop-only"
+                    aria-label="추천 블로그 이전으로 이동"
+                    disabled={!canScrollRecommendedPrev}
+                    onClick={() => handleRecommendedScroll("prev")}
+                  >
+                    {"<"}
+                  </button>
+                  <ul
+                    className="feed-blog-recommendation__list"
+                    ref={recommendationListRef}
+                    onScroll={updateRecommendedScrollState}
+                  >
+                    {recommendedBlogs.map((blog) => {
+                      const image = blog.image?.trim() || null;
+                      const shouldShowImage = !!image && !brokenRecommendedBlogImages.has(image);
+                      return (
+                        <li key={blog.id} className="feed-blog-recommendation__item">
+                          <div className="feed-blog-recommendation__meta">
+                            <div className="feed-blog-recommendation__image-wrap">
+                              {shouldShowImage ? (
+                                <img
+                                  src={image as string}
+                                  alt={blog.name}
+                                  className="feed-blog-recommendation__image"
+                                  onError={() => {
+                                    if (!image) return;
+                                    setBrokenRecommendedBlogImages((prev) => {
+                                      if (prev.has(image)) return prev;
+                                      const next = new Set(prev);
+                                      next.add(image);
+                                      return next;
+                                    });
+                                  }}
+                                />
+                              ) : (
+                                <div className="feed-blog-recommendation__image feed-blog-recommendation__image--fallback">
+                                  {blog.name.slice(0, 1).toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+                            <div className="feed-blog-recommendation__text">
+                              <strong>{blog.name}</strong>
+                              <p>{blog.url}</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn--primary btn--tiny"
+                            disabled={subscribingBlogId === blog.id}
+                            onClick={() => handleSubscribeBlog(blog.id)}
+                          >
+                            구독
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--tiny feed-blog-recommendation__nav-btn desktop-only"
+                    aria-label="추천 블로그 다음으로 이동"
+                    disabled={!canScrollRecommendedNext}
+                    onClick={() => handleRecommendedScroll("next")}
+                  >
+                    {">"}
+                  </button>
+                </div>
               )}
             </section>
           ) : null}

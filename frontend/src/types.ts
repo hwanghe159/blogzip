@@ -268,11 +268,18 @@ export interface AdminRecentArticleResponse {
   blogImage: string | null;
   title: string;
   url: string;
+  isVisible: boolean;
   summary: string | null;
   summarizedBy: string | null;
   createdDate: string;
   reportCount: number;
   receivedReportCount: number;
+}
+
+export interface AdminArticleVisibilityUpdateResponse {
+  articleId: number;
+  beforeIsVisible: boolean;
+  isVisible: boolean;
 }
 
 export interface AdminArticleReportResponse {
@@ -288,6 +295,19 @@ export interface AdminArticleReportResponse {
   status: AdminArticleReportStatus;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AdminBlogResponse {
+  id: number;
+  name: string;
+  url: string;
+  image: string | null;
+  rss: string | null;
+  urlCssSelector: string | null;
+  rssStatus: "NO_RSS" | "WITH_CONTENT" | "WITHOUT_CONTENT";
+  isShowOnMain: boolean;
+  createdBy: number;
+  createdAt: string;
 }
 
 export interface AdminKeywordHeadUpdateResponse {

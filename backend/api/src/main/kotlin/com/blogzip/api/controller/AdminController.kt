@@ -217,6 +217,19 @@ class AdminController(
   }
 
   @AdminRequired
+  @PatchMapping("/api/admin/article/{articleId}/visibility")
+  fun updateArticleVisibility(
+    @PathVariable articleId: Long,
+    @RequestBody request: ArticleVisibilityUpdateRequest,
+  ): ResponseEntity<ArticleVisibilityUpdateResponse> {
+    val result = articleCommandService.updateVisibility(
+      articleId = articleId,
+      isVisible = request.isVisible,
+    )
+    return ResponseEntity.ok(ArticleVisibilityUpdateResponse.from(result))
+  }
+
+  @AdminRequired
   @PatchMapping("/api/admin/article/created-date")
   fun updateArticleCreatedDates(
     @RequestBody request: ArticleCreatedDateBulkUpdateRequest,
@@ -501,6 +514,45 @@ class AdminController(
         },
       )
     )
+  }
+
+  @AdminRequired
+  @GetMapping("/api/admin/blog")
+  fun getBlogs(
+    @RequestParam(required = false) next: Long?,
+    @RequestParam(required = false, defaultValue = "20") size: Int,
+    @RequestParam(required = false) query: String?,
+  ): ResponseEntity<PaginationResponse<AdminBlogResponse>> {
+    val searchedBlogs = blogService.searchForAdmin(
+      next = next,
+      size = size,
+      query = query,
+    )
+    return ResponseEntity.ok(
+      PaginationResponse(
+        items = searchedBlogs.items.map { blog -> AdminBlogResponse.from(blog) },
+        next = searchedBlogs.next,
+      )
+    )
+  }
+
+  @AdminRequired
+  @PatchMapping("/api/admin/blog/{blogId}")
+  fun updateBlog(
+    @PathVariable blogId: Long,
+    @Valid @RequestBody request: AdminBlogUpdateRequest,
+  ): ResponseEntity<AdminBlogResponse> {
+    val updatedBlog = blogService.updateForAdmin(
+      blogId = blogId,
+      name = request.name,
+      url = request.url,
+      image = request.image,
+      rss = request.rss,
+      urlCssSelector = request.urlCssSelector,
+      rssStatus = request.rssStatus,
+      isShowOnMain = request.isShowOnMain,
+    )
+    return ResponseEntity.ok(AdminBlogResponse.from(updatedBlog))
   }
 
   @AdminRequired
