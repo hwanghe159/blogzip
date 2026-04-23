@@ -23,12 +23,13 @@ class EmailSender(
 ) {
   var log = logger()
 
-  fun sendNewArticles(to: User, articles: List<Article>) {
+  fun sendNewArticles(to: User, articles: List<Article>): EmailSendResult {
     val content = emailTemplateParser.parseArticles(to, articles)
     val result = sendEmail(to.email, "구독한 블로그의 새 글", content)
     if (!result.success) {
       log.warn("구독 메일 발송 실패. to={}, reason={}", to.email, result.message)
     }
+    return result
   }
 
   fun sendEmail(to: String, subject: String, content: String): EmailSendResult {

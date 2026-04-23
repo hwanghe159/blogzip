@@ -66,6 +66,9 @@ class EmailSendJobConfig(
         val today = LocalDate.now()
         val users = userService.findAllByDayOfWeek(today.dayOfWeek)
         val blogs = blogService.findAll().map { it.id to it }.toMap()
+        val sentArticlesCountByEmail = linkedMapOf<String, Int>()
+        val skippedEmails = mutableListOf<String>()
+        val failedEmails = mutableListOf<String>()
 
         for (user in users) {
           val accumulatedDates = user.getAccumulatedDates(today)
@@ -96,13 +99,10 @@ class EmailSendJobConfig(
               )
             }
           if (articlesToSend.isEmpty()) {
-            slackSender.sendMessageAsync(
-              MONITORING,
-              "구독한 블로그에 새 글이 없어 skip. email=${user.email}"
-            )
+            skippedEmails += user.email
             continue
           }
-          emailSender.sendNewArticles(
+          val sendResult = emailSender.sendNewArticles(
             to = User(
               id = user.id!!,
               email = user.email,
@@ -110,7 +110,37 @@ class EmailSendJobConfig(
             ),
             articles = articlesToSend
           )
+          if (sendResult.success) {
+            sentArticlesCountByEmail[user.email] =
+              (sentArticlesCountByEmail[user.email] ?: 0) + articlesToSend.size
+          } else {
+            failedEmails += user.email
+          }
         }
+
+        val sentDetailMessage = if (sentArticlesCountByEmail.isEmpty()) {
+          "- 없음"
+        } else {
+          sentArticlesCountByEmail.entries
+            .joinToString("\n") { "- ${it.key}: ${it.value}개" }
+        }
+        val failedDetailMessage = if (failedEmails.isEmpty()) {
+          ""
+        } else {
+          "\n발송 실패 대상\n${failedEmails.joinToString("\n") { "- $it" }}"
+        }
+        slackSender.sendMessageAsync(
+          MONITORING,
+          """
+            email-send 발송 요약
+            보낸 사람 수 = ${sentArticlesCountByEmail.size}
+            보내진 요약글 수 = ${sentArticlesCountByEmail.values.sum()}
+            발송 상세
+            $sentDetailMessage
+            새 글 없음(skip) = ${skippedEmails.size}
+            발송 실패 = ${failedEmails.size}$failedDetailMessage
+          """.trimIndent()
+        )
         RepeatStatus.FINISHED
       }, platformTransactionManager)
       .allowStartIfComplete(true) // COMPLETED 상태로 끝났어도 재실행 가능
