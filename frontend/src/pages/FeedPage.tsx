@@ -4,6 +4,7 @@ import {
   addReadLater,
   ApiError,
   getArticles,
+  getAllBlogs,
   getFeedKeywordCounts,
   getSubscriptions,
   markArticleRead,
@@ -11,7 +12,7 @@ import {
   removeReadLater,
   subscribeBlog,
 } from "../api";
-import { ArticleResponse, FeedKeywordCountResponse, SessionState } from "../types";
+import { ArticleResponse, BlogResponse, FeedKeywordCountResponse, SessionState } from "../types";
 import { ArticleCard } from "../components/ArticleCard";
 import { EmptyState } from "../components/EmptyState";
 import { Toast } from "../components/Toast";
@@ -25,6 +26,7 @@ const DEFAULT_FROM_DATE = "2000-01-01";
 const DEFAULT_TOAST_DURATION = 2800;
 const KEYWORD_COLLAPSE_MAX = 10;
 const KEYWORD_COLLAPSE_STEP = 10;
+const FEED_RECOMMENDED_BLOG_LIMIT = 6;
 const REPORT_REASON_OPTIONS = [
   { value: "요약 결과가 이상해요.", label: "요약 결과가 이상해요." },
   { value: "부적절한 내용이에요.", label: "부적절한 내용이에요." },
@@ -41,8 +43,8 @@ type FeedToast = {
 
 export function FeedPage({ session, loginUrl }: FeedPageProps) {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"my" | "all">(
-    session.status === "authenticated" ? "my" : "all"
+  const [mode, setMode] = useState<"my" | "recommend">(
+    session.status === "authenticated" ? "my" : "recommend"
   );
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
   const [isCompactKeywordLayout, setIsCompactKeywordLayout] = useState<boolean>(
@@ -60,6 +62,8 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
   const [reportModalArticle, setReportModalArticle] = useState<ArticleResponse | null>(null);
   const [reportReason, setReportReason] = useState<string>(REPORT_REASON_OPTIONS[0].value);
   const [reportDetail, setReportDetail] = useState("");
+  const [allBlogs, setAllBlogs] = useState<BlogResponse[]>([]);
+  const [loadingRecommendedBlogs, setLoadingRecommendedBlogs] = useState<boolean>(false);
   const [subscribedBlogIds, setSubscribedBlogIds] = useState<Set<number>>(new Set());
   const [subscribingBlogId, setSubscribingBlogId] = useState<number | null>(null);
   const [keywordCounts, setKeywordCounts] = useState<FeedKeywordCountResponse[]>([]);
@@ -94,7 +98,7 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
 
   useEffect(() => {
     if (!isAuthenticated && mode === "my") {
-      setMode("all");
+      setMode("recommend");
     }
   }, [isAuthenticated, mode]);
 
@@ -130,6 +134,38 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
   }, [isAuthenticated, session.token]);
 
   useEffect(() => {
+    if (!isAuthenticated || mode !== "recommend" || allBlogs.length > 0) return;
+    let isCancelled = false;
+    setLoadingRecommendedBlogs(true);
+    async function loadAllBlogs() {
+      try {
+        const blogs = await getAllBlogs();
+        if (!isCancelled) {
+          setAllBlogs(blogs);
+        }
+      } catch (_) {
+        if (!isCancelled) {
+          setAllBlogs([]);
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoadingRecommendedBlogs(false);
+        }
+      }
+    }
+    void loadAllBlogs();
+    return () => {
+      isCancelled = true;
+    };
+  }, [allBlogs.length, isAuthenticated, mode]);
+
+  useEffect(() => {
+    if (!isAuthenticated || mode !== "recommend") {
+      setLoadingRecommendedBlogs(false);
+    }
+  }, [isAuthenticated, mode]);
+
+  useEffect(() => {
     async function loadKeywordCounts() {
       if (mode === "my" && (!isAuthenticated || !session.token)) {
         setKeywordCounts([]);
@@ -149,10 +185,10 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
     void loadKeywordCounts();
   }, [isAuthenticated, mode, session.token]);
 
-  const canLoadMyFeed = mode === "all" || isAuthenticated;
+  const canLoadFeed = mode === "recommend" || isAuthenticated;
 
   async function fetchPage(append: boolean) {
-    if (!canLoadMyFeed) return;
+    if (!canLoadFeed) return;
 
     if (append) {
       setLoadingMore(true);
@@ -309,7 +345,7 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
 
   const title = useMemo(() => {
     if (mode === "my") return "내 피드";
-    return "전체 피드";
+    return "추천 피드";
   }, [mode]);
 
   const selectedKeywordSet = useMemo(() => {
@@ -333,6 +369,18 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
       })
       .map(([value, count]) => ({ value, count }));
   }, [keywordCounts, selectedKeywords]);
+
+  const recommendedBlogs = useMemo(() => {
+    if (mode !== "recommend" || !isAuthenticated) return [];
+    return allBlogs
+      .filter((blog) => !subscribedBlogIds.has(blog.id))
+      .sort((a, b) => {
+        if (a.isShowOnMain && !b.isShowOnMain) return -1;
+        if (!a.isShowOnMain && b.isShowOnMain) return 1;
+        return a.name.localeCompare(b.name, "ko");
+      })
+      .slice(0, FEED_RECOMMENDED_BLOG_LIMIT);
+  }, [allBlogs, isAuthenticated, mode, subscribedBlogIds]);
 
   const isKeywordFiltering = selectedKeywords.length > 0;
   const visibleKeywordLimit = isCompactKeywordLayout
@@ -373,10 +421,12 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
           </button>
           <button
             type="button"
-            className={mode === "all" ? "segmented__item segmented__item--active" : "segmented__item"}
-            onClick={() => setMode("all")}
+            className={
+              mode === "recommend" ? "segmented__item segmented__item--active" : "segmented__item"
+            }
+            onClick={() => setMode("recommend")}
           >
-            전체
+            추천
           </button>
         </div>
       </div>
@@ -458,6 +508,41 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
 
           {loading ? <p className="status-text">피드를 불러오는 중...</p> : null}
 
+          {mode === "recommend" && isAuthenticated ? (
+            <section className="panel feed-blog-recommendation" aria-label="블로그 추천">
+              <div className="feed-blog-recommendation__head">
+                <h2>추천 블로그</h2>
+                <p>아직 구독하지 않은 블로그를 먼저 확인해 보세요.</p>
+              </div>
+              {loadingRecommendedBlogs ? (
+                <p className="feed-blog-recommendation__empty">추천 블로그를 불러오는 중...</p>
+              ) : recommendedBlogs.length === 0 ? (
+                <p className="feed-blog-recommendation__empty">
+                  지금은 추가로 추천할 블로그가 없어요. 설정에서 새 블로그를 찾아보세요.
+                </p>
+              ) : (
+                <ul className="feed-blog-recommendation__list">
+                  {recommendedBlogs.map((blog) => (
+                    <li key={blog.id} className="feed-blog-recommendation__item">
+                      <div className="feed-blog-recommendation__meta">
+                        <strong>{blog.name}</strong>
+                        <p>{blog.url}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn--primary btn--tiny"
+                        disabled={subscribingBlogId === blog.id}
+                        onClick={() => handleSubscribeBlog(blog.id)}
+                      >
+                        구독
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          ) : null}
+
           {!loading && items.length === 0 ? (
             <EmptyState
               title={isKeywordFiltering ? "선택한 키워드 글이 없어요" : "아직 표시할 글이 없어요"}
@@ -502,7 +587,9 @@ export function FeedPage({ session, loginUrl }: FeedPageProps) {
                   onKeywordClick={handleKeywordClick}
                   activeKeywords={selectedKeywordSet}
                   blogAction={
-                    mode === "all" && isAuthenticated && !subscribedBlogIds.has(article.blog.id) ? (
+                    mode === "recommend" &&
+                    isAuthenticated &&
+                    !subscribedBlogIds.has(article.blog.id) ? (
                       <button
                         type="button"
                         className="btn btn--primary btn--tiny"
