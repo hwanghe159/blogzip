@@ -17,6 +17,7 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { GoogleLoginPage } from "./pages/GoogleLoginPage";
 import { AccountPage } from "./pages/AccountPage";
 import { AdminPage } from "./pages/AdminPage";
+import { AdminReportsPage } from "./pages/AdminReportsPage";
 
 function toGuestSession(): SessionState {
   return {
@@ -117,6 +118,16 @@ export default function App() {
           element={
             session.status === "authenticated" && session.user?.isAdmin ? (
               <AdminPage session={session} loginUrl={loginUrl} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/admin/reports"
+          element={
+            session.status === "authenticated" && session.user?.isAdmin ? (
+              <AdminReportsPage session={session} loginUrl={loginUrl} />
             ) : (
               <Navigate to="/" replace />
             )

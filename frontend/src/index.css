@@ -1219,11 +1219,13 @@ a {
 }
 
 .admin-tab-btn {
+  display: block;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: #f8fbf9;
   padding: 10px 12px;
   text-align: left;
+  text-decoration: none;
   font: inherit;
   color: var(--text);
   cursor: pointer;
@@ -1244,6 +1246,14 @@ a {
 .admin-main {
   display: grid;
   gap: 14px;
+}
+
+.admin-page-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .panel-actions--between {
@@ -1282,6 +1292,11 @@ a {
   padding: 12px;
   display: grid;
   gap: 8px;
+}
+
+.admin-article-card--focused {
+  border-color: #1f8f5f;
+  box-shadow: 0 0 0 2px rgba(31, 143, 95, 0.18);
 }
 
 .admin-article-card h4 {

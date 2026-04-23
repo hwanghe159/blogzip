@@ -8,12 +8,10 @@ import {
   getAdminBlogsRequiringSelector,
   getAdminKeywordOverview,
   getAdminRecentArticles,
-  getAdminReceivedReports,
   mergeAdminKeywordsById,
   previewAdminArticleResummary,
   suggestAdminCssSelector,
   updateAdminArticleCreatedDate,
-  updateAdminArticleReportStatus,
   updateAdminBlogCssSelectorByUrl,
   updateAdminKeywordById,
   updateAdminKeywordHead,
@@ -32,6 +30,7 @@ import {
 } from "../types";
 import { EmptyState } from "../components/EmptyState";
 import { Toast } from "../components/Toast";
+import { Link, useSearchParams } from "react-router-dom";
 
 type AdminPageProps = {
   session: SessionState;
@@ -159,6 +158,7 @@ function normalizeKeywordOverview(
 }
 
 export function AdminPage({ session, loginUrl }: AdminPageProps) {
+  const [searchParams] = useSearchParams();
   const token = session.token;
   const isAuthenticated = session.status === "authenticated" && !!token;
   const isAdmin = !!session.user?.isAdmin;
@@ -191,16 +191,7 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
   const [articleReportsByArticleId, setArticleReportsByArticleId] = useState<
     Record<number, AdminArticleReportResponse[]>
   >({});
-
-  const [receivedReports, setReceivedReports] = useState<AdminArticleReportResponse[]>([]);
-  const [receivedReportNext, setReceivedReportNext] = useState<number | null>(null);
-  const [receivedLoading, setReceivedLoading] = useState(false);
-  const [receivedLoadingMore, setReceivedLoadingMore] = useState(false);
-  const [receivedInitialized, setReceivedInitialized] = useState(false);
-  const [updatingReportId, setUpdatingReportId] = useState<number | null>(null);
-  const [pendingReportStatus, setPendingReportStatus] = useState<Record<number, AdminArticleReportStatus>>(
-    {}
-  );
+  const [focusedArticleId, setFocusedArticleId] = useState<number | null>(null);
 
   const [keywordOverview, setKeywordOverview] = useState<AdminKeywordOverviewResponse | null>(null);
   const [keywordLoading, setKeywordLoading] = useState(false);
@@ -232,6 +223,17 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
   >([]);
   const [blogsRequiringSelectorLoading, setBlogsRequiringSelectorLoading] = useState(false);
   const [blogsRequiringSelectorLoaded, setBlogsRequiringSelectorLoaded] = useState(false);
+  const articleIdFromQuery = useMemo(() => {
+    const rawValue = searchParams.get("articleId");
+    if (!rawValue) {
+      return null;
+    }
+    const parsed = Number(rawValue);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      return null;
+    }
+    return parsed;
+  }, [searchParams]);
 
   function showToast(
     message: string,
@@ -254,7 +256,6 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     }, durationMs);
   }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     return () => {
       if (toastTimerRef.current !== null) {
@@ -313,63 +314,6 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     }
   }
 
-  async function loadReceivedReports({ reset, silent = false }: LoadOptions) {
-    if (!token) return;
-    if (reset) {
-      setReceivedLoading(true);
-    } else {
-      setReceivedLoadingMore(true);
-    }
-    try {
-      const response = await getAdminReceivedReports(token, {
-        next: reset ? null : receivedReportNext,
-        size: 20,
-      });
-      const sortedItems = [...response.items].sort((a, b) => {
-        const left = new Date(b.createdAt).getTime();
-        const right = new Date(a.createdAt).getTime();
-        return left - right;
-      });
-      setReceivedReports((prev) => {
-        if (reset) {
-          return sortedItems;
-        }
-        const merged = [...prev];
-        const exists = new Set(prev.map((item) => item.id));
-        sortedItems.forEach((item) => {
-          if (!exists.has(item.id)) {
-            merged.push(item);
-          }
-        });
-        return merged.sort((a, b) => {
-          const left = new Date(b.createdAt).getTime();
-          const right = new Date(a.createdAt).getTime();
-          return left - right;
-        });
-      });
-      setPendingReportStatus((prev) => {
-        const nextState: Record<number, AdminArticleReportStatus> = reset ? {} : { ...prev };
-        sortedItems.forEach((item) => {
-          nextState[item.id] = item.status;
-        });
-        return nextState;
-      });
-      setReceivedReportNext(response.next ?? null);
-      if (!silent) {
-        showToast("접수된 신고 목록을 불러왔습니다.", "success");
-      }
-    } catch (error) {
-      showToast(normalizeError(error, "신고 목록 조회에 실패했습니다."), "error");
-    } finally {
-      if (reset) {
-        setReceivedLoading(false);
-        setReceivedInitialized(true);
-      } else {
-        setReceivedLoadingMore(false);
-      }
-    }
-  }
-
   async function loadKeywordOverview(silent = false) {
     if (!token) return;
     setKeywordLoading(true);
@@ -403,7 +347,6 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     }
   }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!isAuthenticated || !isAdmin || !token) {
       return;
@@ -411,9 +354,6 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     if (activeTab === "articles") {
       if (!recentLoading && !recentInitialized) {
         void loadRecentArticles({ reset: true, silent: true });
-      }
-      if (!receivedLoading && !receivedInitialized) {
-        void loadReceivedReports({ reset: true, silent: true });
       }
       return;
     }
@@ -424,6 +364,7 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     if (activeTab === "crawler" && !blogsRequiringSelectorLoading && !blogsRequiringSelectorLoaded) {
       void loadBlogsNeedSelector(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeTab,
     isAuthenticated,
@@ -431,13 +372,30 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
     token,
     recentInitialized,
     recentLoading,
-    receivedLoading,
-    receivedInitialized,
     keywordLoading,
     keywordOverview,
     blogsRequiringSelectorLoading,
     blogsRequiringSelectorLoaded,
   ]);
+
+  useEffect(() => {
+    if (activeTab !== "articles" || !recentInitialized || articleIdFromQuery === null) {
+      return;
+    }
+    const targetExists = recentArticles.some((article) => article.id === articleIdFromQuery);
+    if (!targetExists) {
+      return;
+    }
+    setFocusedArticleId(articleIdFromQuery);
+    const targetElement = document.getElementById(`admin-article-${articleIdFromQuery}`);
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    const timerId = window.setTimeout(() => {
+      setFocusedArticleId((current) => (current === articleIdFromQuery ? null : current));
+    }, 2400);
+    return () => window.clearTimeout(timerId);
+  }, [activeTab, articleIdFromQuery, recentArticles, recentInitialized]);
 
   async function ensureSummaries(articleId: number) {
     if (!token) return;
@@ -581,70 +539,6 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
       showToast(normalizeError(error, "게시글 신고 내역 조회에 실패했습니다."), "error");
     } finally {
       setArticleReportLoadingId(null);
-    }
-  }
-
-  async function handleUpdateReportStatus(reportId: number) {
-    if (!token) return;
-    const status = pendingReportStatus[reportId];
-    if (!status) {
-      showToast("변경할 상태를 선택해 주세요.", "error");
-      return;
-    }
-
-    setUpdatingReportId(reportId);
-    try {
-      const beforeStatus = receivedReports.find((report) => report.id === reportId)?.status;
-      const updatedReport = await updateAdminArticleReportStatus(token, reportId, status);
-      setReceivedReports((prev) => {
-        const next = prev.map((report) => (report.id === reportId ? updatedReport : report));
-        return next.filter((report) => report.status === "RECEIVED");
-      });
-      setPendingReportStatus((prev) => {
-        const next = { ...prev };
-        if (updatedReport.status === "RECEIVED") {
-          next[reportId] = updatedReport.status;
-        } else {
-          delete next[reportId];
-        }
-        return next;
-      });
-      setRecentArticles((prev) =>
-        prev.map((article) => {
-          if (article.id !== updatedReport.articleId) {
-            return article;
-          }
-          if (beforeStatus === "RECEIVED" && updatedReport.status !== "RECEIVED") {
-            return {
-              ...article,
-              receivedReportCount: Math.max(0, article.receivedReportCount - 1),
-            };
-          }
-          if (beforeStatus !== "RECEIVED" && updatedReport.status === "RECEIVED") {
-            return {
-              ...article,
-              receivedReportCount: article.receivedReportCount + 1,
-            };
-          }
-          return article;
-        })
-      );
-      if (openArticleReportsForId !== null) {
-        const reports = await getAdminArticleReports(token, openArticleReportsForId);
-        setArticleReportsByArticleId((prev) => ({
-          ...prev,
-          [openArticleReportsForId]: reports,
-        }));
-      }
-      if (updatedReport.status === "RECEIVED") {
-        showToast("신고 상태를 업데이트했습니다.", "success");
-      } else {
-        showToast("신고를 처리해 접수 목록에서 제거했습니다.", "success");
-      }
-    } catch (error) {
-      showToast(normalizeError(error, "신고 상태 업데이트에 실패했습니다."), "error");
-    } finally {
-      setUpdatingReportId(null);
     }
   }
 
@@ -1203,6 +1097,9 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
             >
               게시글 관리
             </button>
+            <Link to="/admin/reports" className="admin-tab-btn">
+              신고 관리
+            </Link>
             <button
               type="button"
               className={`admin-tab-btn ${activeTab === "keywords" ? "admin-tab-btn--active" : ""}`}
@@ -1227,41 +1124,46 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
                 <div>
                   <h2>게시글 관리</h2>
                   <p className="panel__description">
-                    최근 게시글을 확인하고 날짜 수정, 신고 처리, 요약본 재실행/적용을 진행할 수 있어요.
+                    최근 게시글을 확인하고 날짜 수정, 요약본 재실행/적용을 진행할 수 있어요.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  className="btn btn--ghost btn--small"
-                  onClick={() => {
-                    void Promise.all([
-                      loadRecentArticles({ reset: true }),
-                      loadReceivedReports({ reset: true }),
-                    ]);
-                  }}
-                  disabled={recentLoading || receivedLoading}
-                >
-                  새로고침
-                </button>
+                <div className="admin-page-actions">
+                  <Link to="/admin/reports" className="btn btn--ghost btn--small">
+                    신고 관리로 이동
+                  </Link>
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--small"
+                    onClick={() => void loadRecentArticles({ reset: true })}
+                    disabled={recentLoading}
+                  >
+                    새로고침
+                  </button>
+                </div>
               </div>
 
-              <div className="admin-article-layout">
-                <div className="admin-section-stack">
-                  <div className="admin-section-title">
-                    <h3>최근 생성 게시글</h3>
-                  </div>
-                  {recentLoading ? (
-                    <p className="status-text">최근 게시글을 불러오는 중...</p>
-                  ) : recentArticles.length === 0 ? (
-                    <p className="status-text">표시할 게시글이 없습니다.</p>
-                  ) : (
-                    <div className="admin-article-list">
-                      {recentArticles.map((article) => {
-                        const summaries = summariesByArticleId[article.id] ?? [];
-                        const selectedSummaryId = selectedSummaryByArticleId[article.id] ?? null;
-                        const articleReports = articleReportsByArticleId[article.id] ?? [];
-                        return (
-                          <article key={article.id} className="admin-article-card">
+              <div className="admin-section-stack">
+                <div className="admin-section-title">
+                  <h3>최근 생성 게시글</h3>
+                </div>
+                {recentLoading ? (
+                  <p className="status-text">최근 게시글을 불러오는 중...</p>
+                ) : recentArticles.length === 0 ? (
+                  <p className="status-text">표시할 게시글이 없습니다.</p>
+                ) : (
+                  <div className="admin-article-list">
+                    {recentArticles.map((article) => {
+                      const summaries = summariesByArticleId[article.id] ?? [];
+                      const selectedSummaryId = selectedSummaryByArticleId[article.id] ?? null;
+                      const articleReports = articleReportsByArticleId[article.id] ?? [];
+                      return (
+                        <article
+                          key={article.id}
+                          id={`admin-article-${article.id}`}
+                          className={`admin-article-card ${
+                            focusedArticleId === article.id ? "admin-article-card--focused" : ""
+                          }`}
+                        >
                             <header className="admin-article-card__head">
                               <div className="admin-article-card__blog">
                                 <span className="badge badge--muted">{article.blogName}</span>
@@ -1399,95 +1301,31 @@ export function AdminPage({ session, loginUrl }: AdminPageProps) {
                                 )}
                               </div>
                             ) : null}
-                          </article>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {recentNext !== null ? (
-                    <div className="more-wrap">
-                      <button
-                        type="button"
-                        className="btn btn--ghost btn--small"
-                        onClick={() => void loadRecentArticles({ reset: false })}
-                        disabled={recentLoadingMore}
-                      >
-                        {recentLoadingMore ? "불러오는 중..." : "게시글 더 보기"}
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="admin-section-stack">
-                  <div className="admin-section-title">
-                    <h3>접수된 신고</h3>
+                        </article>
+                      );
+                    })}
                   </div>
-                  {receivedLoading ? (
-                    <p className="status-text">신고 목록을 불러오는 중...</p>
-                  ) : receivedReports.length === 0 ? (
-                    <p className="status-text">현재 접수된 신고가 없습니다.</p>
-                  ) : (
-                    <div className="admin-report-list">
-                      {receivedReports.map((report) => (
-                        <div key={report.id} className="admin-report-item">
-                          <p className="admin-report-item__title">#{report.id} · 접수</p>
-                          <a
-                            href={report.articleUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="admin-report-item__article-link"
-                          >
-                            {report.articleTitle}
-                          </a>
-                          <p className="admin-report-item__meta">
-                            {report.blogName} · 사용자 {report.userId} · {formatDateTime(report.createdAt)}
-                          </p>
-                          <p className="admin-report-item__reason">신고 유형: {report.reason}</p>
-                          {report.detail ? (
-                            <p className="admin-report-item__detail">상세: {report.detail}</p>
-                          ) : null}
-                          <div className="admin-report-item__actions">
-                            <select
-                              value={pendingReportStatus[report.id] ?? report.status}
-                              onChange={(event) =>
-                                setPendingReportStatus((prev) => ({
-                                  ...prev,
-                                  [report.id]: event.target.value as AdminArticleReportStatus,
-                                }))
-                              }
-                            >
-                              {REPORT_STATUS_OPTIONS.map((statusOption) => (
-                                <option key={statusOption.value} value={statusOption.value}>
-                                  {statusOption.label}
-                                </option>
-                              ))}
-                            </select>
-                            <button
-                              type="button"
-                              className="btn btn--primary btn--small"
-                              onClick={() => void handleUpdateReportStatus(report.id)}
-                              disabled={updatingReportId === report.id}
-                            >
-                              {updatingReportId === report.id ? "처리 중..." : "상태 저장"}
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {receivedReportNext !== null ? (
-                    <div className="more-wrap">
-                      <button
-                        type="button"
-                        className="btn btn--ghost btn--small"
-                        onClick={() => void loadReceivedReports({ reset: false })}
-                        disabled={receivedLoadingMore}
-                      >
-                        {receivedLoadingMore ? "불러오는 중..." : "신고 더 보기"}
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
+                )}
+                {articleIdFromQuery !== null &&
+                !recentLoading &&
+                recentArticles.every((article) => article.id !== articleIdFromQuery) ? (
+                  <p className="status-text">
+                    요청한 게시글 #{articleIdFromQuery}을 현재 목록에서 찾지 못했습니다. 아래의 더 보기로
+                    목록을 확장해 확인해 주세요.
+                  </p>
+                ) : null}
+                {recentNext !== null ? (
+                  <div className="more-wrap">
+                    <button
+                      type="button"
+                      className="btn btn--ghost btn--small"
+                      onClick={() => void loadRecentArticles({ reset: false })}
+                      disabled={recentLoadingMore}
+                    >
+                      {recentLoadingMore ? "불러오는 중..." : "게시글 더 보기"}
+                    </button>
+                  </div>
+                ) : null}
               </div>
             </section>
           ) : null}
